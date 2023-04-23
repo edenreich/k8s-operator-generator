@@ -103,18 +103,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "89b2fd2a0dcf38d7971e2194b6b6eebab45ae01067456a7fd93d5547a61b70be"
 
 [[package]]
-name = "cats_api_client"
-version = "1.0.0"
-dependencies = [
- "reqwest",
- "serde",
- "serde_derive",
- "serde_json",
- "url",
- "uuid",
-]
-
-[[package]]
 name = "cc"
 version = "1.0.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -768,7 +756,6 @@ name = "k8s_operator"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cats_api_client",
  "env_logger",
  "futures-util",
  "k8s-openapi",
@@ -776,6 +763,7 @@ dependencies = [
  "kube-derive",
  "kube-runtime",
  "log",
+ "pets_api_client",
  "schemars",
  "serde",
  "serde_derive",
@@ -1112,6 +1100,18 @@ name = "percent-encoding"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
+
+[[package]]
+name = "pets_api_client"
+version = "1.0.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "url",
+ "uuid",
+]
 
 [[package]]
 name = "pin-project"

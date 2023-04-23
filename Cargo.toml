@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cats_api_client = { path = "./client" }
+pets_api_client = { path = "./client" }
 tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread"] }
 schemars = "0.8.12"
 k8s-openapi = { version = "0.18.0", features = ["v1_26"] }

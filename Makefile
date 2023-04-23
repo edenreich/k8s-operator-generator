@@ -1,4 +1,5 @@
-VERSION ?= latest
+CONTAINER_REPOSITORY ?= eu.gcr.io/repository/pets-operator
+CONTAINER_VERSION ?= latest
 
 .PHONY: help generate-crds generate-client generate build build-container deploy clean
 
@@ -24,7 +25,9 @@ generate-crds:
 		"apt-get update && \
 		apt-get install -y pkg-config libssl-dev && \
 		useradd -m -s /bin/bash -u 1000 rust && \
-		cargo run --bin generate-crds > manifests/crds/all.yaml && chown -R 1000:1000 manifests"
+		cargo run --bin generate-crds > manifests/crds/all.yaml && \
+		chown -R 1000:1000 manifests/crds && \
+		chown -R 1000:1000 target"
 
 generate-client:
 	@rm -rf client
@@ -32,7 +35,7 @@ generate-client:
 		-i openapi.yaml \
 		-g rust \
 		-o client \
-		--additional-properties packageName=cats_api_client
+		--additional-properties packageName=pets_api_client
 
 generate: generate-crds generate-client
 
@@ -46,7 +49,7 @@ run: build
 	@cargo run --bin operator
 
 build-container:
-	@docker build -t eu.gcr.io/repository/cats:$(VERSION) .
+	@docker build -t $(CONTAINER_REPOSITORY):$(CONTAINER_VERSION) .
 
 deploy: generate-crds install-crds build-container
 	@kubectl apply -f manifests/operator/

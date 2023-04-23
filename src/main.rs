@@ -14,7 +14,7 @@ async fn main() -> anyhow::Result<()> {
         .default_filter_or("info");
     env_logger::init_from_env(env);
 
-    info!("Starting operator");
+    info!("Starting the operator...");
 
     let client = Client::try_default().await?;
 
