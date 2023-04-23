@@ -6,7 +6,7 @@ help:
 	@echo "Available targets:"
 	@echo "  generate-crds      generate the CRD's from Rust code"
 	@echo "  generate-client    generate the Rust client code"
-	@echo "  generate           generate the Rust code from the OpenAPI spec"
+	@echo "  generate           generate both the client and the CRD's"
 	@echo "  install-crds       install the CRD's in the cluster"
 	@echo "  build              build the Rust binaries"
 	@echo "  run                run the operator locally (useful for debugging)"
