@@ -6,12 +6,13 @@ use tokio::time::{sleep, Duration};
 use k8s_operator::Cat;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
+    std::env::set_var("RUST_LOG", "info,kube=trace,controller=debug");
     let client = Client::try_default().await?;
     let cats: Api<Cat> = Api::default_namespaced(client);
 
     loop {
-        let lp = ListParams::default().timeout(10);
+        let lp: ListParams = ListParams::default().timeout(10);
         let cat_list = cats.list(&lp).await?;
 
         for cat in cat_list.items {

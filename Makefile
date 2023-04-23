@@ -9,6 +9,7 @@ help:
 	@echo "  generate           generate the Rust code from the OpenAPI spec"
 	@echo "  install-crds       install the CRD's in the cluster"
 	@echo "  build              build the Rust binaries"
+	@echo "  run                run the operator locally (useful for debugging)"
 	@echo "  build-container    build the operator container image"
 	@echo "  deploy             deploy the operator in the cluster"
 	@echo "  clean              remove the generated files"
@@ -40,6 +41,9 @@ install-crds: generate-crds
 
 build:
 	@cargo build --bins --release
+
+run: build
+	@cargo run --bin operator
 
 build-container:
 	@docker build -t eu.gcr.io/repository/cats:$(VERSION) .

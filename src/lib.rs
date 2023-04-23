@@ -1,6 +1,6 @@
 
 
-use kube::{CustomResource};
+use kube::CustomResource;
 use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
 
@@ -9,17 +9,17 @@ use schemars::JsonSchema;
     group = "example.com",
     version = "v1alpha1",
     kind = "Cat",
-    plural = "Cats",
+    plural = "cats",
     namespaced
 )]
-#[serde(rename_all = "camelCase")]
+#[kube(status = "CatStatus")]
 pub struct CatSpec {
     name: String,
     breed: String,
     age: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize, Default)]
+#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
 pub struct CatStatus {
-    status: String,
+    is_ok: bool,
 }

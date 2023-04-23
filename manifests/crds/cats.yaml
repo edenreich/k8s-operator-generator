@@ -1,13 +1,13 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: Cats.example.com
+  name: cats.example.com
 spec:
   group: example.com
   names:
     categories: []
     kind: Cat
-    plural: Cats
+    plural: cats
     shortNames: []
     singular: cat
   scope: Namespaced
@@ -33,11 +33,20 @@ spec:
             - breed
             - name
             type: object
+          status:
+            nullable: true
+            properties:
+              is_ok:
+                type: boolean
+            required:
+            - is_ok
+            type: object
         required:
         - spec
         title: Cat
         type: object
     served: true
     storage: true
-    subresources: {}
+    subresources:
+      status: {}
 
