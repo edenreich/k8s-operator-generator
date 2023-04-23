@@ -24,7 +24,7 @@ generate-crds:
 		"apt-get update && \
 		apt-get install -y pkg-config libssl-dev && \
 		useradd -m -s /bin/bash -u 1000 rust && \
-		cargo run --bin generate-crds > manifests/crds/cats.yaml && chown -R 1000:1000 manifests"
+		cargo run --bin generate-crds > manifests/crds/all.yaml && chown -R 1000:1000 manifests"
 
 generate-client:
 	@rm -rf client

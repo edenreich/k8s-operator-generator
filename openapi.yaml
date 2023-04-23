@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Cats API
+  title: Pets API
   version: 1.0.0
 paths:
   /cats:
@@ -82,6 +82,85 @@ paths:
       responses:
         "204":
           description: No content
+  /dogs:
+    get:
+      summary: Get all dogs
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Dog"
+    post:
+      summary: Create a new dog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Dog"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dog"
+  /dogs/{id}:
+    get:
+      summary: Get a dog by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dog"
+        "404":
+          description: Not found
+    put:
+      summary: Update a dog by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Dog"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dog"
+        "404":
+          description: Not found
+    delete:
+      summary: Delete a dog by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No content
 components:
   schemas:
     Cat:
@@ -101,6 +180,26 @@ components:
         breed:
           type: string
           example: "Persian"
+        age:
+          type: integer
+          example: 3
+    Dog:
+      type: object
+      required:
+        - id
+        - name
+        - breed
+        - age
+      properties:
+        id:
+          type: string
+          example: "1"
+        name:
+          type: string
+          example: "Fido"
+        breed:
+          type: string
+          example: "Bulldog"
         age:
           type: integer
           example: 3

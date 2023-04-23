@@ -30,11 +30,17 @@ Class | Method | HTTP request | Description
 *DefaultApi* | [**cats_id_get**](docs/DefaultApi.md#cats_id_get) | **GET** /cats/{id} | Get a cat by ID
 *DefaultApi* | [**cats_id_put**](docs/DefaultApi.md#cats_id_put) | **PUT** /cats/{id} | Update a cat by ID
 *DefaultApi* | [**cats_post**](docs/DefaultApi.md#cats_post) | **POST** /cats | Create a new cat
+*DefaultApi* | [**dogs_get**](docs/DefaultApi.md#dogs_get) | **GET** /dogs | Get all dogs
+*DefaultApi* | [**dogs_id_delete**](docs/DefaultApi.md#dogs_id_delete) | **DELETE** /dogs/{id} | Delete a dog by ID
+*DefaultApi* | [**dogs_id_get**](docs/DefaultApi.md#dogs_id_get) | **GET** /dogs/{id} | Get a dog by ID
+*DefaultApi* | [**dogs_id_put**](docs/DefaultApi.md#dogs_id_put) | **PUT** /dogs/{id} | Update a dog by ID
+*DefaultApi* | [**dogs_post**](docs/DefaultApi.md#dogs_post) | **POST** /dogs | Create a new dog
 
 
 ## Documentation For Models
 
  - [Cat](docs/Cat.md)
+ - [Dog](docs/Dog.md)
 
 
 To get access to the crate's generated documentation, use:
