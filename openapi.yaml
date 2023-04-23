@@ -1,0 +1,106 @@
+openapi: 3.1.0
+info:
+  title: Cats API
+  version: 1.0.0
+paths:
+  /cats:
+    get:
+      summary: Get all cats
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Cat"
+    post:
+      summary: Create a new cat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Cat"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cat"
+  /cats/{id}:
+    get:
+      summary: Get a cat by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cat"
+        "404":
+          description: Not found
+    put:
+      summary: Update a cat by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Cat"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cat"
+        "404":
+          description: Not found
+    delete:
+      summary: Delete a cat by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No content
+components:
+  schemas:
+    Cat:
+      type: object
+      required:
+        - id
+        - name
+        - breed
+        - age
+      properties:
+        id:
+          type: string
+          example: "1"
+        name:
+          type: string
+          example: "Fluffy"
+        breed:
+          type: string
+          example: "Persian"
+        age:
+          type: integer
+          example: 3
