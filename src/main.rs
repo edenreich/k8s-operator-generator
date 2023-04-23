@@ -7,7 +7,6 @@ use k8s_operator::Cat;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    std::env::set_var("RUST_LOG", "info,kube=trace,controller=debug");
     let client = Client::try_default().await?;
     let cats: Api<Cat> = Api::default_namespaced(client);
 
