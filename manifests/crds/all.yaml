@@ -14,7 +14,7 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns: []
-    name: v1alpha1
+    name: v1
     schema:
       openAPIV3Schema:
         description: Auto-generated derived type for CatSpec via `CustomResource`
@@ -27,20 +27,15 @@ spec:
                 type: integer
               breed:
                 type: string
+              id:
+                type: string
               name:
                 type: string
             required:
             - age
             - breed
+            - id
             - name
-            type: object
-          status:
-            nullable: true
-            properties:
-              is_ok:
-                type: boolean
-            required:
-            - is_ok
             type: object
         required:
         - spec
@@ -48,8 +43,7 @@ spec:
         type: object
     served: true
     storage: true
-    subresources:
-      status: {}
+    subresources: {}
 
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -67,7 +61,7 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns: []
-    name: v1alpha1
+    name: v1
     schema:
       openAPIV3Schema:
         description: Auto-generated derived type for DogSpec via `CustomResource`
@@ -80,20 +74,15 @@ spec:
                 type: integer
               breed:
                 type: string
+              id:
+                type: string
               name:
                 type: string
             required:
             - age
             - breed
+            - id
             - name
-            type: object
-          status:
-            nullable: true
-            properties:
-              is_ok:
-                type: boolean
-            required:
-            - is_ok
             type: object
         required:
         - spec
@@ -101,5 +90,4 @@ spec:
         type: object
     served: true
     storage: true
-    subresources:
-      status: {}
+    subresources: {}

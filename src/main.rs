@@ -1,17 +1,16 @@
+use env_logger::Env;
 use futures_util::stream::StreamExt;
 use k8s_operator::{Cat, Dog};
 use kube::{
     api::{Api, WatchEvent, WatchParams},
     Client,
 };
+use log::{error, info};
 use tokio::time::{sleep, Duration};
-use env_logger::Env;
-use log::{info, error};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let env = Env::default()
-        .default_filter_or("info");
+    let env = Env::default().default_filter_or("info");
     env_logger::init_from_env(env);
 
     info!("Starting the operator...");
@@ -23,8 +22,16 @@ async fn main() -> anyhow::Result<()> {
 
     let watch_params = WatchParams::default().timeout(10);
 
-    tokio::spawn(watch_resource::<Cat>(cats.clone(), watch_params.clone(), handle_cat_event));
-    tokio::spawn(watch_resource::<Dog>(dogs.clone(), watch_params.clone(), handle_dog_event));
+    tokio::spawn(watch_resource::<Cat>(
+        cats.clone(),
+        watch_params.clone(),
+        handle_cat_event,
+    ));
+    tokio::spawn(watch_resource::<Dog>(
+        dogs.clone(),
+        watch_params.clone(),
+        handle_dog_event,
+    ));
 
     loop {
         sleep(Duration::from_secs(1)).await;
@@ -48,7 +55,7 @@ where
                 Err(e) => error!("Error watching resource: {:?}", e),
             }
         }
-    
+
         sleep(Duration::from_secs(1)).await;
         stream = api.watch(&watch_params, "0").await?.boxed();
     }

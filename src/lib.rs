@@ -1,43 +1,17 @@
-use kube::CustomResource;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-#[derive(CustomResource, Clone, Debug, Deserialize, Serialize, JsonSchema)]
-#[kube(
-    group = "example.com",
-    version = "v1alpha1",
-    kind = "Cat",
-    plural = "cats",
-    namespaced
-)]
-#[kube(status = "CatStatus")]
+#[derive(Debug, Default, Clone, serde::Deserialize, serde::Serialize, schemars::JsonSchema, kube::CustomResource)]
+#[kube(group = "example.com", version = "v1", kind = "Cat", plural = "cats", namespaced)]
 pub struct CatSpec {
+    id: String,
     name: String,
     breed: String,
     age: u32,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
-pub struct CatStatus {
-    is_ok: bool,
-}
-
-#[derive(CustomResource, Clone, Debug, Deserialize, Serialize, JsonSchema)]
-#[kube(
-    group = "example.com",
-    version = "v1alpha1",
-    kind = "Dog",
-    plural = "dogs",
-    namespaced
-)]
-#[kube(status = "DogStatus")]
+#[derive(Debug, Default, Clone, serde::Deserialize, serde::Serialize, schemars::JsonSchema, kube::CustomResource)]
+#[kube(group = "example.com", version = "v1", kind = "Dog", plural = "dogs", namespaced)]
 pub struct DogSpec {
+    id: String,
     name: String,
     breed: String,
     age: u32,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, JsonSchema)]
-pub struct DogStatus {
-    is_ok: bool,
 }
