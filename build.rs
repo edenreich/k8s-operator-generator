@@ -1,8 +1,13 @@
 use codegen::Scope;
 use openapiv3::{OpenAPI, Schema};
+use quote::format_ident;
+use quote::quote;
 use serde_yaml;
 use std::fs::File;
 use std::io::Read;
+use std::process::Command; // Add missing import statement
+use syn::parse_quote;
+use syn::ItemFn;
 
 fn main() {
     let input = "./openapi.yaml";
@@ -20,8 +25,21 @@ fn main() {
     // Create a new codegen scope
     let mut scope = Scope::new();
 
+    // Add necessary imports to the scope
+    scope.import("kube::api", "Api");
+    scope.import("kube::api", "WatchEvent");
+    scope.import("kube::api", "WatchParams");
+    scope.import("log", "info");
+    scope.import("log", "error");
+    scope.import("futures_util::stream", "StreamExt");
+    scope.import("tokio::time", "sleep");
+    scope.import("tokio::time", "Duration");
+
+    // Generate a generic event handler function
+    generate_generic_function(&mut scope);
+
     // Generate Rust structs for each schema in the components
-    if let Some(components) = openapi.components {
+    if let Some(components) = openapi.components.clone() {
         for (name, schema) in components.schemas {
             match schema {
                 openapiv3::ReferenceOr::Reference { .. } => {
@@ -29,12 +47,28 @@ fn main() {
                 }
                 openapiv3::ReferenceOr::Item(item) => {
                     generate_struct(&mut scope, &name, "example.com", "v1", &item);
+                    generate_function(&mut scope, &name);
                 }
             }
         }
     }
+
     // Write the generated code to a file
     std::fs::write(output, format!("{}\n", scope.to_string())).expect("Unable to write file");
+
+    // Format the Rust code using rustfmt
+    let output = Command::new("rustfmt")
+        .arg(output)
+        .output()
+        .expect("Failed to execute command");
+
+    // Check the output of the rustfmt command
+    if !output.status.success() {
+        eprintln!(
+            "rustfmt failed with output:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
 }
 
 fn generate_struct(
@@ -90,4 +124,68 @@ fn generate_struct(
 
     // Add the struct to the scope
     scope.push_struct(struct_);
+}
+
+fn generate_generic_function(scope: &mut Scope) {
+    let function: ItemFn = parse_quote! {
+        pub async fn watch_resource<T>(
+            api: Api<T>,
+            watch_params: WatchParams,
+            handler: fn(WatchEvent<T>),
+        ) -> anyhow::Result<()>
+        where
+            T: Clone + core::fmt::Debug + serde::de::DeserializeOwned + 'static,
+        {
+            let mut stream = api.watch(&watch_params, "0").await?.boxed();
+
+            loop {
+                while let Some(event) = stream.next().await {
+                    match event {
+                        Ok(event) => handler(event),
+                        Err(e) => error!("Error watching resource: {:?}", e),
+                    }
+                }
+
+                sleep(Duration::from_secs(1)).await;
+                stream = api.watch(&watch_params, "0").await?.boxed();
+            }
+        }
+    };
+
+    // Convert the function into a string
+    let function_string = quote! { #function }.to_string();
+
+    // Add the function to the scope
+    scope.raw(&function_string);
+}
+
+fn generate_function(scope: &mut Scope, name: &str) {
+    let function_name = format_ident!("handle_{}_event", name.to_lowercase());
+    let struct_name = format_ident!("{}", name);
+
+    let function: ItemFn = parse_quote! {
+        pub fn #function_name(event: WatchEvent<#struct_name>) {
+            match event {
+                WatchEvent::Added(resource) => {
+                    info!("{} Added: {:?}", #name, resource.metadata.name);
+                    // TODO - implement
+                }
+                WatchEvent::Modified(resource) => {
+                    info!("{} Modified: {:?}", #name, resource.metadata.name);
+                    // TODO - implement
+                }
+                WatchEvent::Deleted(resource) => {
+                    info!("{} Deleted: {:?}", #name, resource.metadata.name);
+                    // TODO - implement
+                }
+                _ => {}
+            }
+        }
+    };
+
+    // Convert the function into a string
+    let function_string = quote! { #function }.to_string();
+
+    // Add the function to the scope
+    scope.raw(&function_string);
 }
