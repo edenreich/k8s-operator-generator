@@ -23,6 +23,15 @@ The following dependencies are needed:
 8. Run the operator: `task run`.
 9. Try out to deploy the `manifests/samples` by running `kubectl apply -f manifests/samples/`.
 
+### Workflow
+
+1. Download the latest Open API Specification of your API.
+2. Generate the controllers by running `task build`.
+3. Add the controllers to `src/controllers/mod.rs`.
+4. Use the controllers to `src/main.rs`.
+5. Modify the controllers, add the business logic for `CRUD`.
+6. Mark the file in `.openapi-generator-ignore` so the next time you run `task build` it will not be overwritten.
+
 ### Usage
 
 ```sh
