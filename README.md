@@ -21,6 +21,7 @@ The following dependencies are needed:
 6. Create a development cluster: `task cluster-create`.
 7. Deploy CRD's `task deploy-crds`.
 8. Run the operator: `task run`.
+9. Try out to deploy the `manifests/samples` by running `kubectl apply -f manifests/samples/`.
 
 ### Usage
 
