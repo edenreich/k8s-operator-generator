@@ -4,8 +4,8 @@ use quote::format_ident;
 use quote::quote;
 use serde_yaml;
 use std::fs::File;
-use std::io::Read;
-use std::process::Command; // Add missing import statement
+use std::io::{BufRead, BufReader, Read};
+use std::process::Command;
 use syn::parse_quote;
 use syn::ItemFn;
 
@@ -35,6 +35,8 @@ fn main() {
     scope.import("tokio::time", "sleep");
     scope.import("tokio::time", "Duration");
 
+    scope.raw("pub mod controllers;");
+
     // Generate a generic event handler function
     generate_generic_function(&mut scope);
 
@@ -47,7 +49,7 @@ fn main() {
                 }
                 openapiv3::ReferenceOr::Item(item) => {
                     generate_struct(&mut scope, &name, "example.com", "v1", &item);
-                    generate_function(&mut scope, &name);
+                    generate_function(&name);
                 }
             }
         }
@@ -159,11 +161,9 @@ fn generate_generic_function(scope: &mut Scope) {
     scope.raw(&function_string);
 }
 
-fn generate_function(scope: &mut Scope, name: &str) {
-    let function_name = format_ident!("handle_{}_event", name.to_lowercase());
+fn generate_function(name: &str) {
+    let function_name = format_ident!("handle_{}", name.to_lowercase());
     let struct_name = format_ident!("{}", name);
-
-    // Only create a function if it doesn't already exists in the generated file, the scope doesn't have it
 
     let function: ItemFn = parse_quote! {
         pub fn #function_name(event: WatchEvent<#struct_name>) {
@@ -188,6 +188,37 @@ fn generate_function(scope: &mut Scope, name: &str) {
     // Convert the function into a string
     let function_string = quote! { #function }.to_string();
 
-    // Add the function to the scope
-    scope.raw(&function_string);
+    // Prepend the function with the use statements
+    let function_string = format!(
+        "use kube::api::WatchEvent;\nuse log::info;use crate::{};\n\n{}",
+        name, function_string
+    );
+
+    // Write the function to a new file
+    let file_path = format!("src/controllers/{}.rs", name.to_lowercase());
+
+    // Check if the file_path is in the .openapi-generator-ignore file
+    let ignore_file =
+        std::fs::File::open(".openapi-generator-ignore").expect("Unable to open file");
+    let reader = BufReader::new(ignore_file);
+    let ignored_files: Vec<String> = reader.lines().filter_map(Result::ok).collect();
+
+    if !ignored_files.contains(&file_path) {
+        let file_path_clone = file_path.clone();
+        std::fs::write(file_path, function_string).expect("Unable to write file");
+
+        // Format the Rust code using rustfmt
+        let output = Command::new("rustfmt")
+            .arg(file_path_clone)
+            .output()
+            .expect("Failed to execute command");
+
+        // Check the output of the rustfmt command
+        if !output.status.success() {
+            eprintln!(
+                "rustfmt failed with output:\n{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
 }

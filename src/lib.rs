@@ -3,6 +3,8 @@ use kube::api::{Api, WatchEvent, WatchParams};
 use log::{error, info};
 use tokio::time::{sleep, Duration};
 
+pub mod controllers;
+
 pub async fn watch_resource<T>(
     api: Api<T>,
     watch_params: WatchParams,
@@ -47,24 +49,6 @@ pub struct CatSpec {
     age: u32,
 }
 
-pub fn handle_cat_event(event: WatchEvent<Cat>) {
-    match event {
-        WatchEvent::Added(resource) => {
-            info!("{} Added: {:?}", "Cat", resource.metadata.name);
-            todo!("TODO: Implement event handling");
-        }
-        WatchEvent::Modified(resource) => {
-            info!("{} Modified: {:?}", "Cat", resource.metadata.name);
-            todo!("TODO: Implement event handling");
-        }
-        WatchEvent::Deleted(resource) => {
-            info!("{} Deleted: {:?}", "Cat", resource.metadata.name);
-            todo!("TODO: Implement event handling");
-        }
-        _ => {}
-    }
-}
-
 #[derive(
     Debug,
     Default,
@@ -86,22 +70,4 @@ pub struct DogSpec {
     name: String,
     breed: String,
     age: u32,
-}
-
-pub fn handle_dog_event(event: WatchEvent<Dog>) {
-    match event {
-        WatchEvent::Added(resource) => {
-            info!("{} Added: {:?}", "Dog", resource.metadata.name);
-            todo!("TODO: Implement event handling");
-        }
-        WatchEvent::Modified(resource) => {
-            info!("{} Modified: {:?}", "Dog", resource.metadata.name);
-            todo!("TODO: Implement event handling");
-        }
-        WatchEvent::Deleted(resource) => {
-            info!("{} Deleted: {:?}", "Dog", resource.metadata.name);
-            todo!("TODO: Implement event handling");
-        }
-        _ => {}
-    }
 }
