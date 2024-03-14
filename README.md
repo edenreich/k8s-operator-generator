@@ -2,21 +2,28 @@
 
 A template for creating CRUD Kubernetes operators written in Rust.
 
+### Prerequisites
+
+The following dependencies are needed:
+
+- [docker](https://docs.docker.com/engine/install/)
+- [k3d](https://k3d.io/v5.6.0/#releases)
+- [ctlptl](https://formulae.brew.sh/formula/ctlptl)
+- [task](https://taskfile.dev/installation/)
+
+### Quick Start
+
+1. Download OAS: `task oas-download`.
+2. Build the project: `task build`.
+3. Import the generated types from `src/lib.rs` and use them in `src/main.rs`.
+4. Add the generated controllers to `src/controllers/mod.rs` and use them in `src/main.rs`.
+5. Generate CRD's `task generate`.
+6. Create a development cluster: `task cluster-create`.
+7. Deploy CRD's `task deploy-crds`.
+8. Run the operator: `task run`.
+
 ### Usage
 
 ```sh
-make help
-```
-
-```
-Available targets:
-  generate-crds      generate the CRD's from Rust code
-  generate-client    generate the Rust client code
-  generate           generate both the client and the CRD's
-  install-crds       install the CRD's in the cluster
-  build              build the Rust binaries
-  run                run the operator locally (useful for debugging)
-  build-container    build the operator container image
-  deploy             deploy the operator in the cluster
-  clean              remove the generated files
+task --list-all
 ```
