@@ -1,0 +1,54 @@
+version: '3'
+
+tasks:
+  oas-download:
+    desc: Download OpenAPI specification
+    cmds:
+      - curl -o openapi.yaml https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/examples/v3.0/petstore.yaml
+
+  build:
+    desc: Build the k8s operator
+    cmds:
+      - cargo build --bins --release
+
+  generate:
+    desc: Generate the k8s CRD's out of the rust structs
+    cmds:
+      - cargo run --bin generate-crds > manifests/crds/all.yaml
+
+  run:
+    desc: Run the k8s operator
+    cmds:
+      - cargo run --bin operator
+
+  package:
+    desc: Package the k8s operator
+    cmds:
+      - docker build -t operator .
+
+  cluster-create:
+    desc: Create a k8s cluster
+    cmds:
+      - ctlptl apply -f Cluster.yaml
+
+  cluster-delete:
+    desc: Delete a k8s cluster
+    cmds:
+      - ctlptl delete -f Cluster.yaml
+
+  deploy-crds:
+    desc: Deploy the k8s CRD's
+    cmds:
+      - kubectl config use-context k3d-k3s-default
+      - kubectl apply -f manifests/crds/all.yaml
+
+  dirty-check:
+    desc: Check if the project is dirty
+    cmds:
+      - git diff --quiet || (echo "Project is dirty" && exit 1)
+
+  clean:
+    desc: Clean the project
+    cmds:
+      - cargo clean
+      - task cluster-delete
