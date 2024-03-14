@@ -166,7 +166,6 @@ components:
     Cat:
       type: object
       required:
-        - id
         - name
         - breed
         - age
@@ -186,7 +185,6 @@ components:
     Dog:
       type: object
       required:
-        - id
         - name
         - breed
         - age

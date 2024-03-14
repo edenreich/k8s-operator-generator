@@ -111,13 +111,18 @@ fn generate_struct(
                     // Handle references here if needed
                 }
                 openapiv3::ReferenceOr::Item(item) => {
-                    let field_type = match &item.schema_kind {
+                    let base_field_type = match &item.schema_kind {
                         openapiv3::SchemaKind::Type(openapiv3::Type::String(_)) => "String",
                         openapiv3::SchemaKind::Type(openapiv3::Type::Integer(_)) => "u32",
                         // Add more cases here for other types as needed
                         _ => continue, // Skip unknown types
                     };
-                    struct_.field(field_name, field_type);
+                    let field_type = if object.required.contains(field_name) {
+                        base_field_type.to_string()
+                    } else {
+                        format!("Option<{}>", base_field_type)
+                    };
+                    struct_.field(field_name, &field_type);
                 }
             }
         }

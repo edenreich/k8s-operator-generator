@@ -1,5 +1,5 @@
 ---
-apiVersion: example.com/v1alpha1
+apiVersion: example.com/v1
 kind: Cat
 metadata:
   name: fluffy

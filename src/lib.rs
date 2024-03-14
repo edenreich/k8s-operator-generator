@@ -43,7 +43,7 @@ where
     namespaced
 )]
 pub struct CatSpec {
-    id: String,
+    id: Option<String>,
     name: String,
     breed: String,
     age: u32,
@@ -66,7 +66,7 @@ pub struct CatSpec {
     namespaced
 )]
 pub struct DogSpec {
-    id: String,
+    id: Option<String>,
     name: String,
     breed: String,
     age: u32,

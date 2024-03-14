@@ -28,13 +28,13 @@ spec:
               breed:
                 type: string
               id:
+                nullable: true
                 type: string
               name:
                 type: string
             required:
             - age
             - breed
-            - id
             - name
             type: object
         required:
@@ -75,13 +75,13 @@ spec:
               breed:
                 type: string
               id:
+                nullable: true
                 type: string
               name:
                 type: string
             required:
             - age
             - breed
-            - id
             - name
             type: object
         required:
