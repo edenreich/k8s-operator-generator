@@ -17,11 +17,12 @@ The following dependencies are needed:
 2. Build the project: `task build`.
 3. Import the generated types from `src/lib.rs` and use them in `src/main.rs`.
 4. Add the generated controllers to `src/controllers/mod.rs` and use them in `src/main.rs`.
-5. Generate CRD's `task generate`.
-6. Create a development cluster: `task cluster-create`.
-7. Deploy CRD's `task deploy-crds`.
-8. Run the operator: `task run`.
-9. Try out to deploy the `manifests/samples` by running `kubectl apply -f manifests/samples/`.
+5. Add the generated types to `src/crdgen.rs`.
+6. Generate CRD's `task generate`.
+7. Create a development cluster: `task cluster-create`.
+8. Deploy CRD's `task deploy-crds`.
+9. Run the operator: `task run`.
+10. Try out to deploy the `manifests/samples` by running `kubectl apply -f manifests/samples/`.
 
 ### Workflow
 
