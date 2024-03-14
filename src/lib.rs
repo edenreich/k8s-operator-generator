@@ -1,6 +1,6 @@
 use futures_util::stream::StreamExt;
 use kube::api::{Api, WatchEvent, WatchParams};
-use log::{error, info};
+use log::error;
 use tokio::time::{sleep, Duration};
 
 pub mod controllers;

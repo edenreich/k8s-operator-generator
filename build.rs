@@ -29,7 +29,6 @@ fn main() {
     scope.import("kube::api", "Api");
     scope.import("kube::api", "WatchEvent");
     scope.import("kube::api", "WatchParams");
-    scope.import("log", "info");
     scope.import("log", "error");
     scope.import("futures_util::stream", "StreamExt");
     scope.import("tokio::time", "sleep");
