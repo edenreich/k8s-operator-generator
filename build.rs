@@ -11,7 +11,7 @@ use syn::ItemFn;
 
 fn main() {
     let input = "./openapi.yaml";
-    let output = "./src/lib.rs";
+    let dest = "./src/lib.rs";
 
     // Read the OpenAPI specification from the YAML file
     let mut file = File::open(input).expect("Unable to open file");
@@ -54,11 +54,11 @@ fn main() {
     }
 
     // Write the generated code to a file
-    std::fs::write(output, format!("{}\n", scope.to_string())).expect("Unable to write file");
+    std::fs::write(dest, format!("{}\n", scope.to_string())).expect("Unable to write file");
 
     // Format the Rust code using rustfmt
     let output = Command::new("rustfmt")
-        .arg(output)
+        .arg(dest)
         .output()
         .expect("Failed to execute command");
 
@@ -162,6 +162,8 @@ fn generate_generic_function(scope: &mut Scope) {
 fn generate_function(scope: &mut Scope, name: &str) {
     let function_name = format_ident!("handle_{}_event", name.to_lowercase());
     let struct_name = format_ident!("{}", name);
+
+    // Only create a function if it doesn't already exists in the generated file, the scope doesn't have it
 
     let function: ItemFn = parse_quote! {
         pub fn #function_name(event: WatchEvent<#struct_name>) {
