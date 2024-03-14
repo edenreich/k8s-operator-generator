@@ -51,12 +51,15 @@ pub fn handle_cat_event(event: WatchEvent<Cat>) {
     match event {
         WatchEvent::Added(resource) => {
             info!("{} Added: {:?}", "Cat", resource.metadata.name);
+            todo!("TODO: Implement event handling");
         }
         WatchEvent::Modified(resource) => {
             info!("{} Modified: {:?}", "Cat", resource.metadata.name);
+            todo!("TODO: Implement event handling");
         }
         WatchEvent::Deleted(resource) => {
             info!("{} Deleted: {:?}", "Cat", resource.metadata.name);
+            todo!("TODO: Implement event handling");
         }
         _ => {}
     }
@@ -89,12 +92,15 @@ pub fn handle_dog_event(event: WatchEvent<Dog>) {
     match event {
         WatchEvent::Added(resource) => {
             info!("{} Added: {:?}", "Dog", resource.metadata.name);
+            todo!("TODO: Implement event handling");
         }
         WatchEvent::Modified(resource) => {
             info!("{} Modified: {:?}", "Dog", resource.metadata.name);
+            todo!("TODO: Implement event handling");
         }
         WatchEvent::Deleted(resource) => {
             info!("{} Deleted: {:?}", "Dog", resource.metadata.name);
+            todo!("TODO: Implement event handling");
         }
         _ => {}
     }

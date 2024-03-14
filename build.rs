@@ -168,15 +168,15 @@ fn generate_function(scope: &mut Scope, name: &str) {
             match event {
                 WatchEvent::Added(resource) => {
                     info!("{} Added: {:?}", #name, resource.metadata.name);
-                    // TODO - implement
+                    todo!("TODO: Implement event handling");
                 }
                 WatchEvent::Modified(resource) => {
                     info!("{} Modified: {:?}", #name, resource.metadata.name);
-                    // TODO - implement
+                    todo!("TODO: Implement event handling");
                 }
                 WatchEvent::Deleted(resource) => {
                     info!("{} Deleted: {:?}", #name, resource.metadata.name);
-                    // TODO - implement
+                    todo!("TODO: Implement event handling");
                 }
                 _ => {}
             }
