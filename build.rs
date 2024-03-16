@@ -299,54 +299,126 @@ fn generate_function(name: &str) {
     let function_name = format_ident!("handle_{}", name.to_lowercase());
     let arg_name = format_ident!("{}", name.to_lowercase());
     let struct_name = format_ident!("{}", name);
-    let struct_name_string = struct_name.to_string();
+    let create_function_name = format_ident!("{}s_post", name.to_lowercase());
+    let list_function_name = format_ident!("{}s_get", name.to_lowercase());
+    let get_function_name = format_ident!("{}s_id_get", name.to_lowercase());
+    let update_function_name = format_ident!("{}s_id_put", name.to_lowercase());
+    let delete_function_name = format_ident!("{}s_id_delete", name.to_lowercase());
+
+    // Prepend the function with the use statements
+    let mut file = format!(
+        "use kube::Resource;
+         use kube::api::WatchEvent;
+         use kube::api::Api;
+         use log::info;
+         use log::error;
+         use crate::add_finalizer;
+         use crate::remove_finalizer;
+         use crate::add_event;
+         use crate::{};
+         use openapi_client::models::{} as {}Dto;
+         use openapi_client::apis::configuration::Configuration;
+         use openapi_client::apis::default_api::{}s_get;
+         use openapi_client::apis::default_api::{}s_post;
+         use openapi_client::apis::default_api::{}s_id_get;
+         use openapi_client::apis::default_api::{}s_id_delete;
+         use openapi_client::apis::default_api::{}s_id_put;
+         \n\n",
+        struct_name, struct_name, struct_name, arg_name, arg_name, arg_name, arg_name, arg_name,
+    );
 
     let function: ItemFn = parse_quote! {
         pub async fn #function_name(event: WatchEvent<#struct_name>, api: Api<#struct_name>) {
-            match event {
+            let kind = #struct_name::kind(&());
+            let kind_str = kind.to_string();
+
+            let config = &Configuration {
+                base_path: "http://localhost:8080".to_string(),
+                user_agent: None,
+                client: reqwest::Client::new(),
+                basic_auth: todo!(),
+                oauth_access_token: todo!(),
+                bearer_access_token: todo!(),
+                api_key: todo!(),
+            };
+
+            let (mut #arg_name, event_type) = match event {
                 WatchEvent::Added(mut #arg_name) => {
-                    if #arg_name.metadata.deletion_timestamp.is_some() {
-                        info!(
-                            "{} Sending API call to delete the remote resource and wait for response: {:?}",
-                            #struct_name_string, #arg_name.metadata.name
-                        );
+                    if #arg_name.metadata.deletion_timestamp.is_none() {
+                        add_finalizer(&mut #arg_name, api.clone()).await;
+                        let dto = convert_to_dto(#arg_name);
+                        #create_function_name(config, dto).await;
+                    } else {
+                        let dto = convert_to_dto(#arg_name);
+                        if let Some(id) = dto.id {
+                            #delete_function_name(config, id.as_str()).await;
+                            remove_finalizer(&mut #arg_name, api.clone()).await;
+                        } else {
+                            error!("{} {} has no id", kind_str, #arg_name.metadata.name.clone().unwrap());
+                        }
+                    }
+                    (#arg_name, "Added")
+                }
+                WatchEvent::Modified(mut #arg_name) => {
+                    let dto = convert_to_dto(#arg_name);
+                    if let Some(id) = dto.id {
+                        #update_function_name(config, id.as_str(), dto).await;
+                    } else {
+                        error!("{} {} has no id", kind_str, #arg_name.metadata.name.clone().unwrap());
+                    }
+                    (#arg_name, "Modified")
+                }
+                WatchEvent::Deleted(mut #arg_name) => {
+                    let dto = convert_to_dto(#arg_name);
+                    if let Some(id) = dto.id {
+                        #delete_function_name(config, id.as_str()).await;
                         remove_finalizer(&mut #arg_name, api.clone()).await;
                     } else {
-                        add_finalizer(&mut #arg_name, api.clone()).await;
-                        info!(
-                            "{} Added: {:?} {:?}",
-                            #struct_name_string, #arg_name.metadata.name, #arg_name.metadata.finalizers
-                        )
+                        error!("{} {} has no id", kind_str, #arg_name.metadata.name.clone().unwrap());
                     }
+                    (#arg_name, "Deleted")
                 }
-                WatchEvent::Modified(#arg_name) => {
-                    info!(
-                        "{} Modified: {:?} {:?}",
-                        #struct_name_string, #arg_name.metadata.name, #arg_name.metadata.finalizers
-                    );
-                }
-                WatchEvent::Deleted(#arg_name) => {
-                    info!(
-                        "{} Deleted: {:?} {:?}",
-                        #struct_name_string, #arg_name.metadata.name, #arg_name.metadata.finalizers
-                    );
+                WatchEvent::Bookmark(bookmark) => {
+                    info!("Cat Bookmark: {:?}", bookmark.metadata.resource_version);
+                    return;
                 }
                 _ => {
-                    info!("{} Unknown event", #struct_name_string);
+                    info!("Cat Unknown event {:?}", event);
+                    return;
                 }
-            }
-        }
+            };
 
+            add_event(
+                kind_str.clone(),
+                &mut #arg_name,
+                event_type.into(),
+                kind_str.clone(),
+                format!("Cat Resource {} Remotely", event_type),
+            )
+            .await;
+
+            info!(
+                "Cat {}: {:?} {:?}",
+                event_type, #arg_name.metadata.name, #arg_name.metadata.finalizers
+            );
+        }
+    };
+
+    let dto = format_ident!("{}Dto", name);
+
+    let function_dto: ItemFn = parse_quote! {
+        fn convert_to_dto(#arg_name: #struct_name) -> #dto {
+            #dto::new()
+        }
     };
 
     // Convert the function into a string
     let function_string = quote! { #function }.to_string();
+    let function_dto_string = quote! { #function_dto }.to_string();
 
-    // Prepend the function with the use statements
-    let function_string = format!(
-        "use kube::api::{};\nuse log::info;use crate::{};use crate::{};\n\n{}",
-        "{WatchEvent, Api}", name, "{add_finalizer, remove_finalizer, add_event}", function_string
-    );
+    file.push_str(&function_string);
+    file.push_str("\n\n");
+    file.push_str(&function_dto_string);
 
     // Write the function to a new file
     let file_path = format!("src/controllers/{}.rs", name.to_lowercase());
@@ -359,7 +431,7 @@ fn generate_function(name: &str) {
 
     if !ignored_files.contains(&file_path) {
         let file_path_clone = file_path.clone();
-        std::fs::write(file_path, function_string).expect("Unable to write file");
+        std::fs::write(file_path, file).expect("Unable to write file");
 
         // Format the Rust code using rustfmt
         let output = Command::new("rustfmt")
