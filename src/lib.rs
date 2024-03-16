@@ -162,7 +162,7 @@ pub struct CatSpec {
     id: Option<String>,
     name: String,
     breed: String,
-    age: u32,
+    age: i32,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema, CustomResource)]
@@ -177,5 +177,5 @@ pub struct DogSpec {
     id: Option<String>,
     name: String,
     breed: String,
-    age: u32,
+    age: i32,
 }

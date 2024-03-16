@@ -98,6 +98,6 @@ pub async fn handle_dog(event: WatchEvent<Dog>, api: Api<Dog>) {
     );
 }
 
-fn convert_to_dto(dog: Dog) -> DogDto {
-    DogDto::new()
+fn convert_to_dto(dog_resource: Dog) -> DogDto {
+    todo!("Convert the resource to a DTO");
 }

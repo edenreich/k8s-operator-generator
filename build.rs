@@ -1,5 +1,6 @@
 use codegen::Scope;
 use openapiv3::{OpenAPI, Schema};
+use proc_macro2::TokenStream;
 use quote::format_ident;
 use quote::quote;
 use serde_yaml;
@@ -132,7 +133,7 @@ fn generate_struct(
                 openapiv3::ReferenceOr::Item(item) => {
                     let base_field_type = match &item.schema_kind {
                         openapiv3::SchemaKind::Type(openapiv3::Type::String(_)) => "String",
-                        openapiv3::SchemaKind::Type(openapiv3::Type::Integer(_)) => "u32",
+                        openapiv3::SchemaKind::Type(openapiv3::Type::Integer(_)) => "i32",
                         // Add more cases here for other types as needed
                         _ => continue, // Skip unknown types
                     };
@@ -405,10 +406,11 @@ fn generate_function(name: &str) {
     };
 
     let dto = format_ident!("{}Dto", name);
+    let resource = format_ident!("{}_resource", arg_name);
 
-    let function_dto: ItemFn = parse_quote! {
-        fn convert_to_dto(#arg_name: #struct_name) -> #dto {
-            #dto::new()
+    let function_dto: TokenStream = quote! {
+        fn convert_to_dto(#resource: #struct_name) -> #dto {
+            todo!("Convert the resource to a DTO");
         }
     };
 

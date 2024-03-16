@@ -98,6 +98,11 @@ pub async fn handle_cat(event: WatchEvent<Cat>, api: Api<Cat>) {
     );
 }
 
-fn convert_to_dto(cat: Cat) -> CatDto {
-    CatDto::new()
+fn convert_to_dto(cat_resource: Cat) -> CatDto {
+    CatDto {
+        id: cat_resource.spec.id,
+        name: cat_resource.spec.name,
+        breed: cat_resource.spec.breed,
+        age: cat_resource.spec.age,
+    }
 }
