@@ -49,10 +49,9 @@ async fn handle_added(config: &Configuration, kind_str: String, dog: &mut Dog, a
     let model = dog.clone();
     let dto = convert_to_dto(model);
     let name = dog.metadata.name.clone().unwrap();
-    add_finalizer(dog, api.clone()).await;
     match dogs_post(config, dto).await {
-        Ok(_) => {
-            info!("{} {} added successfully", kind_str, name);
+        Ok(resp) => {
+            info!("{} {} created successfully", kind_str, name);
             add_event(
                 kind_str.clone(),
                 dog,
@@ -61,6 +60,8 @@ async fn handle_added(config: &Configuration, kind_str: String, dog: &mut Dog, a
                 format!("{} {} created remotely", kind_str, name),
             )
             .await;
+            add_finalizer(dog, api.clone()).await;
+            dog.status.as_mut().unwrap().id = Some(resp.id.clone().unwrap());
         }
         Err(e) => {
             error!("Failed to add {} {}: {:?}", kind_str, name, e);

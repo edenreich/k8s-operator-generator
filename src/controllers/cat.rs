@@ -14,7 +14,12 @@ use openapi_client::apis::default_api::cats_post;
 use openapi_client::models::Cat as CatDto;
 
 fn convert_to_dto(cat_resource: Cat) -> CatDto {
-    todo!("Convert the resource to a DTO");
+    CatDto {
+        id: cat_resource.status.unwrap().id,
+        name: cat_resource.spec.name,
+        breed: cat_resource.spec.breed,
+        age: cat_resource.spec.age,
+    }
 }
 
 pub async fn handle_cat(event: WatchEvent<Cat>, api: Api<Cat>) {

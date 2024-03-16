@@ -11,11 +11,6 @@ tasks:
     cmds:
       - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.4.0 generate -i /local/openapi.yaml -g rust -o /local/client
 
-  oas-generate-rust-server:
-    desc: Generate a dummy Rust server for testing the client
-    cmds:
-      - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.4.0 generate -i /local/openapi.yaml -g rust-server -o /local/fake-server
-
   build:
     desc: Build the k8s operator
     cmds:
@@ -32,9 +27,9 @@ tasks:
       - RUST_LOG=debug cargo run --bin operator
 
   run-fake-server:
-    desc: Run the dummy server
+    desc: Run the JSON server
     cmds:
-      - cd fake-server && RUST_LOG=debug cargo run --example server
+      - docker run -p 8080:80 -v ${PWD}/fake-server2/data.json:/data/db.json clue/json-server
 
   package:
     desc: Package the k8s operator

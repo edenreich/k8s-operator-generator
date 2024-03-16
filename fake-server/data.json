@@ -1,0 +1,22 @@
+{
+  "cats": [
+    {
+      "id": "1",
+      "name": "Fluffy",
+      "age": "30",
+      "breed": "Siamese"
+    },
+    {
+      "id": "2",
+      "name": "Whiskers",
+      "age": "20",
+      "breed": "Persian"
+    },
+    {
+      "id": "3",
+      "name": "Spike",
+      "age": "10",
+      "breed": "Birman"
+    }
+  ]
+}

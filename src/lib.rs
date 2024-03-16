@@ -156,6 +156,7 @@ pub async fn add_event<T>(
     version = "v1",
     kind = "Cat",
     plural = "cats",
+    status = "CatStatus",
     namespaced
 )]
 pub struct CatSpec {
@@ -165,12 +166,18 @@ pub struct CatSpec {
     age: i32,
 }
 
+#[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct CatStatus {
+    id: Option<String>,
+}
+
 #[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema, CustomResource)]
 #[kube(
     group = "example.com",
     version = "v1",
     kind = "Dog",
     plural = "dogs",
+    status = "DogStatus",
     namespaced
 )]
 pub struct DogSpec {
@@ -178,4 +185,9 @@ pub struct DogSpec {
     name: String,
     breed: String,
     age: i32,
+}
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct DogStatus {
+    id: Option<String>,
 }

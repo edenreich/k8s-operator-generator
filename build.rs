@@ -114,14 +114,27 @@ fn generate_struct(
         .derive("CustomResource");
 
     struct_.attr(&format!(
-        "kube(group = \"{}\", version = \"{}\", kind = \"{}\", plural = \"{}\", namespaced)",
+        "kube(group = \"{}\", version = \"{}\", kind = \"{}\", plural = \"{}\", status = \"{}\", namespaced)",
         api_group,
         api_version,
         name,
-        name.to_lowercase() + "s"
+        name.to_lowercase() + "s",
+        name.to_string() + "Status"
     ));
-
     struct_.vis("pub");
+
+    let mut struct_status = codegen::Struct::new(&format!("{}Status", name));
+
+    struct_status
+        .derive("Debug")
+        .derive("Default")
+        .derive("Clone")
+        .derive("Deserialize")
+        .derive("Serialize")
+        .derive("JsonSchema");
+
+    struct_status.field("id", "Option<String>");
+    struct_status.vis("pub");
 
     // Add fields to the struct based on the schema
     if let openapiv3::SchemaKind::Type(openapiv3::Type::Object(object)) = &schema.schema_kind {
@@ -150,6 +163,7 @@ fn generate_struct(
 
     // Add the struct to the scope
     scope.push_struct(struct_);
+    scope.push_struct(struct_status);
 }
 
 fn generate_generic_function(scope: &mut Scope) {
@@ -374,10 +388,9 @@ fn generate_function(name: &str) {
             let dto = convert_to_dto(model);
             let name = #arg_name.metadata.name.clone().unwrap();
 
-            add_finalizer(#arg_name, api.clone()).await;
             match #create_function_name(config, dto).await {
-                Ok(_) => {
-                    info!("{} {} added successfully", kind_str, name);
+                Ok(resp) => {
+                    info!("{} {} created successfully", kind_str, name);
                     add_event(
                         kind_str.clone(),
                         #arg_name,
@@ -385,6 +398,8 @@ fn generate_function(name: &str) {
                         kind_str.clone(),
                         format!("{} {} created remotely", kind_str, name),
                     ).await;
+                    add_finalizer(#arg_name, api.clone()).await;
+                    #arg_name.status.as_mut().unwrap().id = Some(resp.id.clone().unwrap());
                 }
                 Err(e) => {
                     error!("Failed to add {} {}: {:?}", kind_str, name, e);
