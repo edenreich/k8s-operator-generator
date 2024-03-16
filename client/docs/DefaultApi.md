@@ -19,7 +19,7 @@ Method | HTTP request | Description
 
 ## cats_get
 
-> serde_json::Value cats_get()
+> Vec<crate::models::Cat> cats_get()
 Get all cats
 
 ### Parameters
@@ -28,7 +28,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**serde_json::Value**](serde_json::Value.md)
+[**Vec<crate::models::Cat>**](Cat.md)
 
 ### Authorization
 
@@ -52,7 +52,7 @@ Delete a cat by ID
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
-**id** | [**serde_json::Value**](.md) |  | [required] |
+**id** | **String** |  | [required] |
 
 ### Return type
 
@@ -80,7 +80,7 @@ Get a cat by ID
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
-**id** | [**serde_json::Value**](.md) |  | [required] |
+**id** | **String** |  | [required] |
 
 ### Return type
 
@@ -108,7 +108,7 @@ Update a cat by ID
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
-**id** | [**serde_json::Value**](.md) |  | [required] |
+**id** | **String** |  | [required] |
 **cat** | [**Cat**](Cat.md) |  | [required] |
 
 ### Return type
@@ -157,7 +157,7 @@ No authorization required
 
 ## dogs_get
 
-> serde_json::Value dogs_get()
+> Vec<crate::models::Dog> dogs_get()
 Get all dogs
 
 ### Parameters
@@ -166,7 +166,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**serde_json::Value**](serde_json::Value.md)
+[**Vec<crate::models::Dog>**](Dog.md)
 
 ### Authorization
 
@@ -190,7 +190,7 @@ Delete a dog by ID
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
-**id** | [**serde_json::Value**](.md) |  | [required] |
+**id** | **String** |  | [required] |
 
 ### Return type
 
@@ -218,7 +218,7 @@ Get a dog by ID
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
-**id** | [**serde_json::Value**](.md) |  | [required] |
+**id** | **String** |  | [required] |
 
 ### Return type
 
@@ -246,7 +246,7 @@ Update a dog by ID
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
-**id** | [**serde_json::Value**](.md) |  | [required] |
+**id** | **String** |  | [required] |
 **dog** | [**Dog**](Dog.md) |  | [required] |
 
 ### Return type

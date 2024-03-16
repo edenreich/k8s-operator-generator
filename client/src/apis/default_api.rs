@@ -90,7 +90,7 @@ pub enum DogsPostError {
 }
 
 
-pub async fn cats_get(configuration: &configuration::Configuration, ) -> Result<serde_json::Value, Error<CatsGetError>> {
+pub async fn cats_get(configuration: &configuration::Configuration, ) -> Result<Vec<crate::models::Cat>, Error<CatsGetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -117,12 +117,12 @@ pub async fn cats_get(configuration: &configuration::Configuration, ) -> Result<
     }
 }
 
-pub async fn cats_id_delete(configuration: &configuration::Configuration, id: serde_json::Value) -> Result<(), Error<CatsIdDeleteError>> {
+pub async fn cats_id_delete(configuration: &configuration::Configuration, id: &str) -> Result<(), Error<CatsIdDeleteError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
 
-    let local_var_uri_str = format!("{}/cats/{id}", local_var_configuration.base_path, id=id);
+    let local_var_uri_str = format!("{}/cats/{id}", local_var_configuration.base_path, id=crate::apis::urlencode(id));
     let mut local_var_req_builder = local_var_client.request(reqwest::Method::DELETE, local_var_uri_str.as_str());
 
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
@@ -144,12 +144,12 @@ pub async fn cats_id_delete(configuration: &configuration::Configuration, id: se
     }
 }
 
-pub async fn cats_id_get(configuration: &configuration::Configuration, id: serde_json::Value) -> Result<crate::models::Cat, Error<CatsIdGetError>> {
+pub async fn cats_id_get(configuration: &configuration::Configuration, id: &str) -> Result<crate::models::Cat, Error<CatsIdGetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
 
-    let local_var_uri_str = format!("{}/cats/{id}", local_var_configuration.base_path, id=id);
+    let local_var_uri_str = format!("{}/cats/{id}", local_var_configuration.base_path, id=crate::apis::urlencode(id));
     let mut local_var_req_builder = local_var_client.request(reqwest::Method::GET, local_var_uri_str.as_str());
 
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
@@ -171,12 +171,12 @@ pub async fn cats_id_get(configuration: &configuration::Configuration, id: serde
     }
 }
 
-pub async fn cats_id_put(configuration: &configuration::Configuration, id: serde_json::Value, cat: crate::models::Cat) -> Result<crate::models::Cat, Error<CatsIdPutError>> {
+pub async fn cats_id_put(configuration: &configuration::Configuration, id: &str, cat: crate::models::Cat) -> Result<crate::models::Cat, Error<CatsIdPutError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
 
-    let local_var_uri_str = format!("{}/cats/{id}", local_var_configuration.base_path, id=id);
+    let local_var_uri_str = format!("{}/cats/{id}", local_var_configuration.base_path, id=crate::apis::urlencode(id));
     let mut local_var_req_builder = local_var_client.request(reqwest::Method::PUT, local_var_uri_str.as_str());
 
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
@@ -227,7 +227,7 @@ pub async fn cats_post(configuration: &configuration::Configuration, cat: crate:
     }
 }
 
-pub async fn dogs_get(configuration: &configuration::Configuration, ) -> Result<serde_json::Value, Error<DogsGetError>> {
+pub async fn dogs_get(configuration: &configuration::Configuration, ) -> Result<Vec<crate::models::Dog>, Error<DogsGetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -254,12 +254,12 @@ pub async fn dogs_get(configuration: &configuration::Configuration, ) -> Result<
     }
 }
 
-pub async fn dogs_id_delete(configuration: &configuration::Configuration, id: serde_json::Value) -> Result<(), Error<DogsIdDeleteError>> {
+pub async fn dogs_id_delete(configuration: &configuration::Configuration, id: &str) -> Result<(), Error<DogsIdDeleteError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
 
-    let local_var_uri_str = format!("{}/dogs/{id}", local_var_configuration.base_path, id=id);
+    let local_var_uri_str = format!("{}/dogs/{id}", local_var_configuration.base_path, id=crate::apis::urlencode(id));
     let mut local_var_req_builder = local_var_client.request(reqwest::Method::DELETE, local_var_uri_str.as_str());
 
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
@@ -281,12 +281,12 @@ pub async fn dogs_id_delete(configuration: &configuration::Configuration, id: se
     }
 }
 
-pub async fn dogs_id_get(configuration: &configuration::Configuration, id: serde_json::Value) -> Result<crate::models::Dog, Error<DogsIdGetError>> {
+pub async fn dogs_id_get(configuration: &configuration::Configuration, id: &str) -> Result<crate::models::Dog, Error<DogsIdGetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
 
-    let local_var_uri_str = format!("{}/dogs/{id}", local_var_configuration.base_path, id=id);
+    let local_var_uri_str = format!("{}/dogs/{id}", local_var_configuration.base_path, id=crate::apis::urlencode(id));
     let mut local_var_req_builder = local_var_client.request(reqwest::Method::GET, local_var_uri_str.as_str());
 
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {
@@ -308,12 +308,12 @@ pub async fn dogs_id_get(configuration: &configuration::Configuration, id: serde
     }
 }
 
-pub async fn dogs_id_put(configuration: &configuration::Configuration, id: serde_json::Value, dog: crate::models::Dog) -> Result<crate::models::Dog, Error<DogsIdPutError>> {
+pub async fn dogs_id_put(configuration: &configuration::Configuration, id: &str, dog: crate::models::Dog) -> Result<crate::models::Dog, Error<DogsIdPutError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
 
-    let local_var_uri_str = format!("{}/dogs/{id}", local_var_configuration.base_path, id=id);
+    let local_var_uri_str = format!("{}/dogs/{id}", local_var_configuration.base_path, id=crate::apis::urlencode(id));
     let mut local_var_req_builder = local_var_client.request(reqwest::Method::PUT, local_var_uri_str.as_str());
 
     if let Some(ref local_var_user_agent) = local_var_configuration.user_agent {

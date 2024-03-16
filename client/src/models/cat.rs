@@ -11,22 +11,22 @@
 
 
 
-#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Cat {
-    #[serde(rename = "id", deserialize_with = "Option::deserialize")]
-    pub id: Option<serde_json::Value>,
-    #[serde(rename = "name", deserialize_with = "Option::deserialize")]
-    pub name: Option<serde_json::Value>,
-    #[serde(rename = "breed", deserialize_with = "Option::deserialize")]
-    pub breed: Option<serde_json::Value>,
-    #[serde(rename = "age", deserialize_with = "Option::deserialize")]
-    pub age: Option<serde_json::Value>,
+    #[serde(rename = "id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(rename = "name")]
+    pub name: String,
+    #[serde(rename = "breed")]
+    pub breed: String,
+    #[serde(rename = "age")]
+    pub age: i32,
 }
 
 impl Cat {
-    pub fn new(id: Option<serde_json::Value>, name: Option<serde_json::Value>, breed: Option<serde_json::Value>, age: Option<serde_json::Value>) -> Cat {
+    pub fn new(name: String, breed: String, age: i32) -> Cat {
         Cat {
-            id,
+            id: None,
             name,
             breed,
             age,

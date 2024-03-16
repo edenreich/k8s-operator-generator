@@ -3,7 +3,7 @@ use crate::{add_finalizer, remove_finalizer};
 use kube::api::{Api, WatchEvent};
 use kube::Resource;
 use log::info;
-use pets_api_client::apis::default_api::DefaultApi;
+use openapi::apis::default_api::DefaultApi;
 
 pub async fn handle_cat(event: WatchEvent<Cat>, api: Api<Cat>, client: &DefaultApi) {
     let kind = Cat::kind(&());

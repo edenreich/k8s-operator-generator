@@ -6,6 +6,11 @@ tasks:
     cmds:
       - curl -o openapi.yaml https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/examples/v3.0/petstore.yaml
 
+  oas-generate-rust-client:
+    desc: Generate the OpenAPI Rust client
+    cmds:
+      - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openapi.yaml -g rust -o /local/client
+
   build:
     desc: Build the k8s operator
     cmds:
