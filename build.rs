@@ -26,19 +26,20 @@ fn main() {
     let mut scope = Scope::new();
 
     // Add necessary imports to the scope
+    scope.import("log", "error");
+    scope.import("log", "info");
+    scope.import("log", "debug");
+    scope.import("kube", "Resource");
+    scope.import("kube", "CustomResource");
+    scope.import("kube", "ResourceExt");
+    scope.import("kube::core", "CustomResourceExt");
     scope.import("kube::api", "Api");
     scope.import("kube::api", "WatchEvent");
     scope.import("kube::api", "WatchParams");
     scope.import("kube::api", "Patch");
     scope.import("kube::api", "PatchParams");
     scope.import("kube::api", "PostParams");
-    scope.import("kube", "CustomResource");
-    scope.import("kube::core", "CustomResourceExt");
-    scope.import("kube", "Resource");
-    scope.import("kube", "ResourceExt");
-    scope.import("log", "error");
-    scope.import("log", "info");
-    scope.import("log", "debug");
+    scope.import("kube::api", "ObjectMeta");
     scope.import("futures_util::stream", "StreamExt");
     scope.import("tokio::time", "sleep");
     scope.import("tokio::time", "Duration");
@@ -47,8 +48,11 @@ fn main() {
     scope.import("serde", "Deserialize");
     scope.import("serde_json", "json");
     scope.import("schemars", "JsonSchema");
+    scope.import("k8s_openapi", "chrono");
     scope.import("k8s_openapi::api::core::v1", "Event");
+    scope.import("k8s_openapi::api::core::v1", "EventSource");
     scope.import("k8s_openapi::api::core::v1", "ObjectReference");
+    scope.import("k8s_openapi::apimachinery::pkg::apis::meta::v1", "Time");
 
     scope.raw("pub mod controllers;");
 
@@ -230,7 +234,7 @@ fn generate_generic_function(scope: &mut Scope) {
     };
 
     let add_event_function: ItemFn = parse_quote! {
-        pub async fn add_event<T>(kind: String, resource: &mut T, event: String)
+        pub async fn add_event<T>(kind: String, resource: &mut T, reason: String, from: String, message: String)
         where
             T: CustomResourceExt
                 + Clone
@@ -251,14 +255,28 @@ fn generate_generic_function(scope: &mut Scope) {
                 uid: resource.uid().clone(),
                 ..Default::default()
             };
+
+            let timestamp = chrono::Utc::now().to_rfc3339();
+            let event_name = format!("{}-{}", resource.meta().name.clone().unwrap(), timestamp);
+
             let new_event = Event {
-                metadata: Default::default(),
+                metadata: ObjectMeta {
+                    name: Some(event_name),
+                    ..Default::default()
+                },
                 involved_object: resource_ref,
-                reason: Some("ExampleReason".into()),
-                message: Some(event.into()),
+                reason: Some(reason.into()),
+                message: Some(message.into()),
                 type_: Some("Normal".into()),
+                source: Some(EventSource {
+                    component: Some(from),
+                    ..Default::default()
+                }),
+                first_timestamp: Some(Time(chrono::Utc::now())),
+                last_timestamp: Some(Time(chrono::Utc::now())),
                 ..Default::default()
             };
+
             match api.create(&PostParams::default(), &new_event).await {
                 Ok(_) => debug!("Event added successfully"),
                 Err(e) => debug!("Failed to add event: {:?}", e),

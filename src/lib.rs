@@ -1,6 +1,8 @@
 use futures_util::stream::StreamExt;
-use k8s_openapi::api::core::v1::{Event, ObjectReference};
-use kube::api::{Api, Patch, PatchParams, PostParams, WatchEvent, WatchParams};
+use k8s_openapi::api::core::v1::{Event, EventSource, ObjectReference};
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
+use k8s_openapi::chrono;
+use kube::api::{Api, ObjectMeta, Patch, PatchParams, PostParams, WatchEvent, WatchParams};
 use kube::core::CustomResourceExt;
 use kube::{CustomResource, Resource, ResourceExt};
 use log::{debug, error, info};
@@ -98,8 +100,13 @@ where
     }
 }
 
-pub async fn add_event<T>(kind: String, resource: &mut T, event: String)
-where
+pub async fn add_event<T>(
+    kind: String,
+    resource: &mut T,
+    reason: String,
+    from: String,
+    message: String,
+) where
     T: CustomResourceExt
         + Clone
         + Serialize
@@ -118,12 +125,23 @@ where
         uid: resource.uid().clone(),
         ..Default::default()
     };
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    let event_name = format!("{}-{}", resource.meta().name.clone().unwrap(), timestamp);
     let new_event = Event {
-        metadata: Default::default(),
+        metadata: ObjectMeta {
+            name: Some(event_name),
+            ..Default::default()
+        },
         involved_object: resource_ref,
-        reason: Some("ExampleReason".into()),
-        message: Some(event.into()),
+        reason: Some(reason.into()),
+        message: Some(message.into()),
         type_: Some("Normal".into()),
+        source: Some(EventSource {
+            component: Some(from),
+            ..Default::default()
+        }),
+        first_timestamp: Some(Time(chrono::Utc::now())),
+        last_timestamp: Some(Time(chrono::Utc::now())),
         ..Default::default()
     };
     match api.create(&PostParams::default(), &new_event).await {
