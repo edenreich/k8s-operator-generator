@@ -19,7 +19,7 @@ tasks:
   run:
     desc: Run the k8s operator
     cmds:
-      - cargo run --bin operator
+      - RUST_LOG=debug cargo run --bin operator
 
   package:
     desc: Package the k8s operator

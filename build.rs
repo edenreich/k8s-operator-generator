@@ -31,9 +31,11 @@ fn main() {
     scope.import("kube::api", "WatchParams");
     scope.import("kube::api", "Patch");
     scope.import("kube::api", "PatchParams");
+    scope.import("kube::api", "PostParams");
     scope.import("kube", "CustomResource");
     scope.import("kube::core", "CustomResourceExt");
-    scope.import("kube::core", "Resource");
+    scope.import("kube", "Resource");
+    scope.import("kube", "ResourceExt");
     scope.import("log", "error");
     scope.import("log", "info");
     scope.import("log", "debug");
@@ -45,6 +47,8 @@ fn main() {
     scope.import("serde", "Deserialize");
     scope.import("serde_json", "json");
     scope.import("schemars", "JsonSchema");
+    scope.import("k8s_openapi::api::core::v1", "Event");
+    scope.import("k8s_openapi::api::core::v1", "ObjectReference");
 
     scope.raw("pub mod controllers;");
 
@@ -225,13 +229,52 @@ fn generate_generic_function(scope: &mut Scope) {
         }
     };
 
+    let add_event_function: ItemFn = parse_quote! {
+        pub async fn add_event<T>(kind: String, resource: &mut T, event: String)
+        where
+            T: CustomResourceExt
+                + Clone
+                + Serialize
+                + DeserializeOwned
+                + Resource
+                + core::fmt::Debug
+                + 'static,
+        {
+            let kube_client = kube::Client::try_default().await.unwrap();
+            let namespace = resource.namespace().clone().unwrap_or_default();
+            let api: Api<Event> = Api::namespaced(kube_client.clone(), &namespace);
+
+            let resource_ref = ObjectReference {
+                kind: Some(kind),
+                namespace: resource.namespace().clone(),
+                name: Some(resource.meta().name.clone().unwrap()),
+                uid: resource.uid().clone(),
+                ..Default::default()
+            };
+            let new_event = Event {
+                metadata: Default::default(),
+                involved_object: resource_ref,
+                reason: Some("ExampleReason".into()),
+                message: Some(event.into()),
+                type_: Some("Normal".into()),
+                ..Default::default()
+            };
+            match api.create(&PostParams::default(), &new_event).await {
+                Ok(_) => debug!("Event added successfully"),
+                Err(e) => debug!("Failed to add event: {:?}", e),
+            };
+        }
+    };
+
     let function_string = quote! { #function }.to_string();
     let add_finalizer_function_string = quote! { #add_finalizer_function }.to_string();
     let remove_finalizer_function_string = quote! { #remove_finalizer_function }.to_string();
+    let add_event_function_string = quote! { #add_event_function }.to_string();
 
     scope.raw(&function_string);
     scope.raw(&add_finalizer_function_string);
     scope.raw(&remove_finalizer_function_string);
+    scope.raw(&add_event_function_string);
 }
 
 fn generate_function(name: &str) {
@@ -284,7 +327,7 @@ fn generate_function(name: &str) {
     // Prepend the function with the use statements
     let function_string = format!(
         "use kube::api::{};\nuse log::info;use crate::{};use crate::{};\n\n{}",
-        "{WatchEvent, Api}", name, "{add_finalizer, remove_finalizer}", function_string
+        "{WatchEvent, Api}", name, "{add_finalizer, remove_finalizer, add_event}", function_string
     );
 
     // Write the function to a new file

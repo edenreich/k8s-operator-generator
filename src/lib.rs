@@ -1,7 +1,8 @@
 use futures_util::stream::StreamExt;
-use kube::api::{Api, Patch, PatchParams, WatchEvent, WatchParams};
-use kube::core::{CustomResourceExt, Resource};
-use kube::CustomResource;
+use k8s_openapi::api::core::v1::{Event, ObjectReference};
+use kube::api::{Api, Patch, PatchParams, PostParams, WatchEvent, WatchParams};
+use kube::core::CustomResourceExt;
+use kube::{CustomResource, Resource, ResourceExt};
 use log::{debug, error, info};
 use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
@@ -95,6 +96,40 @@ where
             };
         }
     }
+}
+
+pub async fn add_event<T>(kind: String, resource: &mut T, event: String)
+where
+    T: CustomResourceExt
+        + Clone
+        + Serialize
+        + DeserializeOwned
+        + Resource
+        + core::fmt::Debug
+        + 'static,
+{
+    let kube_client = kube::Client::try_default().await.unwrap();
+    let namespace = resource.namespace().clone().unwrap_or_default();
+    let api: Api<Event> = Api::namespaced(kube_client.clone(), &namespace);
+    let resource_ref = ObjectReference {
+        kind: Some(kind),
+        namespace: resource.namespace().clone(),
+        name: Some(resource.meta().name.clone().unwrap()),
+        uid: resource.uid().clone(),
+        ..Default::default()
+    };
+    let new_event = Event {
+        metadata: Default::default(),
+        involved_object: resource_ref,
+        reason: Some("ExampleReason".into()),
+        message: Some(event.into()),
+        type_: Some("Normal".into()),
+        ..Default::default()
+    };
+    match api.create(&PostParams::default(), &new_event).await {
+        Ok(_) => debug!("Event added successfully"),
+        Err(e) => debug!("Failed to add event: {:?}", e),
+    };
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema, CustomResource)]

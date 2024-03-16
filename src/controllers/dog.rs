@@ -1,5 +1,5 @@
 use crate::Dog;
-use crate::{add_finalizer, remove_finalizer};
+use crate::{add_event, add_finalizer, remove_finalizer};
 use kube::api::{Api, WatchEvent};
 use log::info;
 
