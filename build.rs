@@ -29,10 +29,22 @@ fn main() {
     scope.import("kube::api", "Api");
     scope.import("kube::api", "WatchEvent");
     scope.import("kube::api", "WatchParams");
+    scope.import("kube::api", "Patch");
+    scope.import("kube::api", "PatchParams");
+    scope.import("kube", "CustomResource");
+    scope.import("kube::core", "CustomResourceExt");
+    scope.import("kube::core", "Resource");
     scope.import("log", "error");
+    scope.import("log", "info");
+    scope.import("log", "debug");
     scope.import("futures_util::stream", "StreamExt");
     scope.import("tokio::time", "sleep");
     scope.import("tokio::time", "Duration");
+    scope.import("serde::de", "DeserializeOwned");
+    scope.import("serde", "Serialize");
+    scope.import("serde", "Deserialize");
+    scope.import("serde_json", "json");
+    scope.import("schemars", "JsonSchema");
 
     scope.raw("pub mod controllers;");
 
@@ -87,12 +99,11 @@ fn generate_struct(
         .derive("Debug")
         .derive("Default")
         .derive("Clone")
-        .derive("serde::Deserialize")
-        .derive("serde::Serialize")
-        .derive("schemars::JsonSchema")
-        .derive("kube::CustomResource");
+        .derive("Deserialize")
+        .derive("Serialize")
+        .derive("JsonSchema")
+        .derive("CustomResource");
 
-    // Add kube::CustomResource attribute with additional parameters
     struct_.attr(&format!(
         "kube(group = \"{}\", version = \"{}\", kind = \"{}\", plural = \"{}\", namespaced)",
         api_group,
@@ -137,17 +148,17 @@ fn generate_generic_function(scope: &mut Scope) {
         pub async fn watch_resource<T>(
             api: Api<T>,
             watch_params: WatchParams,
-            handler: fn(WatchEvent<T>),
+            handler: fn(WatchEvent<T>, Api<T>),
         ) -> anyhow::Result<()>
         where
-            T: Clone + core::fmt::Debug + serde::de::DeserializeOwned + 'static,
+            T: Clone + core::fmt::Debug + DeserializeOwned + 'static,
         {
             let mut stream = api.watch(&watch_params, "0").await?.boxed();
 
             loop {
                 while let Some(event) = stream.next().await {
                     match event {
-                        Ok(event) => handler(event),
+                        Ok(event) => handler(event, api.clone()),
                         Err(e) => error!("Error watching resource: {:?}", e),
                     }
                 }
@@ -158,32 +169,113 @@ fn generate_generic_function(scope: &mut Scope) {
         }
     };
 
-    // Convert the function into a string
-    let function_string = quote! { #function }.to_string();
+    let add_finalizer_function: ItemFn = parse_quote! {
+        pub async fn add_finalizer<T>(resource: &mut T, api: Api<T>)
+        where
+            T: Clone
+                + Serialize
+                + DeserializeOwned
+                + Resource
+                + CustomResourceExt
+                + core::fmt::Debug
+                + 'static,
+        {
+            let finalizer = String::from("finalizers.example.com");
+            let finalizers = resource.meta_mut().finalizers.get_or_insert_with(Vec::new);
+            if finalizers.contains(&finalizer) {
+                debug!("Finalizer already exists");
+                return;
+            }
+            finalizers.push(finalizer);
 
-    // Add the function to the scope
+            let resource_name = resource.meta_mut().name.clone().unwrap();
+            let resource_clone = resource.clone();
+            let patch = Patch::Merge(&resource_clone);
+            let patch_params = PatchParams {
+                field_manager: resource.meta_mut().name.clone(),
+                ..Default::default()
+            };
+            match api.patch(&resource_name, &patch_params, &patch).await {
+                Ok(_) => debug!("Finalizer added successfully"),
+                Err(e) => debug!("Failed to add finalizer: {:?}", e),
+            };
+        }
+    };
+
+    let remove_finalizer_function: ItemFn = parse_quote! {
+        pub async fn remove_finalizer<T>(resource: &mut T, api: Api<T>)
+            where
+                T: Clone + Serialize + DeserializeOwned + Resource + CustomResourceExt + core::fmt::Debug + 'static {
+            let finalizer = String::from("finalizers.example.com");
+            if let Some(finalizers) = &mut resource.meta_mut().finalizers {
+                if finalizers.contains(&finalizer) {
+                    finalizers.retain(|f| f != &finalizer);
+                    let patch = json ! ({ "metadata" : { "finalizers" : finalizers } });
+                    let patch = Patch::Merge(&patch);
+                    let patch_params = PatchParams {
+                        field_manager: resource.meta_mut().name.clone(),
+                        ..Default::default()
+                    };
+                    match api.patch(&resource.clone().meta_mut().name.clone().unwrap(), &patch_params, &patch).await {
+                        Ok(_) => debug!("Finalizer removed successfully"),
+                        Err(e) => debug!("Failed to remove finalizer: {:?}", e),
+                    };
+                }
+            }
+        }
+    };
+
+    let function_string = quote! { #function }.to_string();
+    let add_finalizer_function_string = quote! { #add_finalizer_function }.to_string();
+    let remove_finalizer_function_string = quote! { #remove_finalizer_function }.to_string();
+
     scope.raw(&function_string);
+    scope.raw(&add_finalizer_function_string);
+    scope.raw(&remove_finalizer_function_string);
 }
 
 fn generate_function(name: &str) {
     let function_name = format_ident!("handle_{}", name.to_lowercase());
+    let arg_name = format_ident!("{}", name.to_lowercase());
     let struct_name = format_ident!("{}", name);
+    let struct_name_string = struct_name.to_string();
 
     let function: ItemFn = parse_quote! {
-        pub fn #function_name(event: WatchEvent<#struct_name>) {
+        pub async fn #function_name(event: WatchEvent<#struct_name>, api: Api<#struct_name>) {
             match event {
-                WatchEvent::Added(resource) => {
-                    info!("{} Added: {:?}", #name, resource.metadata.name);
+                WatchEvent::Added(mut #arg_name) => {
+                    if #arg_name.metadata.deletion_timestamp.is_some() {
+                        info!(
+                            "{} Sending API call to delete the remote resource and wait for response: {:?}",
+                            #struct_name_string, #arg_name.metadata.name
+                        );
+                        remove_finalizer(&mut #arg_name, api.clone()).await;
+                    } else {
+                        add_finalizer(&mut #arg_name, api.clone()).await;
+                        info!(
+                            "{} Added: {:?} {:?}",
+                            #struct_name_string, #arg_name.metadata.name, #arg_name.metadata.finalizers
+                        )
+                    }
                 }
-                WatchEvent::Modified(resource) => {
-                    info!("{} Modified: {:?}", #name, resource.metadata.name);
+                WatchEvent::Modified(#arg_name) => {
+                    info!(
+                        "{} Modified: {:?} {:?}",
+                        #struct_name_string, #arg_name.metadata.name, #arg_name.metadata.finalizers
+                    );
                 }
-                WatchEvent::Deleted(resource) => {
-                    info!("{} Deleted: {:?}", #name, resource.metadata.name);
+                WatchEvent::Deleted(#arg_name) => {
+                    info!(
+                        "{} Deleted: {:?} {:?}",
+                        #struct_name_string, #arg_name.metadata.name, #arg_name.metadata.finalizers
+                    );
                 }
-                _ => {}
+                _ => {
+                    info!("{} Unknown event", #struct_name_string);
+                }
             }
         }
+
     };
 
     // Convert the function into a string
@@ -191,8 +283,8 @@ fn generate_function(name: &str) {
 
     // Prepend the function with the use statements
     let function_string = format!(
-        "use kube::api::WatchEvent;\nuse log::info;use crate::{};\n\n{}",
-        name, function_string
+        "use kube::api::{};\nuse log::info;use crate::{};use crate::{};\n\n{}",
+        "{WatchEvent, Api}", name, "{add_finalizer, remove_finalizer}", function_string
     );
 
     // Write the function to a new file

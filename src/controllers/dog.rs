@@ -1,18 +1,39 @@
 use crate::Dog;
-use kube::api::WatchEvent;
+use crate::{add_finalizer, remove_finalizer};
+use kube::api::{Api, WatchEvent};
 use log::info;
 
-pub fn handle_dog(event: WatchEvent<Dog>) {
+pub async fn handle_dog(event: WatchEvent<Dog>, api: Api<Dog>) {
     match event {
-        WatchEvent::Added(resource) => {
-            info!("{} Added: {:?}", "Dog", resource.metadata.name);
+        WatchEvent::Added(mut dog) => {
+            if dog.metadata.deletion_timestamp.is_some() {
+                info!(
+                    "{} Sending API call to delete the remote resource and wait for response: {:?}",
+                    "Dog", dog.metadata.name
+                );
+                remove_finalizer(&mut dog, api.clone()).await;
+            } else {
+                add_finalizer(&mut dog, api.clone()).await;
+                info!(
+                    "{} Added: {:?} {:?}",
+                    "Dog", dog.metadata.name, dog.metadata.finalizers
+                )
+            }
         }
-        WatchEvent::Modified(resource) => {
-            info!("{} Modified: {:?}", "Dog", resource.metadata.name);
+        WatchEvent::Modified(dog) => {
+            info!(
+                "{} Modified: {:?} {:?}",
+                "Dog", dog.metadata.name, dog.metadata.finalizers
+            );
         }
-        WatchEvent::Deleted(resource) => {
-            info!("{} Deleted: {:?}", "Dog", resource.metadata.name);
+        WatchEvent::Deleted(dog) => {
+            info!(
+                "{} Deleted: {:?} {:?}",
+                "Dog", dog.metadata.name, dog.metadata.finalizers
+            );
         }
-        _ => {}
+        _ => {
+            info!("{} Unknown event", "Dog");
+        }
     }
 }
