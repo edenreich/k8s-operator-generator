@@ -14,8 +14,13 @@ use openapi_client::apis::default_api::cats_post;
 use openapi_client::models::Cat as CatDto;
 
 fn convert_to_dto(cat_resource: Cat) -> CatDto {
+    let id = match cat_resource.status {
+        Some(status) => status.id,
+        None => None,
+    };
+
     CatDto {
-        id: cat_resource.status.unwrap().id,
+        id,
         name: cat_resource.spec.name,
         breed: cat_resource.spec.breed,
         age: cat_resource.spec.age,

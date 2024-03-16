@@ -29,7 +29,7 @@ tasks:
   run-fake-server:
     desc: Run the JSON server
     cmds:
-      - docker run -p 8080:80 -v ${PWD}/fake-server2/data.json:/data/db.json clue/json-server
+      - docker run --rm  -it -p 8080:80 -v ${PWD}/fake-server2/data.json:/data/db.json clue/json-server
 
   package:
     desc: Package the k8s operator
