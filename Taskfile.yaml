@@ -31,6 +31,11 @@ tasks:
     cmds:
       - RUST_LOG=debug cargo run --bin operator
 
+  run-fake-server:
+    desc: Run the dummy server
+    cmds:
+      - cd fake-server && RUST_LOG=debug cargo run --example server
+
   package:
     desc: Package the k8s operator
     cmds:
