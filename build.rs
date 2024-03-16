@@ -366,32 +366,34 @@ fn generate_function(name: &str) {
     let handle_added: ItemFn = parse_quote! {
         async fn handle_added(config: &Configuration, kind_str: String, #arg_name: &mut #struct_name, api: Api<#struct_name>) {
             if #arg_name.metadata.deletion_timestamp.is_some() {
+                handle_deleted(config, kind_str, #arg_name, api).await;
                 return;
             }
 
             let model = #arg_name.clone();
             let dto = convert_to_dto(model);
+            let name = #arg_name.metadata.name.clone().unwrap();
 
             add_finalizer(#arg_name, api.clone()).await;
             match #create_function_name(config, dto).await {
                 Ok(_) => {
-                    info!("{} added successfully", kind_str);
+                    info!("{} {} added successfully", kind_str, name);
                     add_event(
                         kind_str.clone(),
                         #arg_name,
                         "Normal".into(),
                         kind_str.clone(),
-                        format!("{} added remotely", kind_str),
+                        format!("{} {} created remotely", kind_str, name),
                     ).await;
                 }
                 Err(e) => {
-                    error!("Failed to add {:?}: {:?}", #arg_name, e);
+                    error!("Failed to add {} {}: {:?}", kind_str, name, e);
                     add_event(
                         kind_str.clone(),
                         #arg_name,
                         "Error".into(),
                         kind_str.clone(),
-                        format!("Failed to create {} remotely", kind_str),
+                        format!("Failed to create {} {} remotely", kind_str, name),
                     ).await;
                 }
             }
@@ -402,26 +404,28 @@ fn generate_function(name: &str) {
         async fn handle_modified(config: &Configuration, kind_str: String, #arg_name: &mut #struct_name, api: Api<#struct_name>) {
             let model = #arg_name.clone();
             let dto = convert_to_dto(model);
+            let name = #arg_name.metadata.name.clone().unwrap();
+
             if let Some(ref id) = dto.id.clone() {
                 match #update_function_name(config, id.as_str(), dto).await {
                     Ok(_) => {
-                        info!("{} modified successfully", kind_str);
+                        info!("{} {} modified successfully", kind_str, name);
                         add_event(
                             kind_str.clone(),
                             #arg_name,
                             "Normal".into(),
                             kind_str.clone(),
-                            format!("{} modified remotely", kind_str),
+                            format!("{} {} modified remotely", kind_str, name),
                         ).await;
                     }
                     Err(e) => {
-                        error!("Failed to update {:?}: {:?}", #arg_name, e);
+                        error!("Failed to update {} {}: {:?}", kind_str, name, e);
                         add_event(
                             kind_str.clone(),
                             #arg_name,
                             "Error".into(),
                             kind_str.clone(),
-                            format!("Failed to update {} remotely", kind_str),
+                            format!("Failed to update {} {} remotely", kind_str, name),
                         ).await;
                     }
                 }
@@ -429,8 +433,15 @@ fn generate_function(name: &str) {
                 error!(
                     "{} {} has no id",
                     kind_str,
-                    #arg_name.metadata.name.clone().unwrap()
+                    name,
                 );
+                add_event(
+                    kind_str.clone(),
+                    #arg_name,
+                    "Error".into(),
+                    kind_str.clone(),
+                    format!("Failed to update {} {}", kind_str, name),
+                ).await;
             }
         }
     };
@@ -439,27 +450,29 @@ fn generate_function(name: &str) {
         async fn handle_deleted(config: &Configuration, kind_str: String, #arg_name: &mut #struct_name, api: Api<#struct_name>) {
             let model = #arg_name.clone();
             let dto = convert_to_dto(model);
+            let name = #arg_name.metadata.name.clone().unwrap();
+
             if let Some(id) = dto.id.clone() {
                 match #delete_function_name(config, id.as_str()).await {
                     Ok(res) => {
-                        info!("{} deleted successfully", kind_str);
+                        info!("{} {} deleted successfully", kind_str, name);
                         add_event(
                             kind_str.clone(),
                             #arg_name,
                             "Normal".into(),
                             kind_str.clone(),
-                            format!("{} deleted remotely", kind_str),
+                            format!("{} {} deleted remotely", kind_str, name),
                         ).await;
                         remove_finalizer(#arg_name, api.clone()).await;
                     }
                     Err(e) => {
-                        error!("Failed to delete {:?}: {:?}", #arg_name, e);
+                        error!("Failed to delete {} {}: {:?}", kind_str, name, e);
                         add_event(
                             kind_str.clone(),
                             #arg_name,
                             "Error".into(),
                             kind_str.clone(),
-                            format!("Failed to delete {} remotely", kind_str),
+                            format!("Failed to delete {} {} remotely", kind_str, name),
                         ).await;
                     }
                 }
@@ -469,6 +482,14 @@ fn generate_function(name: &str) {
                     kind_str,
                     #arg_name.metadata.name.clone().unwrap()
                 );
+                add_event(
+                    kind_str.clone(),
+                    #arg_name,
+                    "Error".into(),
+                    kind_str.clone(),
+                    format!("Failed to delete {} {}", kind_str, name),
+                )
+                .await;
             }
         }
     };

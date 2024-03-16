@@ -43,31 +43,33 @@ pub async fn handle_dog(event: WatchEvent<Dog>, api: Api<Dog>) {
 
 async fn handle_added(config: &Configuration, kind_str: String, dog: &mut Dog, api: Api<Dog>) {
     if dog.metadata.deletion_timestamp.is_some() {
+        handle_deleted(config, kind_str, dog, api).await;
         return;
     }
     let model = dog.clone();
     let dto = convert_to_dto(model);
+    let name = dog.metadata.name.clone().unwrap();
     add_finalizer(dog, api.clone()).await;
     match dogs_post(config, dto).await {
         Ok(_) => {
-            info!("{} added successfully", kind_str);
+            info!("{} {} added successfully", kind_str, name);
             add_event(
                 kind_str.clone(),
                 dog,
                 "Normal".into(),
                 kind_str.clone(),
-                format!("{} added remotely", kind_str),
+                format!("{} {} created remotely", kind_str, name),
             )
             .await;
         }
         Err(e) => {
-            error!("Failed to add {:?}: {:?}", dog, e);
+            error!("Failed to add {} {}: {:?}", kind_str, name, e);
             add_event(
                 kind_str.clone(),
                 dog,
                 "Error".into(),
                 kind_str.clone(),
-                format!("Failed to create {} remotely", kind_str),
+                format!("Failed to create {} {} remotely", kind_str, name),
             )
             .await;
         }
@@ -77,65 +79,71 @@ async fn handle_added(config: &Configuration, kind_str: String, dog: &mut Dog, a
 async fn handle_modified(config: &Configuration, kind_str: String, dog: &mut Dog, api: Api<Dog>) {
     let model = dog.clone();
     let dto = convert_to_dto(model);
+    let name = dog.metadata.name.clone().unwrap();
     if let Some(ref id) = dto.id.clone() {
         match dogs_id_put(config, id.as_str(), dto).await {
             Ok(_) => {
-                info!("{} modified successfully", kind_str);
+                info!("{} {} modified successfully", kind_str, name);
                 add_event(
                     kind_str.clone(),
                     dog,
                     "Normal".into(),
                     kind_str.clone(),
-                    format!("{} modified remotely", kind_str),
+                    format!("{} {} modified remotely", kind_str, name),
                 )
                 .await;
             }
             Err(e) => {
-                error!("Failed to update {:?}: {:?}", dog, e);
+                error!("Failed to update {} {}: {:?}", kind_str, name, e);
                 add_event(
                     kind_str.clone(),
                     dog,
                     "Error".into(),
                     kind_str.clone(),
-                    format!("Failed to update {} remotely", kind_str),
+                    format!("Failed to update {} {} remotely", kind_str, name),
                 )
                 .await;
             }
         }
     } else {
-        error!(
-            "{} {} has no id",
-            kind_str,
-            dog.metadata.name.clone().unwrap()
-        );
+        error!("{} {} has no id", kind_str, name,);
+        add_event(
+            kind_str.clone(),
+            dog,
+            "Error".into(),
+            kind_str.clone(),
+            format!("Failed to update {} {}", kind_str, name),
+        )
+        .await;
     }
 }
 
 async fn handle_deleted(config: &Configuration, kind_str: String, dog: &mut Dog, api: Api<Dog>) {
     let model = dog.clone();
     let dto = convert_to_dto(model);
+    let name = dog.metadata.name.clone().unwrap();
     if let Some(id) = dto.id.clone() {
         match dogs_id_delete(config, id.as_str()).await {
             Ok(res) => {
-                info!("{} deleted successfully", kind_str);
+                info!("{} {} deleted successfully", kind_str, name);
                 add_event(
                     kind_str.clone(),
                     dog,
                     "Normal".into(),
                     kind_str.clone(),
-                    format!("{} deleted remotely", kind_str),
+                    format!("{} {} deleted remotely", kind_str, name),
                 )
                 .await;
                 remove_finalizer(dog, api.clone()).await;
             }
             Err(e) => {
-                error!("Failed to delete {:?}: {:?}", dog, e);
+                error!("Failed to delete {} {}: {:?}", kind_str, name, e);
                 add_event(
                     kind_str.clone(),
                     dog,
                     "Error".into(),
                     kind_str.clone(),
-                    format!("Failed to delete {} remotely", kind_str),
+                    format!("Failed to delete {} {} remotely", kind_str, name),
                 )
                 .await;
             }
@@ -146,5 +154,13 @@ async fn handle_deleted(config: &Configuration, kind_str: String, dog: &mut Dog,
             kind_str,
             dog.metadata.name.clone().unwrap()
         );
+        add_event(
+            kind_str.clone(),
+            dog,
+            "Error".into(),
+            kind_str.clone(),
+            format!("Failed to delete {} {}", kind_str, name),
+        )
+        .await;
     }
 }
