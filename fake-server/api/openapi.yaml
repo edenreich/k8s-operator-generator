@@ -1,0 +1,226 @@
+openapi: 3.1.0
+info:
+  title: Pets API
+  version: 1.0.0
+servers:
+- url: /
+paths:
+  /cats:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Cat'
+                type: array
+          description: OK
+      summary: Get all cats
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Cat'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cat'
+          description: Created
+      summary: Create a new cat
+  /cats/{id}:
+    delete:
+      parameters:
+      - explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: No content
+      summary: Delete a cat by ID
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cat'
+          description: OK
+        "404":
+          description: Not found
+      summary: Get a cat by ID
+    put:
+      parameters:
+      - explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Cat'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cat'
+          description: OK
+        "404":
+          description: Not found
+      summary: Update a cat by ID
+  /dogs:
+    get:
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Dog'
+                type: array
+          description: OK
+      summary: Get all dogs
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Dog'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dog'
+          description: Created
+      summary: Create a new dog
+  /dogs/{id}:
+    delete:
+      parameters:
+      - explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "204":
+          description: No content
+      summary: Delete a dog by ID
+    get:
+      parameters:
+      - explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dog'
+          description: OK
+        "404":
+          description: Not found
+      summary: Get a dog by ID
+    put:
+      parameters:
+      - explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Dog'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dog'
+          description: OK
+        "404":
+          description: Not found
+      summary: Update a dog by ID
+components:
+  schemas:
+    Cat:
+      example:
+        name: Fluffy
+        id: "1"
+        breed: Persian
+        age: 3
+      properties:
+        id:
+          example: "1"
+          type: string
+        name:
+          example: Fluffy
+          type: string
+        breed:
+          example: Persian
+          type: string
+        age:
+          example: 3
+          type: integer
+      required:
+      - age
+      - breed
+      - name
+    Dog:
+      example:
+        name: Fido
+        id: "1"
+        breed: Bulldog
+        age: 3
+      properties:
+        id:
+          example: "1"
+          type: string
+        name:
+          example: Fido
+          type: string
+        breed:
+          example: Bulldog
+          type: string
+        age:
+          example: 3
+          type: integer
+      required:
+      - age
+      - breed
+      - name
+

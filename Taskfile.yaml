@@ -4,12 +4,17 @@ tasks:
   oas-download:
     desc: Download OpenAPI specification
     cmds:
-      - curl -o openapi.yaml https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/examples/v3.0/petstore.yaml
+      - curl -o openapi.yaml https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/examples/v3.0/openapi.yaml
 
   oas-generate-rust-client:
     desc: Generate the OpenAPI Rust client
     cmds:
-      - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate -i /local/openapi.yaml -g rust -o /local/client
+      - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.4.0 generate -i /local/openapi.yaml -g rust -o /local/client
+
+  oas-generate-rust-server:
+    desc: Generate a dummy Rust server for testing the client
+    cmds:
+      - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.4.0 generate -i /local/openapi.yaml -g rust-server -o /local/fake-server
 
   build:
     desc: Build the k8s operator
