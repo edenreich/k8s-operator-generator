@@ -15,7 +15,7 @@ use openapi_client::models::Cat as CatDto;
 
 fn convert_to_dto(cat_resource: Cat) -> CatDto {
     CatDto {
-        id: cat_resource.spec.id,
+        id: cat_resource.status.id,
         name: cat_resource.spec.name,
         breed: cat_resource.spec.breed,
         age: cat_resource.spec.age,
@@ -48,6 +48,7 @@ pub async fn handle_cat(event: WatchEvent<Cat>, api: Api<Cat>) {
 
 async fn handle_added(config: &Configuration, kind_str: String, cat: &mut Cat, api: Api<Cat>) {
     if cat.metadata.deletion_timestamp.is_some() {
+        handle_deleted(config, kind_str, cat, api).await;
         return;
     }
     let model = cat.clone();
