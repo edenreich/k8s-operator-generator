@@ -8,12 +8,14 @@ use kube::Resource;
 use log::error;
 use log::info;
 use openapi_client::apis::configuration::Configuration;
-use openapi_client::apis::default_api::dogs_get;
 use openapi_client::apis::default_api::dogs_id_delete;
-use openapi_client::apis::default_api::dogs_id_get;
 use openapi_client::apis::default_api::dogs_id_put;
 use openapi_client::apis::default_api::dogs_post;
 use openapi_client::models::Dog as DogDto;
+
+fn convert_to_dto(dog_resource: Dog) -> DogDto {
+    todo!("Convert the resource to a DTO");
+}
 
 pub async fn handle_dog(event: WatchEvent<Dog>, api: Api<Dog>) {
     let kind = Dog::kind(&());
@@ -22,59 +24,12 @@ pub async fn handle_dog(event: WatchEvent<Dog>, api: Api<Dog>) {
         base_path: "http://localhost:8080".to_string(),
         user_agent: None,
         client: reqwest::Client::new(),
-        basic_auth: todo!(),
-        oauth_access_token: todo!(),
-        bearer_access_token: todo!(),
-        api_key: todo!(),
+        ..Configuration::default()
     };
-    let (mut dog, event_type) = match event {
-        WatchEvent::Added(mut dog) => {
-            if dog.metadata.deletion_timestamp.is_none() {
-                add_finalizer(&mut dog, api.clone()).await;
-                let dto = convert_to_dto(dog);
-                dogs_post(config, dto).await;
-            } else {
-                let dto = convert_to_dto(dog);
-                if let Some(id) = dto.id {
-                    dogs_id_delete(config, id.as_str()).await;
-                    remove_finalizer(&mut dog, api.clone()).await;
-                } else {
-                    error!(
-                        "{} {} has no id",
-                        kind_str,
-                        dog.metadata.name.clone().unwrap()
-                    );
-                }
-            }
-            (dog, "Added")
-        }
-        WatchEvent::Modified(mut dog) => {
-            let dto = convert_to_dto(dog);
-            if let Some(id) = dto.id {
-                dogs_id_put(config, id.as_str(), dto).await;
-            } else {
-                error!(
-                    "{} {} has no id",
-                    kind_str,
-                    dog.metadata.name.clone().unwrap()
-                );
-            }
-            (dog, "Modified")
-        }
-        WatchEvent::Deleted(mut dog) => {
-            let dto = convert_to_dto(dog);
-            if let Some(id) = dto.id {
-                dogs_id_delete(config, id.as_str()).await;
-                remove_finalizer(&mut dog, api.clone()).await;
-            } else {
-                error!(
-                    "{} {} has no id",
-                    kind_str,
-                    dog.metadata.name.clone().unwrap()
-                );
-            }
-            (dog, "Deleted")
-        }
+    match event {
+        WatchEvent::Added(mut dog) => handle_added(config, kind_str, &mut dog, api).await,
+        WatchEvent::Modified(mut dog) => handle_modified(config, kind_str, &mut dog, api).await,
+        WatchEvent::Deleted(mut dog) => handle_deleted(config, kind_str, &mut dog, api).await,
         WatchEvent::Bookmark(bookmark) => {
             info!("Cat Bookmark: {:?}", bookmark.metadata.resource_version);
             return;
@@ -84,20 +39,112 @@ pub async fn handle_dog(event: WatchEvent<Dog>, api: Api<Dog>) {
             return;
         }
     };
-    add_event(
-        kind_str.clone(),
-        &mut dog,
-        event_type.into(),
-        kind_str.clone(),
-        format!("Cat Resource {} Remotely", event_type),
-    )
-    .await;
-    info!(
-        "Cat {}: {:?} {:?}",
-        event_type, dog.metadata.name, dog.metadata.finalizers
-    );
 }
 
-fn convert_to_dto(dog_resource: Dog) -> DogDto {
-    todo!("Convert the resource to a DTO");
+async fn handle_added(config: &Configuration, kind_str: String, dog: &mut Dog, api: Api<Dog>) {
+    if dog.metadata.deletion_timestamp.is_some() {
+        return;
+    }
+    let model = dog.clone();
+    let dto = convert_to_dto(model);
+    add_finalizer(dog, api.clone()).await;
+    match dogs_post(config, dto).await {
+        Ok(_) => {
+            info!("{} added successfully", kind_str);
+            add_event(
+                kind_str.clone(),
+                dog,
+                "Normal".into(),
+                kind_str.clone(),
+                format!("{} added remotely", kind_str),
+            )
+            .await;
+        }
+        Err(e) => {
+            error!("Failed to add {:?}: {:?}", dog, e);
+            add_event(
+                kind_str.clone(),
+                dog,
+                "Error".into(),
+                kind_str.clone(),
+                format!("Failed to create {} remotely", kind_str),
+            )
+            .await;
+        }
+    }
+}
+
+async fn handle_modified(config: &Configuration, kind_str: String, dog: &mut Dog, api: Api<Dog>) {
+    let model = dog.clone();
+    let dto = convert_to_dto(model);
+    if let Some(ref id) = dto.id.clone() {
+        match dogs_id_put(config, id.as_str(), dto).await {
+            Ok(_) => {
+                info!("{} modified successfully", kind_str);
+                add_event(
+                    kind_str.clone(),
+                    dog,
+                    "Normal".into(),
+                    kind_str.clone(),
+                    format!("{} modified remotely", kind_str),
+                )
+                .await;
+            }
+            Err(e) => {
+                error!("Failed to update {:?}: {:?}", dog, e);
+                add_event(
+                    kind_str.clone(),
+                    dog,
+                    "Error".into(),
+                    kind_str.clone(),
+                    format!("Failed to update {} remotely", kind_str),
+                )
+                .await;
+            }
+        }
+    } else {
+        error!(
+            "{} {} has no id",
+            kind_str,
+            dog.metadata.name.clone().unwrap()
+        );
+    }
+}
+
+async fn handle_deleted(config: &Configuration, kind_str: String, dog: &mut Dog, api: Api<Dog>) {
+    let model = dog.clone();
+    let dto = convert_to_dto(model);
+    if let Some(id) = dto.id.clone() {
+        match dogs_id_delete(config, id.as_str()).await {
+            Ok(res) => {
+                info!("{} deleted successfully", kind_str);
+                add_event(
+                    kind_str.clone(),
+                    dog,
+                    "Normal".into(),
+                    kind_str.clone(),
+                    format!("{} deleted remotely", kind_str),
+                )
+                .await;
+                remove_finalizer(dog, api.clone()).await;
+            }
+            Err(e) => {
+                error!("Failed to delete {:?}: {:?}", dog, e);
+                add_event(
+                    kind_str.clone(),
+                    dog,
+                    "Error".into(),
+                    kind_str.clone(),
+                    format!("Failed to delete {} remotely", kind_str),
+                )
+                .await;
+            }
+        }
+    } else {
+        error!(
+            "{} {} has no id",
+            kind_str,
+            dog.metadata.name.clone().unwrap()
+        );
+    }
 }

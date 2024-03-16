@@ -301,8 +301,8 @@ fn generate_function(name: &str) {
     let arg_name = format_ident!("{}", name.to_lowercase());
     let struct_name = format_ident!("{}", name);
     let create_function_name = format_ident!("{}s_post", name.to_lowercase());
-    let list_function_name = format_ident!("{}s_get", name.to_lowercase());
-    let get_function_name = format_ident!("{}s_id_get", name.to_lowercase());
+    let _list_function_name = format_ident!("{}s_get", name.to_lowercase());
+    let _get_function_name = format_ident!("{}s_id_get", name.to_lowercase());
     let update_function_name = format_ident!("{}s_id_put", name.to_lowercase());
     let delete_function_name = format_ident!("{}s_id_delete", name.to_lowercase());
 
@@ -319,16 +319,14 @@ fn generate_function(name: &str) {
          use crate::{};
          use openapi_client::models::{} as {}Dto;
          use openapi_client::apis::configuration::Configuration;
-         use openapi_client::apis::default_api::{}s_get;
          use openapi_client::apis::default_api::{}s_post;
-         use openapi_client::apis::default_api::{}s_id_get;
          use openapi_client::apis::default_api::{}s_id_delete;
          use openapi_client::apis::default_api::{}s_id_put;
          \n\n",
-        struct_name, struct_name, struct_name, arg_name, arg_name, arg_name, arg_name, arg_name,
+        struct_name, struct_name, struct_name, arg_name, arg_name, arg_name
     );
 
-    let function: ItemFn = parse_quote! {
+    let main_handler: ItemFn = parse_quote! {
         pub async fn #function_name(event: WatchEvent<#struct_name>, api: Api<#struct_name>) {
             let kind = #struct_name::kind(&());
             let kind_str = kind.to_string();
@@ -337,48 +335,13 @@ fn generate_function(name: &str) {
                 base_path: "http://localhost:8080".to_string(),
                 user_agent: None,
                 client: reqwest::Client::new(),
-                basic_auth: todo!(),
-                oauth_access_token: todo!(),
-                bearer_access_token: todo!(),
-                api_key: todo!(),
+                ..Configuration::default()
             };
 
-            let (mut #arg_name, event_type) = match event {
-                WatchEvent::Added(mut #arg_name) => {
-                    if #arg_name.metadata.deletion_timestamp.is_none() {
-                        add_finalizer(&mut #arg_name, api.clone()).await;
-                        let dto = convert_to_dto(#arg_name);
-                        #create_function_name(config, dto).await;
-                    } else {
-                        let dto = convert_to_dto(#arg_name);
-                        if let Some(id) = dto.id {
-                            #delete_function_name(config, id.as_str()).await;
-                            remove_finalizer(&mut #arg_name, api.clone()).await;
-                        } else {
-                            error!("{} {} has no id", kind_str, #arg_name.metadata.name.clone().unwrap());
-                        }
-                    }
-                    (#arg_name, "Added")
-                }
-                WatchEvent::Modified(mut #arg_name) => {
-                    let dto = convert_to_dto(#arg_name);
-                    if let Some(id) = dto.id {
-                        #update_function_name(config, id.as_str(), dto).await;
-                    } else {
-                        error!("{} {} has no id", kind_str, #arg_name.metadata.name.clone().unwrap());
-                    }
-                    (#arg_name, "Modified")
-                }
-                WatchEvent::Deleted(mut #arg_name) => {
-                    let dto = convert_to_dto(#arg_name);
-                    if let Some(id) = dto.id {
-                        #delete_function_name(config, id.as_str()).await;
-                        remove_finalizer(&mut #arg_name, api.clone()).await;
-                    } else {
-                        error!("{} {} has no id", kind_str, #arg_name.metadata.name.clone().unwrap());
-                    }
-                    (#arg_name, "Deleted")
-                }
+            match event {
+                WatchEvent::Added(mut #arg_name) => handle_added(config, kind_str, &mut #arg_name, api).await,
+                WatchEvent::Modified(mut #arg_name) => handle_modified(config, kind_str, &mut #arg_name, api).await,
+                WatchEvent::Deleted(mut #arg_name) => handle_deleted(config, kind_str, &mut #arg_name, api).await,
                 WatchEvent::Bookmark(bookmark) => {
                     info!("Cat Bookmark: {:?}", bookmark.metadata.resource_version);
                     return;
@@ -388,20 +351,6 @@ fn generate_function(name: &str) {
                     return;
                 }
             };
-
-            add_event(
-                kind_str.clone(),
-                &mut #arg_name,
-                event_type.into(),
-                kind_str.clone(),
-                format!("Cat Resource {} Remotely", event_type),
-            )
-            .await;
-
-            info!(
-                "Cat {}: {:?} {:?}",
-                event_type, #arg_name.metadata.name, #arg_name.metadata.finalizers
-            );
         }
     };
 
@@ -414,13 +363,132 @@ fn generate_function(name: &str) {
         }
     };
 
-    // Convert the function into a string
-    let function_string = quote! { #function }.to_string();
-    let function_dto_string = quote! { #function_dto }.to_string();
+    let handle_added: ItemFn = parse_quote! {
+        async fn handle_added(config: &Configuration, kind_str: String, #arg_name: &mut #struct_name, api: Api<#struct_name>) {
+            if #arg_name.metadata.deletion_timestamp.is_some() {
+                return;
+            }
 
-    file.push_str(&function_string);
-    file.push_str("\n\n");
+            let model = #arg_name.clone();
+            let dto = convert_to_dto(model);
+
+            add_finalizer(#arg_name, api.clone()).await;
+            match #create_function_name(config, dto).await {
+                Ok(_) => {
+                    info!("{} added successfully", kind_str);
+                    add_event(
+                        kind_str.clone(),
+                        #arg_name,
+                        "Normal".into(),
+                        kind_str.clone(),
+                        format!("{} added remotely", kind_str),
+                    ).await;
+                }
+                Err(e) => {
+                    error!("Failed to add {:?}: {:?}", #arg_name, e);
+                    add_event(
+                        kind_str.clone(),
+                        #arg_name,
+                        "Error".into(),
+                        kind_str.clone(),
+                        format!("Failed to create {} remotely", kind_str),
+                    ).await;
+                }
+            }
+        }
+    };
+
+    let handle_modified: ItemFn = parse_quote! {
+        async fn handle_modified(config: &Configuration, kind_str: String, #arg_name: &mut #struct_name, api: Api<#struct_name>) {
+            let model = #arg_name.clone();
+            let dto = convert_to_dto(model);
+            if let Some(ref id) = dto.id.clone() {
+                match #update_function_name(config, id.as_str(), dto).await {
+                    Ok(_) => {
+                        info!("{} modified successfully", kind_str);
+                        add_event(
+                            kind_str.clone(),
+                            #arg_name,
+                            "Normal".into(),
+                            kind_str.clone(),
+                            format!("{} modified remotely", kind_str),
+                        ).await;
+                    }
+                    Err(e) => {
+                        error!("Failed to update {:?}: {:?}", #arg_name, e);
+                        add_event(
+                            kind_str.clone(),
+                            #arg_name,
+                            "Error".into(),
+                            kind_str.clone(),
+                            format!("Failed to update {} remotely", kind_str),
+                        ).await;
+                    }
+                }
+            } else {
+                error!(
+                    "{} {} has no id",
+                    kind_str,
+                    #arg_name.metadata.name.clone().unwrap()
+                );
+            }
+        }
+    };
+
+    let handle_deleted: ItemFn = parse_quote! {
+        async fn handle_deleted(config: &Configuration, kind_str: String, #arg_name: &mut #struct_name, api: Api<#struct_name>) {
+            let model = #arg_name.clone();
+            let dto = convert_to_dto(model);
+            if let Some(id) = dto.id.clone() {
+                match #delete_function_name(config, id.as_str()).await {
+                    Ok(res) => {
+                        info!("{} deleted successfully", kind_str);
+                        add_event(
+                            kind_str.clone(),
+                            #arg_name,
+                            "Normal".into(),
+                            kind_str.clone(),
+                            format!("{} deleted remotely", kind_str),
+                        ).await;
+                        remove_finalizer(#arg_name, api.clone()).await;
+                    }
+                    Err(e) => {
+                        error!("Failed to delete {:?}: {:?}", #arg_name, e);
+                        add_event(
+                            kind_str.clone(),
+                            #arg_name,
+                            "Error".into(),
+                            kind_str.clone(),
+                            format!("Failed to delete {} remotely", kind_str),
+                        ).await;
+                    }
+                }
+            } else {
+                error!(
+                    "{} {} has no id",
+                    kind_str,
+                    #arg_name.metadata.name.clone().unwrap()
+                );
+            }
+        }
+    };
+
+    // Convert the function into a string
+    let function_dto_string = quote! { #function_dto }.to_string();
+    let main_handler_string = quote! { #main_handler }.to_string();
+    let handle_added_string = quote! { #handle_added }.to_string();
+    let handle_modified_string = quote! { #handle_modified }.to_string();
+    let handle_deleted_string = quote! { #handle_deleted }.to_string();
+
     file.push_str(&function_dto_string);
+    file.push_str("\n\n");
+    file.push_str(&main_handler_string);
+    file.push_str("\n\n");
+    file.push_str(&handle_added_string);
+    file.push_str("\n\n");
+    file.push_str(&handle_modified_string);
+    file.push_str("\n\n");
+    file.push_str(&handle_deleted_string);
 
     // Write the function to a new file
     let file_path = format!("src/controllers/{}.rs", name.to_lowercase());

@@ -22,8 +22,7 @@ spec:
           spec:
             properties:
               age:
-                format: uint32
-                minimum: 0.0
+                format: int32
                 type: integer
               breed:
                 type: string
@@ -69,8 +68,7 @@ spec:
           spec:
             properties:
               age:
-                format: uint32
-                minimum: 0.0
+                format: int32
                 type: integer
               breed:
                 type: string
