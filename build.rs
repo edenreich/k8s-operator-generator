@@ -221,6 +221,45 @@ roleRef:
         .expect("Unable to write to ClusterRoleBinding file");
     }
 
+    // Generate the operator deployment
+    if not_in_openapi_ignore("manifests/operator/deployment.yaml") {
+        let mut deployment_file = File::create("manifests/operator/deployment.yaml")
+            .expect("Unable to create Deployment file");
+        write!(
+            deployment_file,
+            r#"---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: operator-deployment
+  labels:
+    app: operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: operator
+  template:
+    metadata:
+      labels:
+        app: operator
+    spec:
+      serviceAccountName: operator-service-account
+      containers:
+        - name: operator
+          image: operator:latest
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+"#,
+        )
+        .expect("Unable to write to Deployment file");
+    }
+
     // Generate the code that generates the CRDs
     if not_in_openapi_ignore("src/crdgen.rs") {
         let mut insert_lines = String::new();
