@@ -20,7 +20,12 @@ fn convert_to_dto(horse_resource: Horse) -> HorseDto {
         Some(status) => status.uuid,
         None => None,
     };
-    todo!("Convert the resource to a DTO");
+    HorseDto {
+        uuid: _uuid,
+        name: horse_resource.spec.name,
+        breed: horse_resource.spec.breed,
+        age: horse_resource.spec.age,
+    }
 }
 
 pub async fn handle_horse(event: WatchEvent<Horse>, api: Api<Horse>) {
