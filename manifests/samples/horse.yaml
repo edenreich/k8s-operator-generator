@@ -1,0 +1,9 @@
+---
+apiVersion: example.com/v1
+kind: Horse
+metadata:
+  name: fido
+spec:
+  age: 5
+  breed: mustang
+  name: fido
