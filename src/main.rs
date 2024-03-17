@@ -32,14 +32,14 @@ async fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
-    tokio::spawn(watch_resource::<k8s_operator::Cat>(
+    tokio::spawn(watch_resource::<k8s_operator::types::cat::Cat>(
         Api::default_namespaced(client.clone()).clone(),
         watch_params.clone(),
         |event, api| {
             tokio::spawn(k8s_operator::controllers::cat::handle_cat(event, api));
         },
     ));
-    tokio::spawn(watch_resource::<k8s_operator::Dog>(
+    tokio::spawn(watch_resource::<k8s_operator::types::dog::Dog>(
         Api::default_namespaced(client.clone()).clone(),
         watch_params.clone(),
         |event, api| {

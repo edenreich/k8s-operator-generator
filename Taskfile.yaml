@@ -20,6 +20,9 @@ tasks:
     desc: Generate the k8s CRD's out of the rust structs
     cmds:
       - cargo run --bin generate-crds > manifests/crds/all.yaml
+    deps:
+      - oas-generate-rust-client
+      - build
 
   run:
     desc: Run the k8s operator
@@ -56,6 +59,7 @@ tasks:
   dirty-check:
     desc: Check if the project is dirty
     cmds:
+      - task generate
       - git diff --quiet || (echo "Project is dirty" && exit 1)
 
   clean:

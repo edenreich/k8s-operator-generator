@@ -2,7 +2,7 @@ use crate::add_event;
 use crate::add_finalizer;
 use crate::change_status;
 use crate::remove_finalizer;
-use crate::Dog;
+use crate::types::dog::Dog;
 use kube::api::Api;
 use kube::api::WatchEvent;
 use kube::Resource;
@@ -16,7 +16,7 @@ use openapi_client::apis::default_api::dogs_post;
 use openapi_client::models::Dog as DogDto;
 
 fn convert_to_dto(dog_resource: Dog) -> DogDto {
-    let uuid = match dog_resource.status {
+    let _uuid = match dog_resource.status {
         Some(status) => status.uuid,
         None => None,
     };
@@ -73,7 +73,7 @@ async fn handle_added(config: &Configuration, kind_str: String, dog: &mut Dog, a
                 format!("{} {} created remotely", kind_str, name),
             )
             .await;
-            if let (Some(status), Some(uuid)) = (dog.status.as_mut(), resp.uuid.clone()) {
+            if let (Some(_status), Some(uuid)) = (dog.status.as_mut(), resp.uuid.clone()) {
                 change_status(dog, api.clone(), "uuid", uuid).await;
             } else {
                 warn!("Failed to retrieve uuid from response");
@@ -145,7 +145,7 @@ async fn handle_deleted(config: &Configuration, kind_str: String, dog: &mut Dog,
     let name = dog.metadata.name.clone().unwrap();
     if let Some(uuid) = dto.uuid.clone() {
         match dogs_id_delete(config, uuid.as_str()).await {
-            Ok(res) => {
+            Ok(_res) => {
                 info!("{} {} deleted successfully", kind_str, name);
                 add_event(
                     kind_str.clone(),

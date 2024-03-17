@@ -2,10 +2,8 @@ use crate::add_event;
 use crate::add_finalizer;
 use crate::change_status;
 use crate::remove_finalizer;
-use crate::Cat;
-use crate::CatStatus;
+use crate::types::cat::Cat;
 use kube::api::Api;
-use kube::api::PostParams;
 use kube::api::WatchEvent;
 use kube::Resource;
 use log::error;
@@ -43,7 +41,6 @@ pub async fn handle_cat(event: WatchEvent<Cat>, api: Api<Cat>) {
     match event {
         WatchEvent::Added(mut cat) => handle_added(config, kind_str, &mut cat, api).await,
         WatchEvent::Modified(mut cat) => handle_modified(config, kind_str, &mut cat, api).await,
-        // WatchEvent::Deleted(mut cat) => handle_deleted(config, kind_str, &mut cat, api).await,
         WatchEvent::Bookmark(bookmark) => {
             info!("Cat Bookmark: {:?}", bookmark.metadata.resource_version);
             return;
@@ -60,11 +57,9 @@ async fn handle_added(config: &Configuration, kind_str: String, cat: &mut Cat, a
         handle_deleted(config, kind_str, cat, api).await;
         return;
     }
-
     if cat.status.is_none() {
         cat.status = Some(Default::default());
     }
-
     let model = cat.clone();
     let name = cat.metadata.name.clone().unwrap();
     let dto = convert_to_dto(model);
@@ -72,6 +67,7 @@ async fn handle_added(config: &Configuration, kind_str: String, cat: &mut Cat, a
         info!("{} {} already exists", kind_str, name);
         return;
     }
+    add_finalizer(cat, api.clone()).await;
     match cats_post(config, dto).await {
         Ok(resp) => {
             info!("{} {} created successfully", kind_str, name);
@@ -83,8 +79,7 @@ async fn handle_added(config: &Configuration, kind_str: String, cat: &mut Cat, a
                 format!("{} {} created remotely", kind_str, name),
             )
             .await;
-            add_finalizer(cat, api.clone()).await;
-            if let (Some(status), Some(uuid)) = (cat.status.as_mut(), resp.uuid.clone()) {
+            if let (Some(_status), Some(uuid)) = (cat.status.as_mut(), resp.uuid.clone()) {
                 change_status(cat, api.clone(), "uuid", uuid).await;
             } else {
                 warn!("Failed to retrieve uuid from response");
@@ -105,6 +100,10 @@ async fn handle_added(config: &Configuration, kind_str: String, cat: &mut Cat, a
 }
 
 async fn handle_modified(config: &Configuration, kind_str: String, cat: &mut Cat, api: Api<Cat>) {
+    if cat.metadata.deletion_timestamp.is_some() {
+        handle_deleted(config, kind_str, cat, api).await;
+        return;
+    }
     let model = cat.clone();
     let dto = convert_to_dto(model);
     let name = cat.metadata.name.clone().unwrap();
@@ -152,7 +151,7 @@ async fn handle_deleted(config: &Configuration, kind_str: String, cat: &mut Cat,
     let name = cat.metadata.name.clone().unwrap();
     if let Some(uuid) = dto.uuid.clone() {
         match cats_id_delete(config, uuid.as_str()).await {
-            Ok(res) => {
+            Ok(_res) => {
                 info!("{} {} deleted successfully", kind_str, name);
                 add_event(
                     kind_str.clone(),

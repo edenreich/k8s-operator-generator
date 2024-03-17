@@ -4,7 +4,9 @@ use proc_macro2::TokenStream;
 use quote::format_ident;
 use quote::quote;
 use serde_yaml;
+use std::fs::DirBuilder;
 use std::fs::File;
+use std::io::Write;
 use std::io::{BufRead, BufReader, Read};
 use std::process::Command;
 use syn::parse_quote;
@@ -31,7 +33,6 @@ fn main() {
     scope.import("log", "info");
     scope.import("log", "debug");
     scope.import("kube", "Resource");
-    scope.import("kube", "CustomResource");
     scope.import("kube", "ResourceExt");
     scope.import("kube::core", "CustomResourceExt");
     scope.import("kube::api", "Api");
@@ -46,21 +47,36 @@ fn main() {
     scope.import("tokio::time", "Duration");
     scope.import("serde::de", "DeserializeOwned");
     scope.import("serde", "Serialize");
-    scope.import("serde", "Deserialize");
     scope.import("serde_json", "json");
-    scope.import("schemars", "JsonSchema");
     scope.import("k8s_openapi", "chrono");
     scope.import("k8s_openapi::api::core::v1", "Event");
     scope.import("k8s_openapi::api::core::v1", "EventSource");
     scope.import("k8s_openapi::api::core::v1", "ObjectReference");
     scope.import("k8s_openapi::apimachinery::pkg::apis::meta::v1", "Time");
 
+    scope.raw("pub mod types;");
     scope.raw("pub mod controllers;");
 
     // Generate a generic event handler function
     generate_generic_function(&mut scope);
 
-    // Generate Rust structs for each schema in the components
+    // Write the Rust code to a file
+    let mut file = File::create(dest).unwrap();
+    write!(file, "{}", scope.to_string()).unwrap();
+
+    // Run rust fmt on the generated file
+    Command::new("rustfmt")
+        .arg(dest)
+        .status()
+        .expect("Failed to run rustfmt on generated file");
+
+    // Create the types directory if it doesn't exist
+    DirBuilder::new()
+        .recursive(true)
+        .create("src/types")
+        .unwrap();
+
+    // Generate Rust code for each schema in the components
     if let Some(components) = openapi.components.clone() {
         for (name, schema) in components.schemas {
             match schema {
@@ -68,29 +84,93 @@ fn main() {
                     // Handle references here if needed
                 }
                 openapiv3::ReferenceOr::Item(item) => {
-                    generate_struct(&mut scope, &name, "example.com", "v1", &item);
-                    generate_function(&name);
+                    let rust_code = generate_rust_code(&name, "example.com", "v1", &item);
+                    // Write the Rust code to a file in the types directory
+                    let mut file =
+                        File::create(format!("src/types/{}.rs", name.to_lowercase())).unwrap();
+                    write!(file, "{}", rust_code).unwrap();
+
+                    // Run rust fmt on the generated file
+                    Command::new("rustfmt")
+                        .arg(format!("src/types/{}.rs", name.to_lowercase()))
+                        .status()
+                        .expect("Failed to run rustfmt on generated file");
                 }
             }
         }
     }
 
-    // Write the generated code to a file
-    std::fs::write(dest, format!("{}\n", scope.to_string())).expect("Unable to write file");
-
-    // Format the Rust code using rustfmt
-    let output = Command::new("rustfmt")
-        .arg(dest)
-        .output()
-        .expect("Failed to execute command");
-
-    // Check the output of the rustfmt command
-    if !output.status.success() {
-        eprintln!(
-            "rustfmt failed with output:\n{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+    // Generate a mod.rs file that publicly exports all the generated modules
+    let mut mod_file = File::create("src/types/mod.rs").unwrap();
+    if let Some(components) = openapi.components.clone() {
+        for name in components.schemas.keys() {
+            writeln!(mod_file, "pub mod {};", name.to_lowercase()).unwrap();
+        }
     }
+
+    // Generate a mod.rs file that publicly exports all the generated modules
+    let mut mod_file = File::create("src/controllers/mod.rs").unwrap();
+    if let Some(components) = openapi.components.clone() {
+        for name in components.schemas.keys() {
+            writeln!(mod_file, "pub mod {};", name.to_lowercase()).unwrap();
+        }
+    }
+
+    let schema_names = openapi
+        .components
+        .unwrap()
+        .schemas
+        .keys()
+        .map(|name| name.to_string())
+        .collect::<Vec<String>>();
+
+    // Generate the Rust code
+    let mut insert_lines = String::new();
+    for schema_name in schema_names {
+        let line = format!(
+            "serde_yaml::to_string(&k8s_operator::types::{}::{}::crd()).unwrap(),\n",
+            schema_name.to_lowercase(),
+            schema_name,
+        );
+        insert_lines.push_str(&line);
+    }
+    let mut crdgen_file = File::create("src/crdgen.rs").unwrap();
+    write!(
+        crdgen_file,
+        r#"
+use kube::CustomResourceExt;
+
+fn main() {{
+    print!(
+        "---\n{{}}\n---\n{{}}",
+        {}
+    );
+}}
+"#,
+        insert_lines
+    )
+    .unwrap();
+
+    // format the file using rustfmt
+    Command::new("rustfmt")
+        .arg("src/crdgen.rs")
+        .status()
+        .expect("Failed to run rustfmt on src/crdgen.rs");
+}
+
+fn generate_rust_code(name: &str, api_group: &str, api_version: &str, schema: &Schema) -> String {
+    let mut scope = Scope::new();
+    generate_imports(&mut scope);
+    generate_struct(&mut scope, name, api_group, api_version, schema);
+    generate_controller(name);
+    scope.to_string()
+}
+
+fn generate_imports(scope: &mut Scope) {
+    scope.import("kube", "CustomResource");
+    scope.import("serde", "Deserialize");
+    scope.import("serde", "Serialize");
+    scope.import("schemars", "JsonSchema");
 }
 
 fn generate_struct(
@@ -133,7 +213,7 @@ fn generate_struct(
         .derive("Serialize")
         .derive("JsonSchema");
 
-    struct_status.field("uuid", "Option<String>");
+    struct_status.field("pub uuid", "Option<String>");
     struct_status.vis("pub");
 
     // Add fields to the struct based on the schema
@@ -155,7 +235,7 @@ fn generate_struct(
                     } else {
                         format!("Option<{}>", base_field_type)
                     };
-                    struct_.field(field_name, &field_type);
+                    struct_.field(format!("pub {}", field_name).as_str(), &field_type);
                 }
             }
         }
@@ -329,11 +409,11 @@ fn generate_generic_function(scope: &mut Scope) {
     scope.raw(&change_status_function_string);
 }
 
-fn generate_function(name: &str) {
+fn generate_controller(name: &str) {
     let function_name = format_ident!("handle_{}", name.to_lowercase());
     let arg_name = format_ident!("{}", name.to_lowercase());
     let struct_name = format_ident!("{}", name);
-    let status_name = format_ident!("{}Status", name);
+    let _status_name = format_ident!("{}Status", name);
     let create_function_name = format_ident!("{}s_post", name.to_lowercase());
     let _list_function_name = format_ident!("{}s_get", name.to_lowercase());
     let _get_function_name = format_ident!("{}s_id_get", name.to_lowercase());
@@ -352,14 +432,20 @@ fn generate_function(name: &str) {
          use crate::remove_finalizer;
          use crate::add_event;
          use crate::change_status;
-         use crate::{};
+         use crate::types::{}::{};
          use openapi_client::models::{} as {}Dto;
          use openapi_client::apis::configuration::Configuration;
          use openapi_client::apis::default_api::{}s_post;
          use openapi_client::apis::default_api::{}s_id_delete;
          use openapi_client::apis::default_api::{}s_id_put;
          \n\n",
-        struct_name, struct_name, struct_name, arg_name, arg_name, arg_name
+        struct_name.to_string().to_lowercase(),
+        struct_name,
+        struct_name,
+        struct_name,
+        arg_name,
+        arg_name,
+        arg_name
     );
 
     let main_handler: ItemFn = parse_quote! {
@@ -395,7 +481,7 @@ fn generate_function(name: &str) {
 
     let function_dto: TokenStream = quote! {
         fn convert_to_dto(#resource: #struct_name) -> #dto {
-            let uuid = match #resource.status {
+            let _uuid = match #resource.status {
                 Some(status) => status.uuid,
                 None => None,
             };
@@ -439,7 +525,7 @@ fn generate_function(name: &str) {
                         format!("{} {} created remotely", kind_str, name),
                     ).await;
 
-                    if let (Some(status), Some(uuid)) = (#arg_name.status.as_mut(), resp.uuid.clone()) {
+                    if let (Some(_status), Some(uuid)) = (#arg_name.status.as_mut(), resp.uuid.clone()) {
                         change_status(#arg_name, api.clone(), "uuid", uuid).await;
                     } else {
                         warn!("Failed to retrieve uuid from response");
@@ -518,7 +604,7 @@ fn generate_function(name: &str) {
 
             if let Some(uuid) = dto.uuid.clone() {
                 match #delete_function_name(config, uuid.as_str()).await {
-                    Ok(res) => {
+                    Ok(_res) => {
                         info!("{} {} deleted successfully", kind_str, name);
                         add_event(
                             kind_str.clone(),

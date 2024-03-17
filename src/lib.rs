@@ -4,13 +4,14 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
 use k8s_openapi::chrono;
 use kube::api::{Api, ObjectMeta, Patch, PatchParams, PostParams, WatchEvent, WatchParams};
 use kube::core::CustomResourceExt;
-use kube::{CustomResource, Resource, ResourceExt};
+use kube::{Resource, ResourceExt};
 use log::{debug, error, info};
-use schemars::JsonSchema;
 use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::json;
 use tokio::time::{sleep, Duration};
+
+pub mod types;
 
 pub mod controllers;
 
@@ -174,46 +175,4 @@ where
         Ok(_) => info!("Status updated successfully for {}", name),
         Err(e) => info!("Failed to update status for {}: {:?}", name, e),
     };
-}
-
-#[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema, CustomResource)]
-#[kube(
-    group = "example.com",
-    version = "v1",
-    kind = "Cat",
-    plural = "cats",
-    status = "CatStatus",
-    namespaced
-)]
-pub struct CatSpec {
-    uuid: Option<String>,
-    name: String,
-    breed: String,
-    age: i32,
-}
-
-#[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema)]
-pub struct CatStatus {
-    uuid: Option<String>,
-}
-
-#[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema, CustomResource)]
-#[kube(
-    group = "example.com",
-    version = "v1",
-    kind = "Dog",
-    plural = "dogs",
-    status = "DogStatus",
-    namespaced
-)]
-pub struct DogSpec {
-    uuid: Option<String>,
-    name: String,
-    breed: String,
-    age: i32,
-}
-
-#[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema)]
-pub struct DogStatus {
-    uuid: Option<String>,
 }
