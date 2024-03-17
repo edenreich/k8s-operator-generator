@@ -15,6 +15,7 @@ use syn::ItemFn;
 fn main() {
     let input = "openapi.yaml";
     let lib_file_path = "src/lib.rs";
+    let api_group = "example.com";
 
     // Read the OpenAPI specification from the YAML file
     let mut file = File::open(input).expect("Unable to open file");
@@ -29,7 +30,7 @@ fn main() {
     if not_in_openapi_ignore(lib_file_path) {
         let mut scope = Scope::new();
         generate_lib_imports(&mut scope);
-        generate_event_capturing_function(&mut scope);
+        generate_event_capturing_function(&mut scope, api_group);
         let mut file = File::create(lib_file_path).expect("Unable to create file");
         write!(file, "{}", scope.to_string()).expect("Unable to write to file");
         Command::new("rustfmt")
@@ -53,7 +54,7 @@ fn main() {
                 }
                 openapiv3::ReferenceOr::Item(item) => {
                     if not_in_openapi_ignore(&format!("src/types/{}.rs", name.to_lowercase())) {
-                        let rust_code = generate_rust_code(&name, "example.com", "v1", &item);
+                        let rust_code = generate_rust_code(&name, api_group, "v1", &item);
                         let mut file =
                             File::create(format!("src/types/{}.rs", name.to_lowercase())).unwrap();
                         write!(file, "{}", rust_code).unwrap();
@@ -86,6 +87,138 @@ fn main() {
         for name in schema_names.clone() {
             writeln!(controllers_mod_file, "pub mod {};", name.to_lowercase()).unwrap();
         }
+    }
+
+    // Generate the RBAC for the operator
+    let mut resources = String::new();
+    for schema_name in schema_names.clone() {
+        resources.push_str(&format!("      - {}\n", schema_name.to_lowercase() + "s"));
+    }
+    resources.pop();
+
+    if not_in_openapi_ignore("manifests/rbac/role.yaml") {
+        let mut role_file =
+            File::create("manifests/rbac/role.yaml").expect("Unable to create RBAC file");
+        write!(
+            role_file,
+            r#"---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operator-role # Give this a meaningful name
+rules:
+  - apiGroups:
+      - {}
+    resources:
+{}
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ''
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+"#,
+            api_group, resources
+        )
+        .expect("Unable to write to RBAC file");
+    }
+
+    if not_in_openapi_ignore("manifests/rbac/clusterrole.yaml") {
+        let mut cluster_role_file =
+            File::create("manifests/rbac/clusterrole.yaml").expect("Unable to create RBAC file");
+        let _ = write!(
+            cluster_role_file,
+            r#"---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: operator-cluster-role
+rules:
+  - apiGroups:
+      - {}
+    resources:
+{}
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+"#,
+            api_group, resources
+        );
+    }
+
+    if not_in_openapi_ignore("manifests/rbac/serviceaccount.yaml") {
+        let mut service_account_file = File::create("manifests/rbac/serviceaccount.yaml")
+            .expect("Unable to create ServiceAccount file");
+        write!(
+            service_account_file,
+            r#"---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operator-service-account
+"#,
+        )
+        .expect("Unable to write to ServiceAccount file");
+    }
+
+    // Update the RoleBinding and ClusterRoleBinding to use the new ServiceAccount
+    if not_in_openapi_ignore("manifests/rbac/rolebinding.yaml") {
+        let mut role_binding_file = File::create("manifests/rbac/rolebinding.yaml")
+            .expect("Unable to create RoleBinding file");
+        write!(
+            role_binding_file,
+            r#"---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operator-role-binding
+subjects:
+  - kind: ServiceAccount
+    name: operator-service-account
+roleRef:
+  kind: Role
+  name: operator-role
+  apiGroup: rbac.authorization.k8s.io
+"#,
+        )
+        .expect("Unable to write to RoleBinding file");
+    }
+
+    if not_in_openapi_ignore("manifests/rbac/clusterrolebinding.yaml") {
+        let mut cluster_role_binding_file = File::create("manifests/rbac/clusterrolebinding.yaml")
+            .expect("Unable to create ClusterRoleBinding file");
+        write!(
+            cluster_role_binding_file,
+            r#"---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: operator-cluster-role-binding
+subjects:
+  - kind: ServiceAccount
+    name: operator-service-account
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: operator-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+"#,
+        )
+        .expect("Unable to write to ClusterRoleBinding file");
     }
 
     // Generate the code that generates the CRDs
@@ -251,7 +384,7 @@ fn generate_lib_imports(scope: &mut Scope) {
     scope.raw("pub mod controllers;");
 }
 
-fn generate_event_capturing_function(scope: &mut Scope) {
+fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
     let function: ItemFn = parse_quote! {
         pub async fn watch_resource<T>(
             api: Api<T>,
@@ -288,7 +421,7 @@ fn generate_event_capturing_function(scope: &mut Scope) {
                 + core::fmt::Debug
                 + 'static,
         {
-            let finalizer = String::from("finalizers.example.com");
+            let finalizer = String::from(format!("finalizers.{}", #api_group));
             let finalizers = resource.meta_mut().finalizers.get_or_insert_with(Vec::new);
             if finalizers.contains(&finalizer) {
                 debug!("Finalizer already exists");
@@ -314,7 +447,7 @@ fn generate_event_capturing_function(scope: &mut Scope) {
         pub async fn remove_finalizer<T>(resource: &mut T, api: Api<T>)
             where
                 T: Clone + Serialize + DeserializeOwned + Resource + CustomResourceExt + core::fmt::Debug + 'static {
-            let finalizer = String::from("finalizers.example.com");
+            let finalizer = String::from(format!("finalizers.{}", #api_group));
             if let Some(finalizers) = &mut resource.meta_mut().finalizers {
                 if finalizers.contains(&finalizer) {
                     finalizers.retain(|f| f != &finalizer);

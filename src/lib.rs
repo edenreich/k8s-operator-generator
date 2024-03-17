@@ -46,7 +46,7 @@ where
         + core::fmt::Debug
         + 'static,
 {
-    let finalizer = String::from("finalizers.example.com");
+    let finalizer = String::from(format!("finalizers.{}", "example.com"));
     let finalizers = resource.meta_mut().finalizers.get_or_insert_with(Vec::new);
     if finalizers.contains(&finalizer) {
         debug!("Finalizer already exists");
@@ -76,7 +76,7 @@ where
         + core::fmt::Debug
         + 'static,
 {
-    let finalizer = String::from("finalizers.example.com");
+    let finalizer = String::from(format!("finalizers.{}", "example.com"));
     if let Some(finalizers) = &mut resource.meta_mut().finalizers {
         if finalizers.contains(&finalizer) {
             finalizers.retain(|f| f != &finalizer);
