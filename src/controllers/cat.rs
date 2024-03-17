@@ -3,10 +3,12 @@ use crate::add_finalizer;
 use crate::remove_finalizer;
 use crate::Cat;
 use kube::api::Api;
+use kube::api::PostParams;
 use kube::api::WatchEvent;
 use kube::Resource;
 use log::error;
 use log::info;
+use log::warn;
 use openapi_client::apis::configuration::Configuration;
 use openapi_client::apis::default_api::cats_id_delete;
 use openapi_client::apis::default_api::cats_id_put;
@@ -14,13 +16,13 @@ use openapi_client::apis::default_api::cats_post;
 use openapi_client::models::Cat as CatDto;
 
 fn convert_to_dto(cat_resource: Cat) -> CatDto {
-    let id = match cat_resource.status {
-        Some(status) => status.id,
+    let uuid = match cat_resource.status {
+        Some(status) => status.uuid,
         None => None,
     };
 
     CatDto {
-        id,
+        uuid,
         name: cat_resource.spec.name,
         breed: cat_resource.spec.breed,
         age: cat_resource.spec.age,
@@ -57,12 +59,15 @@ async fn handle_added(config: &Configuration, kind_str: String, cat: &mut Cat, a
         return;
     }
     let model = cat.clone();
-    let dto = convert_to_dto(model);
     let name = cat.metadata.name.clone().unwrap();
-    add_finalizer(cat, api.clone()).await;
+    let dto = convert_to_dto(model);
+    if dto.uuid.is_some() {
+        info!("{} {} already exists", kind_str, name);
+        return;
+    }
     match cats_post(config, dto).await {
-        Ok(_) => {
-            info!("{} {} added successfully", kind_str, name);
+        Ok(resp) => {
+            info!("{} {} created successfully", kind_str, name);
             add_event(
                 kind_str.clone(),
                 cat,
@@ -71,6 +76,29 @@ async fn handle_added(config: &Configuration, kind_str: String, cat: &mut Cat, a
                 format!("{} {} created remotely", kind_str, name),
             )
             .await;
+            if let (Some(status), Some(uuid)) = (cat.status.as_mut(), resp.uuid.clone()) {
+                status.uuid = Some(uuid);
+                add_finalizer(cat, api.clone()).await;
+                let new_status = cat
+                    .status
+                    .clone()
+                    .expect("Expected resource to have a status");
+                let new_status_bytes =
+                    serde_json::to_vec(&new_status).expect("Failed to serialize CatStatus");
+                match api
+                    .replace_status(&name, &PostParams::default(), new_status_bytes)
+                    .await
+                {
+                    Ok(_) => {
+                        info!("Status updated successfully for {}", name);
+                    }
+                    Err(e) => {
+                        error!("Failed to update status for {}: {:?}", name, e);
+                    }
+                }
+            } else {
+                warn!("Failed to retrieve id from response");
+            }
         }
         Err(e) => {
             error!("Failed to add {} {}: {:?}", kind_str, name, e);
@@ -90,8 +118,8 @@ async fn handle_modified(config: &Configuration, kind_str: String, cat: &mut Cat
     let model = cat.clone();
     let dto = convert_to_dto(model);
     let name = cat.metadata.name.clone().unwrap();
-    if let Some(ref id) = dto.id.clone() {
-        match cats_id_put(config, id.as_str(), dto).await {
+    if let Some(ref uuid) = dto.uuid.clone() {
+        match cats_id_put(config, uuid.as_str(), dto).await {
             Ok(_) => {
                 info!("{} {} modified successfully", kind_str, name);
                 add_event(
@@ -132,8 +160,8 @@ async fn handle_deleted(config: &Configuration, kind_str: String, cat: &mut Cat,
     let model = cat.clone();
     let dto = convert_to_dto(model);
     let name = cat.metadata.name.clone().unwrap();
-    if let Some(id) = dto.id.clone() {
-        match cats_id_delete(config, id.as_str()).await {
+    if let Some(uuid) = dto.uuid.clone() {
+        match cats_id_delete(config, uuid.as_str()).await {
             Ok(res) => {
                 info!("{} {} deleted successfully", kind_str, name);
                 add_event(

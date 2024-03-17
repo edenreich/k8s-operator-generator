@@ -1,7 +1,5 @@
 .gitignore
-.openapi-generator-ignore
 .travis.yml
-Cargo.toml
 README.md
 docs/Cat.md
 docs/DefaultApi.md

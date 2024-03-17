@@ -170,9 +170,9 @@ components:
         - breed
         - age
       properties:
-        id:
+        uuid:
           type: string
-          example: '1'
+          example: '76523f74-484c-4018-b9bf-1c03b134512a'
         name:
           type: string
           example: 'Fluffy'
@@ -189,9 +189,9 @@ components:
         - breed
         - age
       properties:
-        id:
+        uuid:
           type: string
-          example: '1'
+          example: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
         name:
           type: string
           example: 'Fido'

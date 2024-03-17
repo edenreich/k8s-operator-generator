@@ -160,7 +160,7 @@ pub async fn add_event<T>(
     namespaced
 )]
 pub struct CatSpec {
-    id: Option<String>,
+    uuid: Option<String>,
     name: String,
     breed: String,
     age: i32,
@@ -168,7 +168,7 @@ pub struct CatSpec {
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct CatStatus {
-    id: Option<String>,
+    uuid: Option<String>,
 }
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema, CustomResource)]
@@ -181,7 +181,7 @@ pub struct CatStatus {
     namespaced
 )]
 pub struct DogSpec {
-    id: Option<String>,
+    uuid: Option<String>,
     name: String,
     breed: String,
     age: i32,
@@ -189,5 +189,5 @@ pub struct DogSpec {
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct DogStatus {
-    id: Option<String>,
+    uuid: Option<String>,
 }

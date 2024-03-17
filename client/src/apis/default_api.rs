@@ -11,7 +11,7 @@
 
 use reqwest;
 
-use crate::apis::ResponseContent;
+use crate::{apis::ResponseContent, models};
 use super::{Error, configuration};
 
 
@@ -90,7 +90,7 @@ pub enum DogsPostError {
 }
 
 
-pub async fn cats_get(configuration: &configuration::Configuration, ) -> Result<Vec<crate::models::Cat>, Error<CatsGetError>> {
+pub async fn cats_get(configuration: &configuration::Configuration, ) -> Result<Vec<models::Cat>, Error<CatsGetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -144,7 +144,7 @@ pub async fn cats_id_delete(configuration: &configuration::Configuration, id: &s
     }
 }
 
-pub async fn cats_id_get(configuration: &configuration::Configuration, id: &str) -> Result<crate::models::Cat, Error<CatsIdGetError>> {
+pub async fn cats_id_get(configuration: &configuration::Configuration, id: &str) -> Result<models::Cat, Error<CatsIdGetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -171,7 +171,7 @@ pub async fn cats_id_get(configuration: &configuration::Configuration, id: &str)
     }
 }
 
-pub async fn cats_id_put(configuration: &configuration::Configuration, id: &str, cat: crate::models::Cat) -> Result<crate::models::Cat, Error<CatsIdPutError>> {
+pub async fn cats_id_put(configuration: &configuration::Configuration, id: &str, cat: models::Cat) -> Result<models::Cat, Error<CatsIdPutError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -199,7 +199,7 @@ pub async fn cats_id_put(configuration: &configuration::Configuration, id: &str,
     }
 }
 
-pub async fn cats_post(configuration: &configuration::Configuration, cat: crate::models::Cat) -> Result<crate::models::Cat, Error<CatsPostError>> {
+pub async fn cats_post(configuration: &configuration::Configuration, cat: models::Cat) -> Result<models::Cat, Error<CatsPostError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -227,7 +227,7 @@ pub async fn cats_post(configuration: &configuration::Configuration, cat: crate:
     }
 }
 
-pub async fn dogs_get(configuration: &configuration::Configuration, ) -> Result<Vec<crate::models::Dog>, Error<DogsGetError>> {
+pub async fn dogs_get(configuration: &configuration::Configuration, ) -> Result<Vec<models::Dog>, Error<DogsGetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -281,7 +281,7 @@ pub async fn dogs_id_delete(configuration: &configuration::Configuration, id: &s
     }
 }
 
-pub async fn dogs_id_get(configuration: &configuration::Configuration, id: &str) -> Result<crate::models::Dog, Error<DogsIdGetError>> {
+pub async fn dogs_id_get(configuration: &configuration::Configuration, id: &str) -> Result<models::Dog, Error<DogsIdGetError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -308,7 +308,7 @@ pub async fn dogs_id_get(configuration: &configuration::Configuration, id: &str)
     }
 }
 
-pub async fn dogs_id_put(configuration: &configuration::Configuration, id: &str, dog: crate::models::Dog) -> Result<crate::models::Dog, Error<DogsIdPutError>> {
+pub async fn dogs_id_put(configuration: &configuration::Configuration, id: &str, dog: models::Dog) -> Result<models::Dog, Error<DogsIdPutError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;
@@ -336,7 +336,7 @@ pub async fn dogs_id_put(configuration: &configuration::Configuration, id: &str,
     }
 }
 
-pub async fn dogs_post(configuration: &configuration::Configuration, dog: crate::models::Dog) -> Result<crate::models::Dog, Error<DogsPostError>> {
+pub async fn dogs_post(configuration: &configuration::Configuration, dog: models::Dog) -> Result<models::Dog, Error<DogsPostError>> {
     let local_var_configuration = configuration;
 
     let local_var_client = &local_var_configuration.client;

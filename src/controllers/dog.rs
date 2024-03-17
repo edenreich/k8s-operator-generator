@@ -3,10 +3,12 @@ use crate::add_finalizer;
 use crate::remove_finalizer;
 use crate::Dog;
 use kube::api::Api;
+use kube::api::PostParams;
 use kube::api::WatchEvent;
 use kube::Resource;
 use log::error;
 use log::info;
+use log::warn;
 use openapi_client::apis::configuration::Configuration;
 use openapi_client::apis::default_api::dogs_id_delete;
 use openapi_client::apis::default_api::dogs_id_put;
@@ -14,6 +16,10 @@ use openapi_client::apis::default_api::dogs_post;
 use openapi_client::models::Dog as DogDto;
 
 fn convert_to_dto(dog_resource: Dog) -> DogDto {
+    let uuid = match dog_resource.status {
+        Some(status) => status.uuid,
+        None => None,
+    };
     todo!("Convert the resource to a DTO");
 }
 
@@ -47,8 +53,12 @@ async fn handle_added(config: &Configuration, kind_str: String, dog: &mut Dog, a
         return;
     }
     let model = dog.clone();
-    let dto = convert_to_dto(model);
     let name = dog.metadata.name.clone().unwrap();
+    let dto = convert_to_dto(model);
+    if dto.uuid.is_some() {
+        info!("{} {} already exists", kind_str, name);
+        return;
+    }
     match dogs_post(config, dto).await {
         Ok(resp) => {
             info!("{} {} created successfully", kind_str, name);
@@ -60,8 +70,29 @@ async fn handle_added(config: &Configuration, kind_str: String, dog: &mut Dog, a
                 format!("{} {} created remotely", kind_str, name),
             )
             .await;
-            add_finalizer(dog, api.clone()).await;
-            dog.status.as_mut().unwrap().id = Some(resp.id.clone().unwrap());
+            if let (Some(status), Some(uuid)) = (dog.status.as_mut(), resp.uuid.clone()) {
+                status.uuid = Some(uuid);
+                add_finalizer(dog, api.clone()).await;
+                let new_status = dog
+                    .status
+                    .clone()
+                    .expect("Expected resource to have a status");
+                let new_status_bytes =
+                    serde_json::to_vec(&new_status).expect("Failed to serialize CatStatus");
+                match api
+                    .replace_status(&name, &PostParams::default(), new_status_bytes)
+                    .await
+                {
+                    Ok(_) => {
+                        info!("Status updated successfully for {}", name);
+                    }
+                    Err(e) => {
+                        error!("Failed to update status for {}: {:?}", name, e);
+                    }
+                }
+            } else {
+                warn!("Failed to retrieve id from response");
+            }
         }
         Err(e) => {
             error!("Failed to add {} {}: {:?}", kind_str, name, e);
@@ -81,8 +112,8 @@ async fn handle_modified(config: &Configuration, kind_str: String, dog: &mut Dog
     let model = dog.clone();
     let dto = convert_to_dto(model);
     let name = dog.metadata.name.clone().unwrap();
-    if let Some(ref id) = dto.id.clone() {
-        match dogs_id_put(config, id.as_str(), dto).await {
+    if let Some(ref uuid) = dto.uuid.clone() {
+        match dogs_id_put(config, uuid.as_str(), dto).await {
             Ok(_) => {
                 info!("{} {} modified successfully", kind_str, name);
                 add_event(
@@ -123,8 +154,8 @@ async fn handle_deleted(config: &Configuration, kind_str: String, dog: &mut Dog,
     let model = dog.clone();
     let dto = convert_to_dto(model);
     let name = dog.metadata.name.clone().unwrap();
-    if let Some(id) = dto.id.clone() {
-        match dogs_id_delete(config, id.as_str()).await {
+    if let Some(uuid) = dto.uuid.clone() {
+        match dogs_id_delete(config, uuid.as_str()).await {
             Ok(res) => {
                 info!("{} {} deleted successfully", kind_str, name);
                 add_event(

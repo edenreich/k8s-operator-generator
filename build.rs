@@ -133,7 +133,7 @@ fn generate_struct(
         .derive("Serialize")
         .derive("JsonSchema");
 
-    struct_status.field("id", "Option<String>");
+    struct_status.field("uuid", "Option<String>");
     struct_status.vis("pub");
 
     // Add fields to the struct based on the schema
@@ -325,8 +325,10 @@ fn generate_function(name: &str) {
         "use kube::Resource;
          use kube::api::WatchEvent;
          use kube::api::Api;
+         use kube::api::PostParams;
          use log::info;
          use log::error;
+         use log::warn;
          use crate::add_finalizer;
          use crate::remove_finalizer;
          use crate::add_event;
@@ -373,6 +375,10 @@ fn generate_function(name: &str) {
 
     let function_dto: TokenStream = quote! {
         fn convert_to_dto(#resource: #struct_name) -> #dto {
+            let uuid = match #resource.status {
+                Some(status) => status.uuid,
+                None => None,
+            };
             todo!("Convert the resource to a DTO");
         }
     };
@@ -385,8 +391,18 @@ fn generate_function(name: &str) {
             }
 
             let model = #arg_name.clone();
-            let dto = convert_to_dto(model);
             let name = #arg_name.metadata.name.clone().unwrap();
+            let dto = convert_to_dto(model);
+
+            if dto.uuid.is_some() {
+                info!(
+                    "{} {} already exists",
+                    kind_str,
+                    name
+                );
+                // Todo - check drift
+                return;
+            }
 
             match #create_function_name(config, dto).await {
                 Ok(resp) => {
@@ -398,8 +414,28 @@ fn generate_function(name: &str) {
                         kind_str.clone(),
                         format!("{} {} created remotely", kind_str, name),
                     ).await;
-                    add_finalizer(#arg_name, api.clone()).await;
-                    #arg_name.status.as_mut().unwrap().id = Some(resp.id.clone().unwrap());
+
+                    if let (Some(status), Some(uuid)) = (#arg_name.status.as_mut(), resp.uuid.clone()) {
+                        status.uuid = Some(uuid);
+                        add_finalizer(#arg_name, api.clone()).await;
+
+                        let new_status = #arg_name.status.clone().expect("Expected resource to have a status");
+                        let new_status_bytes =
+                            serde_json::to_vec(&new_status).expect("Failed to serialize CatStatus");
+                        match api
+                            .replace_status(&name, &PostParams::default(), new_status_bytes)
+                            .await
+                        {
+                            Ok(_) => {
+                                info!("Status updated successfully for {}", name);
+                            }
+                            Err(e) => {
+                                error!("Failed to update status for {}: {:?}", name, e);
+                            }
+                        }
+                    } else {
+                        warn!("Failed to retrieve id from response");
+                    }
                 }
                 Err(e) => {
                     error!("Failed to add {} {}: {:?}", kind_str, name, e);
@@ -421,8 +457,8 @@ fn generate_function(name: &str) {
             let dto = convert_to_dto(model);
             let name = #arg_name.metadata.name.clone().unwrap();
 
-            if let Some(ref id) = dto.id.clone() {
-                match #update_function_name(config, id.as_str(), dto).await {
+            if let Some(ref uuid) = dto.uuid.clone() {
+                match #update_function_name(config, uuid.as_str(), dto).await {
                     Ok(_) => {
                         info!("{} {} modified successfully", kind_str, name);
                         add_event(
@@ -467,8 +503,8 @@ fn generate_function(name: &str) {
             let dto = convert_to_dto(model);
             let name = #arg_name.metadata.name.clone().unwrap();
 
-            if let Some(id) = dto.id.clone() {
-                match #delete_function_name(config, id.as_str()).await {
+            if let Some(uuid) = dto.uuid.clone() {
+                match #delete_function_name(config, uuid.as_str()).await {
                     Ok(res) => {
                         info!("{} {} deleted successfully", kind_str, name);
                         add_event(

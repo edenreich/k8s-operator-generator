@@ -19,7 +19,7 @@ Method | HTTP request | Description
 
 ## cats_get
 
-> Vec<crate::models::Cat> cats_get()
+> Vec<models::Cat> cats_get()
 Get all cats
 
 ### Parameters
@@ -28,7 +28,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**Vec<crate::models::Cat>**](Cat.md)
+[**Vec<models::Cat>**](Cat.md)
 
 ### Authorization
 
@@ -72,7 +72,7 @@ No authorization required
 
 ## cats_id_get
 
-> crate::models::Cat cats_id_get(id)
+> models::Cat cats_id_get(id)
 Get a cat by ID
 
 ### Parameters
@@ -84,7 +84,7 @@ Name | Type | Description  | Required | Notes
 
 ### Return type
 
-[**crate::models::Cat**](Cat.md)
+[**models::Cat**](Cat.md)
 
 ### Authorization
 
@@ -100,7 +100,7 @@ No authorization required
 
 ## cats_id_put
 
-> crate::models::Cat cats_id_put(id, cat)
+> models::Cat cats_id_put(id, cat)
 Update a cat by ID
 
 ### Parameters
@@ -113,7 +113,7 @@ Name | Type | Description  | Required | Notes
 
 ### Return type
 
-[**crate::models::Cat**](Cat.md)
+[**models::Cat**](Cat.md)
 
 ### Authorization
 
@@ -129,7 +129,7 @@ No authorization required
 
 ## cats_post
 
-> crate::models::Cat cats_post(cat)
+> models::Cat cats_post(cat)
 Create a new cat
 
 ### Parameters
@@ -141,7 +141,7 @@ Name | Type | Description  | Required | Notes
 
 ### Return type
 
-[**crate::models::Cat**](Cat.md)
+[**models::Cat**](Cat.md)
 
 ### Authorization
 
@@ -157,7 +157,7 @@ No authorization required
 
 ## dogs_get
 
-> Vec<crate::models::Dog> dogs_get()
+> Vec<models::Dog> dogs_get()
 Get all dogs
 
 ### Parameters
@@ -166,7 +166,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**Vec<crate::models::Dog>**](Dog.md)
+[**Vec<models::Dog>**](Dog.md)
 
 ### Authorization
 
@@ -210,7 +210,7 @@ No authorization required
 
 ## dogs_id_get
 
-> crate::models::Dog dogs_id_get(id)
+> models::Dog dogs_id_get(id)
 Get a dog by ID
 
 ### Parameters
@@ -222,7 +222,7 @@ Name | Type | Description  | Required | Notes
 
 ### Return type
 
-[**crate::models::Dog**](Dog.md)
+[**models::Dog**](Dog.md)
 
 ### Authorization
 
@@ -238,7 +238,7 @@ No authorization required
 
 ## dogs_id_put
 
-> crate::models::Dog dogs_id_put(id, dog)
+> models::Dog dogs_id_put(id, dog)
 Update a dog by ID
 
 ### Parameters
@@ -251,7 +251,7 @@ Name | Type | Description  | Required | Notes
 
 ### Return type
 
-[**crate::models::Dog**](Dog.md)
+[**models::Dog**](Dog.md)
 
 ### Authorization
 
@@ -267,7 +267,7 @@ No authorization required
 
 ## dogs_post
 
-> crate::models::Dog dogs_post(dog)
+> models::Dog dogs_post(dog)
 Create a new dog
 
 ### Parameters
@@ -279,7 +279,7 @@ Name | Type | Description  | Required | Notes
 
 ### Return type
 
-[**crate::models::Dog**](Dog.md)
+[**models::Dog**](Dog.md)
 
 ### Authorization
 

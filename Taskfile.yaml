@@ -24,12 +24,13 @@ tasks:
   run:
     desc: Run the k8s operator
     cmds:
-      - RUST_LOG=debug cargo run --bin operator
+      - RUST_LOG=info cargo run --bin operator
 
   run-fake-server:
     desc: Run the JSON server
     cmds:
-      - docker run --rm  -it -p 8080:80 -v ${PWD}/fake-server/data.json:/data/db.json clue/json-server
+      - docker run --rm -it -p 8080:80 -v ${PWD}/fake-server:/data -w /data --entrypoint="" clue/json-server bash -c "npm install"
+      - docker run --rm -it -p 8080:80 -v ${PWD}/fake-server:/data -w /data clue/json-server --watch db.js --id 'uuid'
 
   package:
     desc: Package the k8s operator
