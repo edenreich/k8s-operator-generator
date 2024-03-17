@@ -9,6 +9,7 @@ rules:
     resources:
       - cats
       - dogs
+      - horses
     verbs:
       - get
       - list

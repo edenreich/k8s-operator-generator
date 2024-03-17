@@ -4,6 +4,7 @@ fn main() {
     let crds = vec![
         k8s_operator::types::cat::Cat::crd(),
         k8s_operator::types::dog::Dog::crd(),
+        k8s_operator::types::horse::Horse::crd(),
     ];
 
     for crd in crds {

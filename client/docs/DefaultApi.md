@@ -14,6 +14,11 @@ Method | HTTP request | Description
 [**dogs_id_get**](DefaultApi.md#dogs_id_get) | **GET** /dogs/{id} | Get a dog by ID
 [**dogs_id_put**](DefaultApi.md#dogs_id_put) | **PUT** /dogs/{id} | Update a dog by ID
 [**dogs_post**](DefaultApi.md#dogs_post) | **POST** /dogs | Create a new dog
+[**horses_get**](DefaultApi.md#horses_get) | **GET** /horses | Get all horses
+[**horses_id_delete**](DefaultApi.md#horses_id_delete) | **DELETE** /horses/{id} | Delete a horse by ID
+[**horses_id_get**](DefaultApi.md#horses_id_get) | **GET** /horses/{id} | Get a horse by ID
+[**horses_id_put**](DefaultApi.md#horses_id_put) | **PUT** /horses/{id} | Update a horse by ID
+[**horses_post**](DefaultApi.md#horses_post) | **POST** /horses | Create a new horse
 
 
 
@@ -280,6 +285,144 @@ Name | Type | Description  | Required | Notes
 ### Return type
 
 [**models::Dog**](Dog.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: application/json
+- **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+
+## horses_get
+
+> Vec<models::Horse> horses_get()
+Get all horses
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**Vec<models::Horse>**](Horse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+
+## horses_id_delete
+
+> horses_id_delete(id)
+Delete a horse by ID
+
+### Parameters
+
+
+Name | Type | Description  | Required | Notes
+------------- | ------------- | ------------- | ------------- | -------------
+**id** | **String** |  | [required] |
+
+### Return type
+
+ (empty response body)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: Not defined
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+
+## horses_id_get
+
+> models::Horse horses_id_get(id)
+Get a horse by ID
+
+### Parameters
+
+
+Name | Type | Description  | Required | Notes
+------------- | ------------- | ------------- | ------------- | -------------
+**id** | **String** |  | [required] |
+
+### Return type
+
+[**models::Horse**](Horse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+
+## horses_id_put
+
+> models::Horse horses_id_put(id, horse)
+Update a horse by ID
+
+### Parameters
+
+
+Name | Type | Description  | Required | Notes
+------------- | ------------- | ------------- | ------------- | -------------
+**id** | **String** |  | [required] |
+**horse** | [**Horse**](Horse.md) |  | [required] |
+
+### Return type
+
+[**models::Horse**](Horse.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: application/json
+- **Accept**: application/json
+
+[[Back to top]](#) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to Model list]](../README.md#documentation-for-models) [[Back to README]](../README.md)
+
+
+## horses_post
+
+> models::Horse horses_post(horse)
+Create a new horse
+
+### Parameters
+
+
+Name | Type | Description  | Required | Notes
+------------- | ------------- | ------------- | ------------- | -------------
+**horse** | [**Horse**](Horse.md) |  | [required] |
+
+### Return type
+
+[**models::Horse**](Horse.md)
 
 ### Authorization
 
