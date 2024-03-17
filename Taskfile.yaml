@@ -47,7 +47,7 @@ tasks:
   package:
     desc: Package the k8s operator
     cmds:
-      - docker build -t operator .
+      - docker build -t operator:latest .
 
   cluster-create:
     desc: Create a k8s cluster
