@@ -18,11 +18,12 @@ The following dependencies are needed:
 1. Download OAS: `task oas-download`.
 2. Run `task generate`.
 3. Import the generated types and controllers from `src/types/*` and `src/controllers/*` to `src/main.rs`.
-4. Create a development cluster: `task cluster-create`.
-5. Deploy CRD's `task deploy-crds`.
-6. Run the operator: `task run`.
-7. Try out to deploy the `manifests/samples` by running `kubectl apply -f manifests/samples/`.
-8. Mark the controller as implemented in `.openapi-generator-ignore` file.
+4. Mark the controller as in implementation by adding it to `.openapi-generator-ignore` file.
+5. Implement the Data Transfer Object(DTO) in the controller.
+6. Create a development cluster: `task cluster-create`.
+7. Deploy CRD's `task deploy-crds`.
+8. Run the operator: `task run`.
+9. Try out to deploy the `manifests/examples` by running `kubectl apply -f manifests/examples/`.
 
 ### Usage
 
