@@ -128,7 +128,7 @@ fn main() {
     let mut insert_lines = String::new();
     for schema_name in schema_names {
         let line = format!(
-            "serde_yaml::to_string(&k8s_operator::types::{}::{}::crd()).unwrap(),\n",
+            "k8s_operator::types::{}::{}::crd(),\n",
             schema_name.to_lowercase(),
             schema_name,
         );
@@ -141,10 +141,16 @@ fn main() {
 use kube::CustomResourceExt;
 
 fn main() {{
-    print!(
-        "---\n{{}}\n---\n{{}}",
+    let crds = vec![
         {}
-    );
+    ];
+
+    for crd in crds {{
+        match serde_yaml::to_string(&crd) {{
+            Ok(yaml) => print!("---\n{{}}", yaml),
+            Err(e) => eprintln!("Error serializing CRD to YAML: {{}}", e),
+        }}
+    }}
 }}
 "#,
         insert_lines

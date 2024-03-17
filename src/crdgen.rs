@@ -1,9 +1,15 @@
 use kube::CustomResourceExt;
 
 fn main() {
-    print!(
-        "---\n{}\n---\n{}",
-        serde_yaml::to_string(&k8s_operator::types::cat::Cat::crd()).unwrap(),
-        serde_yaml::to_string(&k8s_operator::types::dog::Dog::crd()).unwrap(),
-    );
+    let crds = vec![
+        k8s_operator::types::cat::Cat::crd(),
+        k8s_operator::types::dog::Dog::crd(),
+    ];
+
+    for crd in crds {
+        match serde_yaml::to_string(&crd) {
+            Ok(yaml) => print!("---\n{}", yaml),
+            Err(e) => eprintln!("Error serializing CRD to YAML: {}", e),
+        }
+    }
 }
