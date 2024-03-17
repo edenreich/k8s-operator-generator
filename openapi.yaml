@@ -161,6 +161,85 @@ paths:
       responses:
         '204':
           description: No content
+  /horses:
+    get:
+      summary: Get all horses
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Horse'
+    post:
+      summary: Create a new horse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Horse'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Horse'
+  /horses/{id}:
+    get:
+      summary: Get a horse by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Horse'
+        '404':
+          description: Not found
+    put:
+      summary: Update a horse by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Horse'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Horse'
+        '404':
+          description: Not found
+    delete:
+      summary: Delete a horse by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No content
 components:
   schemas:
     Cat:
@@ -183,6 +262,25 @@ components:
           type: integer
           example: 3
     Dog:
+      type: object
+      required:
+        - name
+        - breed
+        - age
+      properties:
+        uuid:
+          type: string
+          example: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
+        name:
+          type: string
+          example: 'Fido'
+        breed:
+          type: string
+          example: 'Bulldog'
+        age:
+          type: integer
+          example: 3
+    Horse:
       type: object
       required:
         - name
