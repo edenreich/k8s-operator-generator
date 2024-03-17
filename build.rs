@@ -13,8 +13,8 @@ use syn::parse_quote;
 use syn::ItemFn;
 
 fn main() {
-    let input = "./openapi.yaml";
-    let dest = "./src/lib.rs";
+    let input = "openapi.yaml";
+    let lib_file_path = "src/lib.rs";
 
     // Read the OpenAPI specification from the YAML file
     let mut file = File::open(input).expect("Unable to open file");
@@ -25,56 +25,24 @@ fn main() {
     // Parse the OpenAPI specification
     let openapi: OpenAPI = serde_yaml::from_str(&contents).expect("Unable to parse OpenAPI spec");
 
-    // Create a new codegen scope
-    let mut scope = Scope::new();
-
-    // Add necessary imports to the scope
-    scope.import("log", "error");
-    scope.import("log", "info");
-    scope.import("log", "debug");
-    scope.import("kube", "Resource");
-    scope.import("kube", "ResourceExt");
-    scope.import("kube::core", "CustomResourceExt");
-    scope.import("kube::api", "Api");
-    scope.import("kube::api", "WatchEvent");
-    scope.import("kube::api", "WatchParams");
-    scope.import("kube::api", "Patch");
-    scope.import("kube::api", "PatchParams");
-    scope.import("kube::api", "PostParams");
-    scope.import("kube::api", "ObjectMeta");
-    scope.import("futures_util::stream", "StreamExt");
-    scope.import("tokio::time", "sleep");
-    scope.import("tokio::time", "Duration");
-    scope.import("serde::de", "DeserializeOwned");
-    scope.import("serde", "Serialize");
-    scope.import("serde_json", "json");
-    scope.import("k8s_openapi", "chrono");
-    scope.import("k8s_openapi::api::core::v1", "Event");
-    scope.import("k8s_openapi::api::core::v1", "EventSource");
-    scope.import("k8s_openapi::api::core::v1", "ObjectReference");
-    scope.import("k8s_openapi::apimachinery::pkg::apis::meta::v1", "Time");
-
-    scope.raw("pub mod types;");
-    scope.raw("pub mod controllers;");
-
-    // Generate a generic event handler function
-    generate_generic_function(&mut scope);
-
-    // Write the Rust code to a file
-    let mut file = File::create(dest).unwrap();
-    write!(file, "{}", scope.to_string()).unwrap();
-
-    // Run rust fmt on the generated file
-    Command::new("rustfmt")
-        .arg(dest)
-        .status()
-        .expect("Failed to run rustfmt on generated file");
+    // Generate lib.rs
+    if not_in_openapi_ignore(lib_file_path) {
+        let mut scope = Scope::new();
+        generate_lib_imports(&mut scope);
+        generate_event_capturing_function(&mut scope);
+        let mut file = File::create(lib_file_path).expect("Unable to create file");
+        write!(file, "{}", scope.to_string()).expect("Unable to write to file");
+        Command::new("rustfmt")
+            .arg(lib_file_path)
+            .status()
+            .expect("Failed to run rustfmt on generated file");
+    }
 
     // Create the types directory if it doesn't exist
     DirBuilder::new()
         .recursive(true)
         .create("src/types")
-        .unwrap();
+        .expect("Unable to create types directory");
 
     // Generate Rust code for each schema in the components
     if let Some(components) = openapi.components.clone() {
@@ -84,60 +52,57 @@ fn main() {
                     // Handle references here if needed
                 }
                 openapiv3::ReferenceOr::Item(item) => {
-                    let rust_code = generate_rust_code(&name, "example.com", "v1", &item);
-                    // Write the Rust code to a file in the types directory
-                    let mut file =
-                        File::create(format!("src/types/{}.rs", name.to_lowercase())).unwrap();
-                    write!(file, "{}", rust_code).unwrap();
-
-                    // Run rust fmt on the generated file
-                    Command::new("rustfmt")
-                        .arg(format!("src/types/{}.rs", name.to_lowercase()))
-                        .status()
-                        .expect("Failed to run rustfmt on generated file");
+                    if not_in_openapi_ignore(&format!("src/types/{}.rs", name.to_lowercase())) {
+                        let rust_code = generate_rust_code(&name, "example.com", "v1", &item);
+                        let mut file =
+                            File::create(format!("src/types/{}.rs", name.to_lowercase())).unwrap();
+                        write!(file, "{}", rust_code).unwrap();
+                        Command::new("rustfmt")
+                            .arg(format!("src/types/{}.rs", name.to_lowercase()))
+                            .status()
+                            .expect("Failed to run rustfmt on generated file");
+                    }
                 }
             }
         }
     }
 
-    // Generate a mod.rs file that publicly exports all the generated modules
-    let mut mod_file = File::create("src/types/mod.rs").unwrap();
-    if let Some(components) = openapi.components.clone() {
-        for name in components.schemas.keys() {
-            writeln!(mod_file, "pub mod {};", name.to_lowercase()).unwrap();
-        }
-    }
-
-    // Generate a mod.rs file that publicly exports all the generated modules
-    let mut mod_file = File::create("src/controllers/mod.rs").unwrap();
-    if let Some(components) = openapi.components.clone() {
-        for name in components.schemas.keys() {
-            writeln!(mod_file, "pub mod {};", name.to_lowercase()).unwrap();
-        }
-    }
-
     let schema_names = openapi
         .components
-        .unwrap()
+        .expect("No components in OpenAPI spec")
         .schemas
         .keys()
         .map(|name| name.to_string())
         .collect::<Vec<String>>();
 
-    // Generate the Rust code
-    let mut insert_lines = String::new();
-    for schema_name in schema_names {
-        let line = format!(
-            "k8s_operator::types::{}::{}::crd(),\n",
-            schema_name.to_lowercase(),
-            schema_name,
-        );
-        insert_lines.push_str(&line);
+    // Generate a mod.rs file that publicly exports all the generated modules
+    if not_in_openapi_ignore("src/types/mod.rs") {
+        let mut types_mod_file = File::create("src/types/mod.rs").unwrap();
+        for name in schema_names.clone() {
+            writeln!(types_mod_file, "pub mod {};", name.to_lowercase()).unwrap();
+        }
+
+        let mut controllers_mod_file = File::create("src/controllers/mod.rs").unwrap();
+        for name in schema_names.clone() {
+            writeln!(controllers_mod_file, "pub mod {};", name.to_lowercase()).unwrap();
+        }
     }
-    let mut crdgen_file = File::create("src/crdgen.rs").unwrap();
-    write!(
-        crdgen_file,
-        r#"
+
+    // Generate the code that generates the CRDs
+    if not_in_openapi_ignore("src/crdgen.rs") {
+        let mut insert_lines = String::new();
+        for schema_name in schema_names.clone() {
+            let line = format!(
+                "k8s_operator::types::{}::{}::crd(),\n",
+                schema_name.to_lowercase(),
+                schema_name,
+            );
+            insert_lines.push_str(&line);
+        }
+        let mut crdgen_file = File::create("src/crdgen.rs").unwrap();
+        write!(
+            crdgen_file,
+            r#"
 use kube::CustomResourceExt;
 
 fn main() {{
@@ -153,15 +118,16 @@ fn main() {{
     }}
 }}
 "#,
-        insert_lines
-    )
-    .unwrap();
+            insert_lines
+        )
+        .unwrap();
 
-    // format the file using rustfmt
-    Command::new("rustfmt")
-        .arg("src/crdgen.rs")
-        .status()
-        .expect("Failed to run rustfmt on src/crdgen.rs");
+        // format the file using rustfmt
+        Command::new("rustfmt")
+            .arg("src/crdgen.rs")
+            .status()
+            .expect("Failed to run rustfmt on src/crdgen.rs");
+    }
 }
 
 fn generate_rust_code(name: &str, api_group: &str, api_version: &str, schema: &Schema) -> String {
@@ -252,7 +218,37 @@ fn generate_struct(
     scope.push_struct(struct_status);
 }
 
-fn generate_generic_function(scope: &mut Scope) {
+fn generate_lib_imports(scope: &mut Scope) {
+    scope.import("log", "error");
+    scope.import("log", "info");
+    scope.import("log", "debug");
+    scope.import("kube", "Resource");
+    scope.import("kube", "ResourceExt");
+    scope.import("kube::core", "CustomResourceExt");
+    scope.import("kube::api", "Api");
+    scope.import("kube::api", "WatchEvent");
+    scope.import("kube::api", "WatchParams");
+    scope.import("kube::api", "Patch");
+    scope.import("kube::api", "PatchParams");
+    scope.import("kube::api", "PostParams");
+    scope.import("kube::api", "ObjectMeta");
+    scope.import("futures_util::stream", "StreamExt");
+    scope.import("tokio::time", "sleep");
+    scope.import("tokio::time", "Duration");
+    scope.import("serde::de", "DeserializeOwned");
+    scope.import("serde", "Serialize");
+    scope.import("serde_json", "json");
+    scope.import("k8s_openapi", "chrono");
+    scope.import("k8s_openapi::api::core::v1", "Event");
+    scope.import("k8s_openapi::api::core::v1", "EventSource");
+    scope.import("k8s_openapi::api::core::v1", "ObjectReference");
+    scope.import("k8s_openapi::apimachinery::pkg::apis::meta::v1", "Time");
+
+    scope.raw("pub mod types;");
+    scope.raw("pub mod controllers;");
+}
+
+fn generate_event_capturing_function(scope: &mut Scope) {
     let function: ItemFn = parse_quote! {
         pub async fn watch_resource<T>(
             api: Api<T>,
@@ -694,4 +690,12 @@ fn generate_controller(name: &str) {
             );
         }
     }
+}
+
+fn not_in_openapi_ignore(file_path: &str) -> bool {
+    let ignore_file =
+        std::fs::File::open(".openapi-generator-ignore").expect("Unable to open file");
+    let reader = BufReader::new(ignore_file);
+    let ignored_files: Vec<String> = reader.lines().filter_map(Result::ok).collect();
+    !ignored_files.contains(&file_path.to_string())
 }
