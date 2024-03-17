@@ -14,15 +14,24 @@ tasks:
   build:
     desc: Build the k8s operator
     cmds:
-      - cargo build --bins --release
+      - cargo build --bins
 
-  generate:
+  generate-types:
+    desc: Generate the Rust types and controllers from the OpenAPI specification
+    cmds:
+      - cargo build
+
+  generate-crds:
     desc: Generate the k8s CRD's out of the rust structs
     cmds:
       - cargo run --bin generate-crds > manifests/crds/all.yaml
+
+  generate:
+    desc: Generate the k8s CRD's out of the rust structs
     deps:
+      - generate-types
       - oas-generate-rust-client
-      - build
+      - generate-crds
 
   run:
     desc: Run the k8s operator
