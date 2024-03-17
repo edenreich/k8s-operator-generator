@@ -25,4 +25,4 @@ jobs:
           version: 3.x
 
       - name: Check if workspace is dirty
-        run: task check-dirty
+        run: task dirty-check
