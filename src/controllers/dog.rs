@@ -1,7 +1,9 @@
 use crate::add_event;
 use crate::add_finalizer;
+use crate::change_status;
 use crate::remove_finalizer;
 use crate::Dog;
+use crate::DogStatus;
 use kube::api::Api;
 use kube::api::PostParams;
 use kube::api::WatchEvent;
@@ -35,7 +37,6 @@ pub async fn handle_dog(event: WatchEvent<Dog>, api: Api<Dog>) {
     match event {
         WatchEvent::Added(mut dog) => handle_added(config, kind_str, &mut dog, api).await,
         WatchEvent::Modified(mut dog) => handle_modified(config, kind_str, &mut dog, api).await,
-        WatchEvent::Deleted(mut dog) => handle_deleted(config, kind_str, &mut dog, api).await,
         WatchEvent::Bookmark(bookmark) => {
             info!("Cat Bookmark: {:?}", bookmark.metadata.resource_version);
             return;
@@ -52,6 +53,9 @@ async fn handle_added(config: &Configuration, kind_str: String, dog: &mut Dog, a
         handle_deleted(config, kind_str, dog, api).await;
         return;
     }
+    if dog.status.is_none() {
+        dog.status = Some(Default::default());
+    }
     let model = dog.clone();
     let name = dog.metadata.name.clone().unwrap();
     let dto = convert_to_dto(model);
@@ -59,6 +63,7 @@ async fn handle_added(config: &Configuration, kind_str: String, dog: &mut Dog, a
         info!("{} {} already exists", kind_str, name);
         return;
     }
+    add_finalizer(dog, api.clone()).await;
     match dogs_post(config, dto).await {
         Ok(resp) => {
             info!("{} {} created successfully", kind_str, name);
@@ -71,27 +76,9 @@ async fn handle_added(config: &Configuration, kind_str: String, dog: &mut Dog, a
             )
             .await;
             if let (Some(status), Some(uuid)) = (dog.status.as_mut(), resp.uuid.clone()) {
-                status.uuid = Some(uuid);
-                add_finalizer(dog, api.clone()).await;
-                let new_status = dog
-                    .status
-                    .clone()
-                    .expect("Expected resource to have a status");
-                let new_status_bytes =
-                    serde_json::to_vec(&new_status).expect("Failed to serialize CatStatus");
-                match api
-                    .replace_status(&name, &PostParams::default(), new_status_bytes)
-                    .await
-                {
-                    Ok(_) => {
-                        info!("Status updated successfully for {}", name);
-                    }
-                    Err(e) => {
-                        error!("Failed to update status for {}: {:?}", name, e);
-                    }
-                }
+                change_status(dog, api.clone(), "uuid", uuid).await;
             } else {
-                warn!("Failed to retrieve id from response");
+                warn!("Failed to retrieve uuid from response");
             }
         }
         Err(e) => {
@@ -109,6 +96,10 @@ async fn handle_added(config: &Configuration, kind_str: String, dog: &mut Dog, a
 }
 
 async fn handle_modified(config: &Configuration, kind_str: String, dog: &mut Dog, api: Api<Dog>) {
+    if dog.metadata.deletion_timestamp.is_some() {
+        handle_deleted(config, kind_str, dog, api).await;
+        return;
+    }
     let model = dog.clone();
     let dto = convert_to_dto(model);
     let name = dog.metadata.name.clone().unwrap();

@@ -299,21 +299,41 @@ fn generate_generic_function(scope: &mut Scope) {
         }
     };
 
+    let change_status_function: ItemFn = parse_quote! {
+        pub async fn change_status<T>(resource: &mut T, api: Api<T>, field: &str, value: String)
+        where
+            T: Clone + Serialize + DeserializeOwned + Resource + CustomResourceExt + core::fmt::Debug + 'static,
+        {
+            let name = resource.meta().name.clone().unwrap();
+            let mut resource_json: serde_json::Value = serde_json::to_value(&resource).expect("Failed to serialize resource");
+            resource_json["status"][field] = serde_json::json!(value);
+            let new_resource: T = serde_json::from_value(resource_json).expect("Failed to deserialize resource");
+            let resource_bytes = serde_json::to_vec(&new_resource).expect("Failed to serialize resource");
+            match api.replace_status(&name, &PostParams::default(), resource_bytes).await {
+                Ok(_) => info!("Status updated successfully for {}", name),
+                Err(e) => info!("Failed to update status for {}: {:?}", name, e),
+            };
+        }
+    };
+
     let function_string = quote! { #function }.to_string();
     let add_finalizer_function_string = quote! { #add_finalizer_function }.to_string();
     let remove_finalizer_function_string = quote! { #remove_finalizer_function }.to_string();
     let add_event_function_string = quote! { #add_event_function }.to_string();
+    let change_status_function_string = quote! { #change_status_function }.to_string();
 
     scope.raw(&function_string);
     scope.raw(&add_finalizer_function_string);
     scope.raw(&remove_finalizer_function_string);
     scope.raw(&add_event_function_string);
+    scope.raw(&change_status_function_string);
 }
 
 fn generate_function(name: &str) {
     let function_name = format_ident!("handle_{}", name.to_lowercase());
     let arg_name = format_ident!("{}", name.to_lowercase());
     let struct_name = format_ident!("{}", name);
+    let status_name = format_ident!("{}Status", name);
     let create_function_name = format_ident!("{}s_post", name.to_lowercase());
     let _list_function_name = format_ident!("{}s_get", name.to_lowercase());
     let _get_function_name = format_ident!("{}s_id_get", name.to_lowercase());
@@ -332,6 +352,8 @@ fn generate_function(name: &str) {
          use crate::add_finalizer;
          use crate::remove_finalizer;
          use crate::add_event;
+         use crate::change_status;
+         use crate::{};
          use crate::{};
          use openapi_client::models::{} as {}Dto;
          use openapi_client::apis::configuration::Configuration;
@@ -339,7 +361,7 @@ fn generate_function(name: &str) {
          use openapi_client::apis::default_api::{}s_id_delete;
          use openapi_client::apis::default_api::{}s_id_put;
          \n\n",
-        struct_name, struct_name, struct_name, arg_name, arg_name, arg_name
+        struct_name, status_name, struct_name, struct_name, arg_name, arg_name, arg_name
     );
 
     let main_handler: ItemFn = parse_quote! {
@@ -357,7 +379,7 @@ fn generate_function(name: &str) {
             match event {
                 WatchEvent::Added(mut #arg_name) => handle_added(config, kind_str, &mut #arg_name, api).await,
                 WatchEvent::Modified(mut #arg_name) => handle_modified(config, kind_str, &mut #arg_name, api).await,
-                WatchEvent::Deleted(mut #arg_name) => handle_deleted(config, kind_str, &mut #arg_name, api).await,
+                // WatchEvent::Deleted(mut #arg_name) => handle_deleted(config, kind_str, &mut #arg_name, api).await,
                 WatchEvent::Bookmark(bookmark) => {
                     info!("Cat Bookmark: {:?}", bookmark.metadata.resource_version);
                     return;
@@ -390,6 +412,10 @@ fn generate_function(name: &str) {
                 return;
             }
 
+            if #arg_name.status.is_none() {
+                #arg_name.status = Some(Default::default());
+            }
+
             let model = #arg_name.clone();
             let name = #arg_name.metadata.name.clone().unwrap();
             let dto = convert_to_dto(model);
@@ -403,7 +429,7 @@ fn generate_function(name: &str) {
                 // Todo - check drift
                 return;
             }
-
+            add_finalizer(#arg_name, api.clone()).await;
             match #create_function_name(config, dto).await {
                 Ok(resp) => {
                     info!("{} {} created successfully", kind_str, name);
@@ -416,25 +442,9 @@ fn generate_function(name: &str) {
                     ).await;
 
                     if let (Some(status), Some(uuid)) = (#arg_name.status.as_mut(), resp.uuid.clone()) {
-                        status.uuid = Some(uuid);
-                        add_finalizer(#arg_name, api.clone()).await;
-
-                        let new_status = #arg_name.status.clone().expect("Expected resource to have a status");
-                        let new_status_bytes =
-                            serde_json::to_vec(&new_status).expect("Failed to serialize CatStatus");
-                        match api
-                            .replace_status(&name, &PostParams::default(), new_status_bytes)
-                            .await
-                        {
-                            Ok(_) => {
-                                info!("Status updated successfully for {}", name);
-                            }
-                            Err(e) => {
-                                error!("Failed to update status for {}: {:?}", name, e);
-                            }
-                        }
+                        change_status(#arg_name, api.clone(), "uuid", uuid).await;
                     } else {
-                        warn!("Failed to retrieve id from response");
+                        warn!("Failed to retrieve uuid from response");
                     }
                 }
                 Err(e) => {
@@ -453,6 +463,11 @@ fn generate_function(name: &str) {
 
     let handle_modified: ItemFn = parse_quote! {
         async fn handle_modified(config: &Configuration, kind_str: String, #arg_name: &mut #struct_name, api: Api<#struct_name>) {
+            if #arg_name.metadata.deletion_timestamp.is_some() {
+                handle_deleted(config, kind_str, #arg_name, api).await;
+                return;
+            }
+
             let model = #arg_name.clone();
             let dto = convert_to_dto(model);
             let name = #arg_name.metadata.name.clone().unwrap();

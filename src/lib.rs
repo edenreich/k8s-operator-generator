@@ -150,6 +150,32 @@ pub async fn add_event<T>(
     };
 }
 
+pub async fn change_status<T>(resource: &mut T, api: Api<T>, field: &str, value: String)
+where
+    T: Clone
+        + Serialize
+        + DeserializeOwned
+        + Resource
+        + CustomResourceExt
+        + core::fmt::Debug
+        + 'static,
+{
+    let name = resource.meta().name.clone().unwrap();
+    let mut resource_json: serde_json::Value =
+        serde_json::to_value(&resource).expect("Failed to serialize resource");
+    resource_json["status"][field] = serde_json::json!(value);
+    let new_resource: T =
+        serde_json::from_value(resource_json).expect("Failed to deserialize resource");
+    let resource_bytes = serde_json::to_vec(&new_resource).expect("Failed to serialize resource");
+    match api
+        .replace_status(&name, &PostParams::default(), resource_bytes)
+        .await
+    {
+        Ok(_) => info!("Status updated successfully for {}", name),
+        Err(e) => info!("Failed to update status for {}: {:?}", name, e),
+    };
+}
+
 #[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema, CustomResource)]
 #[kube(
     group = "example.com",

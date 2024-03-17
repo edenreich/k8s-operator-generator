@@ -1,7 +1,9 @@
 use crate::add_event;
 use crate::add_finalizer;
+use crate::change_status;
 use crate::remove_finalizer;
 use crate::Cat;
+use crate::CatStatus;
 use kube::api::Api;
 use kube::api::PostParams;
 use kube::api::WatchEvent;
@@ -41,7 +43,7 @@ pub async fn handle_cat(event: WatchEvent<Cat>, api: Api<Cat>) {
     match event {
         WatchEvent::Added(mut cat) => handle_added(config, kind_str, &mut cat, api).await,
         WatchEvent::Modified(mut cat) => handle_modified(config, kind_str, &mut cat, api).await,
-        WatchEvent::Deleted(mut cat) => handle_deleted(config, kind_str, &mut cat, api).await,
+        // WatchEvent::Deleted(mut cat) => handle_deleted(config, kind_str, &mut cat, api).await,
         WatchEvent::Bookmark(bookmark) => {
             info!("Cat Bookmark: {:?}", bookmark.metadata.resource_version);
             return;
@@ -58,6 +60,11 @@ async fn handle_added(config: &Configuration, kind_str: String, cat: &mut Cat, a
         handle_deleted(config, kind_str, cat, api).await;
         return;
     }
+
+    if cat.status.is_none() {
+        cat.status = Some(Default::default());
+    }
+
     let model = cat.clone();
     let name = cat.metadata.name.clone().unwrap();
     let dto = convert_to_dto(model);
@@ -76,28 +83,11 @@ async fn handle_added(config: &Configuration, kind_str: String, cat: &mut Cat, a
                 format!("{} {} created remotely", kind_str, name),
             )
             .await;
+            add_finalizer(cat, api.clone()).await;
             if let (Some(status), Some(uuid)) = (cat.status.as_mut(), resp.uuid.clone()) {
-                status.uuid = Some(uuid);
-                add_finalizer(cat, api.clone()).await;
-                let new_status = cat
-                    .status
-                    .clone()
-                    .expect("Expected resource to have a status");
-                let new_status_bytes =
-                    serde_json::to_vec(&new_status).expect("Failed to serialize CatStatus");
-                match api
-                    .replace_status(&name, &PostParams::default(), new_status_bytes)
-                    .await
-                {
-                    Ok(_) => {
-                        info!("Status updated successfully for {}", name);
-                    }
-                    Err(e) => {
-                        error!("Failed to update status for {}: {:?}", name, e);
-                    }
-                }
+                change_status(cat, api.clone(), "uuid", uuid).await;
             } else {
-                warn!("Failed to retrieve id from response");
+                warn!("Failed to retrieve uuid from response");
             }
         }
         Err(e) => {
