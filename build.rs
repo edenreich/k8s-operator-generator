@@ -199,6 +199,9 @@ fn generate_struct(
                     let base_field_type = match &item.schema_kind {
                         openapiv3::SchemaKind::Type(openapiv3::Type::String(_)) => "String",
                         openapiv3::SchemaKind::Type(openapiv3::Type::Integer(_)) => "i32",
+                        openapiv3::SchemaKind::Type(openapiv3::Type::Number(_)) => "f64",
+                        openapiv3::SchemaKind::Type(openapiv3::Type::Boolean(_)) => "bool",
+                        openapiv3::SchemaKind::Type(openapiv3::Type::Array(_)) => "Vec<_>",
                         // Add more cases here for other types as needed
                         _ => continue, // Skip unknown types
                     };
