@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/edenreich/k8s-operator-template/actions/workflows/ci.yml/badge.svg)](https://github.com/edenreich/k8s-operator-template/actions/workflows/ci.yml)
 
-A template for creating CRUD Kubernetes operators written in Rust.
+A template for creating a CRUD Kubernetes operator from OpenApi Specification(OAS) written in Rust.
 
 ### Prerequisites
 
