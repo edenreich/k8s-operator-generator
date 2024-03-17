@@ -345,7 +345,6 @@ fn generate_function(name: &str) {
         "use kube::Resource;
          use kube::api::WatchEvent;
          use kube::api::Api;
-         use kube::api::PostParams;
          use log::info;
          use log::error;
          use log::warn;
@@ -354,14 +353,13 @@ fn generate_function(name: &str) {
          use crate::add_event;
          use crate::change_status;
          use crate::{};
-         use crate::{};
          use openapi_client::models::{} as {}Dto;
          use openapi_client::apis::configuration::Configuration;
          use openapi_client::apis::default_api::{}s_post;
          use openapi_client::apis::default_api::{}s_id_delete;
          use openapi_client::apis::default_api::{}s_id_put;
          \n\n",
-        struct_name, status_name, struct_name, struct_name, arg_name, arg_name, arg_name
+        struct_name, struct_name, struct_name, arg_name, arg_name, arg_name
     );
 
     let main_handler: ItemFn = parse_quote! {
