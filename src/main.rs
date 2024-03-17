@@ -46,6 +46,13 @@ async fn main() -> anyhow::Result<()> {
             tokio::spawn(k8s_operator::controllers::dog::handle_dog(event, api));
         },
     ));
+    tokio::spawn(watch_resource::<k8s_operator::types::horse::Horse>(
+        Api::default_namespaced(client.clone()).clone(),
+        watch_params.clone(),
+        |event, api| {
+            tokio::spawn(k8s_operator::controllers::horse::handle_horse(event, api));
+        },
+    ));
 
     loop {
         sleep(Duration::from_secs(1)).await;
