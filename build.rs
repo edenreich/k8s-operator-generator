@@ -1,20 +1,19 @@
 use codegen::Scope;
 use openapiv3::{OpenAPI, Schema};
-use proc_macro2::TokenStream;
-use quote::format_ident;
-use quote::quote;
-use serde_yaml;
-use std::fs::DirBuilder;
-use std::fs::File;
-use std::io::Write;
-use std::io::{BufRead, BufReader, Read};
-use std::process::Command;
-use syn::parse_quote;
-use syn::ItemFn;
+use quote::{format_ident, quote};
+use std::{
+    fs::{DirBuilder, File, OpenOptions},
+    io::{BufRead, BufReader, Error, Read, Write},
+    process::Command,
+};
+use syn::{parse_quote, ItemFn};
+
+const CONTROLLERS_DIR: &str = "src/controllers";
+const TYPES_DIR: &str = "src/types";
 
 fn main() {
     let input = "openapi.yaml";
-    let lib_file_path = "src/lib.rs";
+    let lib_file_path: String = "src/lib.rs".to_string();
     let api_group = "example.com";
 
     // Read the OpenAPI specification from the YAML file
@@ -27,22 +26,16 @@ fn main() {
     let openapi: OpenAPI = serde_yaml::from_str(&contents).expect("Unable to parse OpenAPI spec");
 
     // Generate lib.rs
-    if not_in_openapi_ignore(lib_file_path) {
-        let mut scope = Scope::new();
-        generate_lib_imports(&mut scope);
-        generate_event_capturing_function(&mut scope, api_group);
-        let mut file = File::create(lib_file_path).expect("Unable to create file");
-        write!(file, "{}", scope.to_string()).expect("Unable to write to file");
-        Command::new("rustfmt")
-            .arg(lib_file_path)
-            .status()
-            .expect("Failed to run rustfmt on generated file");
-    }
+    let mut scope = Scope::new();
+    generate_lib_imports(&mut scope);
+    generate_event_capturing_function(&mut scope, api_group);
+    write_to_file(lib_file_path.clone(), scope.to_string());
+    format_file(lib_file_path.clone());
 
     // Create the types directory if it doesn't exist
     DirBuilder::new()
         .recursive(true)
-        .create("src/types")
+        .create(TYPES_DIR)
         .expect("Unable to create types directory");
 
     // Generate Rust code for each schema in the components
@@ -53,17 +46,49 @@ fn main() {
                     // Handle references here if needed
                 }
                 openapiv3::ReferenceOr::Item(item) => {
-                    if not_in_openapi_ignore(&format!("src/types/{}.rs", name.to_lowercase())) {
-                        let rust_code = generate_rust_code(&name, api_group, "v1", &item);
-                        let mut file =
-                            File::create(format!("src/types/{}.rs", name.to_lowercase())).unwrap();
-                        write!(file, "{}", rust_code).unwrap();
-                        Command::new("rustfmt")
-                            .arg(format!("src/types/{}.rs", name.to_lowercase()))
-                            .status()
-                            .expect("Failed to run rustfmt on generated file");
-                    }
+                    let rust_code = generate_rust_code(&name, api_group, "v1", &item);
+                    let mut file =
+                        File::create(format!("{}/{}.rs", TYPES_DIR, name.to_lowercase())).unwrap();
+                    write!(file, "{}", rust_code).unwrap();
+                    Command::new("rustfmt")
+                        .arg(format!("{}/{}.rs", TYPES_DIR, name.to_lowercase()))
+                        .status()
+                        .expect("Failed to run rustfmt on generated file");
                 }
+            }
+        }
+    }
+
+    // Generate Rust code for each operation in the paths
+    empty_file(format!("{}/mod.rs", CONTROLLERS_DIR))
+        .expect("Unable to empty controllers mod.rs file");
+    for (_, path_item) in openapi.paths.iter() {
+        let path_item = match path_item {
+            openapiv3::ReferenceOr::Item(i) => i,
+            openapiv3::ReferenceOr::Reference { .. } => {
+                // Handle the case where the path item is a reference, not a direct item
+                continue;
+            }
+        };
+
+        // Iterate over the operations of each path
+        let operations = [
+            &path_item.get,
+            &path_item.put,
+            &path_item.post,
+            &path_item.delete,
+            &path_item.options,
+            &path_item.head,
+            &path_item.patch,
+            &path_item.trace,
+        ];
+        for operation in operations.iter().filter_map(|o| o.as_ref()) {
+            // Generate a controller for each tag
+            for tag in &operation.tags {
+                let controller_name = format!("{}", tag);
+                generate_controller(&controller_name);
+                add_controller_to_modfile(&controller_name)
+                    .expect("Unable to add controller to mod file");
             }
         }
     }
@@ -77,16 +102,8 @@ fn main() {
         .collect::<Vec<String>>();
 
     // Generate a mod.rs file that publicly exports all the generated modules
-    if not_in_openapi_ignore("src/types/mod.rs") {
-        let mut types_mod_file = File::create("src/types/mod.rs").unwrap();
-        for name in schema_names.clone() {
-            writeln!(types_mod_file, "pub mod {};", name.to_lowercase()).unwrap();
-        }
-
-        let mut controllers_mod_file = File::create("src/controllers/mod.rs").unwrap();
-        for name in schema_names.clone() {
-            writeln!(controllers_mod_file, "pub mod {};", name.to_lowercase()).unwrap();
-        }
+    for name in schema_names.clone() {
+        add_type_to_modfile(&name).expect("Unable to add type to mod file");
     }
 
     // Generate the RBAC for the operator
@@ -96,12 +113,8 @@ fn main() {
     }
     resources.pop();
 
-    if not_in_openapi_ignore("manifests/rbac/role.yaml") {
-        let mut role_file =
-            File::create("manifests/rbac/role.yaml").expect("Unable to create RBAC file");
-        write!(
-            role_file,
-            r#"---
+    let file_content = format!(
+        r#"---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -127,17 +140,12 @@ rules:
       - create
       - patch
 "#,
-            api_group, resources
-        )
-        .expect("Unable to write to RBAC file");
-    }
+        api_group, resources
+    );
+    write_to_file("manifests/rbac/role.yaml".to_string(), file_content);
 
-    if not_in_openapi_ignore("manifests/rbac/clusterrole.yaml") {
-        let mut cluster_role_file =
-            File::create("manifests/rbac/clusterrole.yaml").expect("Unable to create RBAC file");
-        let _ = write!(
-            cluster_role_file,
-            r#"---
+    let cluster_role_file_content = format!(
+        r#"---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -156,32 +164,28 @@ rules:
       - patch
       - delete
 "#,
-            api_group, resources
-        );
-    }
+        api_group, resources
+    );
+    write_to_file(
+        "manifests/rbac/clusterrole.yaml".to_string(),
+        cluster_role_file_content,
+    );
 
-    if not_in_openapi_ignore("manifests/rbac/serviceaccount.yaml") {
-        let mut service_account_file = File::create("manifests/rbac/serviceaccount.yaml")
-            .expect("Unable to create ServiceAccount file");
-        write!(
-            service_account_file,
-            r#"---
+    let service_account_file_content = format!(
+        r#"---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: operator-service-account
 "#,
-        )
-        .expect("Unable to write to ServiceAccount file");
-    }
+    );
+    write_to_file(
+        "manifests/rbac/serviceaccount.yaml".to_string(),
+        service_account_file_content,
+    );
 
-    // Update the RoleBinding and ClusterRoleBinding to use the new ServiceAccount
-    if not_in_openapi_ignore("manifests/rbac/rolebinding.yaml") {
-        let mut role_binding_file = File::create("manifests/rbac/rolebinding.yaml")
-            .expect("Unable to create RoleBinding file");
-        write!(
-            role_binding_file,
-            r#"---
+    let role_binding_file_content = format!(
+        r#"---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -194,16 +198,14 @@ roleRef:
   name: operator-role
   apiGroup: rbac.authorization.k8s.io
 "#,
-        )
-        .expect("Unable to write to RoleBinding file");
-    }
+    );
+    write_to_file(
+        "manifests/rbac/rolebinding.yaml".to_string(),
+        role_binding_file_content,
+    );
 
-    if not_in_openapi_ignore("manifests/rbac/clusterrolebinding.yaml") {
-        let mut cluster_role_binding_file = File::create("manifests/rbac/clusterrolebinding.yaml")
-            .expect("Unable to create ClusterRoleBinding file");
-        write!(
-            cluster_role_binding_file,
-            r#"---
+    let cluster_role_binding_file_content = format!(
+        r#"---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -217,17 +219,15 @@ roleRef:
   name: operator-cluster-role
   apiGroup: rbac.authorization.k8s.io
 "#,
-        )
-        .expect("Unable to write to ClusterRoleBinding file");
-    }
+    );
+    write_to_file(
+        "manifests/rbac/clusterrolebinding.yaml".to_string(),
+        cluster_role_binding_file_content,
+    );
 
     // Generate the operator deployment
-    if not_in_openapi_ignore("manifests/operator/deployment.yaml") {
-        let mut deployment_file = File::create("manifests/operator/deployment.yaml")
-            .expect("Unable to create Deployment file");
-        write!(
-            deployment_file,
-            r#"---
+    let deployment_file_content = format!(
+        r#"---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -256,25 +256,25 @@ spec:
               cpu: 500m
               memory: 512Mi
 "#,
-        )
-        .expect("Unable to write to Deployment file");
-    }
+    );
+    write_to_file(
+        "manifests/operator/deployment.yaml".to_string(),
+        deployment_file_content,
+    );
 
     // Generate the code that generates the CRDs
-    if not_in_openapi_ignore("src/crdgen.rs") {
-        let mut insert_lines = String::new();
-        for schema_name in schema_names.clone() {
-            let line = format!(
-                "k8s_operator::types::{}::{}::crd(),\n",
-                schema_name.to_lowercase(),
-                schema_name,
-            );
-            insert_lines.push_str(&line);
-        }
-        let mut crdgen_file = File::create("src/crdgen.rs").unwrap();
-        write!(
-            crdgen_file,
-            r#"
+    let mut insert_lines = String::new();
+    for schema_name in schema_names.clone() {
+        let line = format!(
+            "k8s_operator::types::{}::{}::crd(),\n",
+            schema_name.to_lowercase(),
+            schema_name,
+        );
+        insert_lines.push_str(&line);
+    }
+
+    let crdgen_file_content = format!(
+        r#"
 use kube::CustomResourceExt;
 
 fn main() {{
@@ -290,23 +290,16 @@ fn main() {{
     }}
 }}
 "#,
-            insert_lines
-        )
-        .unwrap();
-
-        // format the file using rustfmt
-        Command::new("rustfmt")
-            .arg("src/crdgen.rs")
-            .status()
-            .expect("Failed to run rustfmt on src/crdgen.rs");
-    }
+        insert_lines
+    );
+    write_to_file("src/crdgen.rs".to_string(), crdgen_file_content);
+    format_file("src/crdgen.rs".to_string());
 }
 
 fn generate_rust_code(name: &str, api_group: &str, api_version: &str, schema: &Schema) -> String {
     let mut scope = Scope::new();
     generate_imports(&mut scope);
     generate_struct(&mut scope, name, api_group, api_version, schema);
-    generate_controller(name);
     scope.to_string()
 }
 
@@ -426,31 +419,31 @@ fn generate_lib_imports(scope: &mut Scope) {
 fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
     let function: ItemFn = parse_quote! {
         pub async fn watch_resource<T>(
-            api: Api<T>,
+            kubernetes_api: Api<T>,
             watch_params: WatchParams,
             handler: fn(WatchEvent<T>, Api<T>),
         ) -> anyhow::Result<()>
         where
             T: Clone + core::fmt::Debug + DeserializeOwned + 'static,
         {
-            let mut stream = api.watch(&watch_params, "0").await?.boxed();
+            let mut stream = kubernetes_api.watch(&watch_params, "0").await?.boxed();
 
             loop {
                 while let Some(event) = stream.next().await {
                     match event {
-                        Ok(event) => handler(event, api.clone()),
+                        Ok(event) => handler(event, kubernetes_api.clone()),
                         Err(e) => error!("Error watching resource: {:?}", e),
                     }
                 }
 
                 sleep(Duration::from_secs(1)).await;
-                stream = api.watch(&watch_params, "0").await?.boxed();
+                stream = kubernetes_api.watch(&watch_params, "0").await?.boxed();
             }
         }
     };
 
     let add_finalizer_function: ItemFn = parse_quote! {
-        pub async fn add_finalizer<T>(resource: &mut T, api: Api<T>)
+        pub async fn add_finalizer<T>(resource: &mut T, kubernetes_api: Api<T>)
         where
             T: Clone
                 + Serialize
@@ -475,7 +468,7 @@ fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
                 field_manager: resource.meta_mut().name.clone(),
                 ..Default::default()
             };
-            match api.patch(&resource_name, &patch_params, &patch).await {
+            match kubernetes_api.patch(&resource_name, &patch_params, &patch).await {
                 Ok(_) => debug!("Finalizer added successfully"),
                 Err(e) => debug!("Failed to add finalizer: {:?}", e),
             };
@@ -483,7 +476,7 @@ fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
     };
 
     let remove_finalizer_function: ItemFn = parse_quote! {
-        pub async fn remove_finalizer<T>(resource: &mut T, api: Api<T>)
+        pub async fn remove_finalizer<T>(resource: &mut T, kubernetes_api: Api<T>)
             where
                 T: Clone + Serialize + DeserializeOwned + Resource + CustomResourceExt + core::fmt::Debug + 'static {
             let finalizer = String::from(format!("finalizers.{}", #api_group));
@@ -496,7 +489,7 @@ fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
                         field_manager: resource.meta_mut().name.clone(),
                         ..Default::default()
                     };
-                    match api.patch(&resource.clone().meta_mut().name.clone().unwrap(), &patch_params, &patch).await {
+                    match kubernetes_api.patch(&resource.clone().meta_mut().name.clone().unwrap(), &patch_params, &patch).await {
                         Ok(_) => debug!("Finalizer removed successfully"),
                         Err(e) => debug!("Failed to remove finalizer: {:?}", e),
                     };
@@ -506,7 +499,7 @@ fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
     };
 
     let add_event_function: ItemFn = parse_quote! {
-        pub async fn add_event<T>(kind: String, resource: &mut T, reason: String, from: String, message: String)
+        pub async fn add_event<T>(kind: String, resource: &mut T, reason: &str, from: &str, message: &str)
         where
             T: CustomResourceExt
                 + Clone
@@ -518,7 +511,7 @@ fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
         {
             let kube_client = kube::Client::try_default().await.unwrap();
             let namespace = resource.namespace().clone().unwrap_or_default();
-            let api: Api<Event> = Api::namespaced(kube_client.clone(), &namespace);
+            let kubernetes_api: Api<Event> = Api::namespaced(kube_client.clone(), &namespace);
 
             let resource_ref = ObjectReference {
                 kind: Some(kind),
@@ -541,7 +534,7 @@ fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
                 message: Some(message.into()),
                 type_: Some("Normal".into()),
                 source: Some(EventSource {
-                    component: Some(from),
+                    component: Some(String::from(from)),
                     ..Default::default()
                 }),
                 first_timestamp: Some(Time(chrono::Utc::now())),
@@ -549,7 +542,7 @@ fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
                 ..Default::default()
             };
 
-            match api.create(&PostParams::default(), &new_event).await {
+            match kubernetes_api.create(&PostParams::default(), &new_event).await {
                 Ok(_) => debug!("Event added successfully"),
                 Err(e) => debug!("Failed to add event: {:?}", e),
             };
@@ -557,7 +550,7 @@ fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
     };
 
     let change_status_function: ItemFn = parse_quote! {
-        pub async fn change_status<T>(resource: &mut T, api: Api<T>, field: &str, value: String)
+        pub async fn change_status<T>(resource: &mut T, kubernetes_api: Api<T>, field: &str, value: String)
         where
             T: Clone + Serialize + DeserializeOwned + Resource + CustomResourceExt + core::fmt::Debug + 'static,
         {
@@ -566,7 +559,7 @@ fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
             resource_json["status"][field] = serde_json::json!(value);
             let new_resource: T = serde_json::from_value(resource_json).expect("Failed to deserialize resource");
             let resource_bytes = serde_json::to_vec(&new_resource).expect("Failed to serialize resource");
-            match api.replace_status(&name, &PostParams::default(), resource_bytes).await {
+            match kubernetes_api.replace_status(&name, &PostParams::default(), resource_bytes).await {
                 Ok(_) => info!("Status updated successfully for {}", name),
                 Err(e) => info!("Failed to update status for {}: {:?}", name, e),
             };
@@ -586,291 +579,380 @@ fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
     scope.raw(&change_status_function_string);
 }
 
-fn generate_controller(name: &str) {
-    let function_name = format_ident!("handle_{}", name.to_lowercase());
-    let arg_name = format_ident!("{}", name.to_lowercase());
-    let struct_name = format_ident!("{}", name);
-    let _status_name = format_ident!("{}Status", name);
-    let create_function_name = format_ident!("{}s_post", name.to_lowercase());
-    let _list_function_name = format_ident!("{}s_get", name.to_lowercase());
-    let _get_function_name = format_ident!("{}s_id_get", name.to_lowercase());
-    let update_function_name = format_ident!("{}s_id_put", name.to_lowercase());
-    let delete_function_name = format_ident!("{}s_id_delete", name.to_lowercase());
+struct Functions {
+    main_handler: String,
+    function_dto: String,
+    handle_added: String,
+    handle_modified: String,
+    handle_deleted: String,
+}
 
-    // Prepend the function with the use statements
-    let mut file = format!(
+struct Identifiers {
+    tag_name: proc_macro2::Ident,
+    function_name: proc_macro2::Ident,
+    arg_name: proc_macro2::Ident,
+    type_name: proc_macro2::Ident,
+    struct_name: proc_macro2::Ident,
+    dto_name: proc_macro2::Ident,
+    create_function_name: proc_macro2::Ident,
+    update_function_name: proc_macro2::Ident,
+    delete_function_name: proc_macro2::Ident,
+}
+
+fn generate_identifiers(name: &str) -> Identifiers {
+    let name_singular = convert_to_singular(name);
+    Identifiers {
+        tag_name: format_ident!("{}", name),
+        arg_name: format_ident!("{}", name_singular),
+        function_name: format_ident!("handle"),
+        type_name: format_ident!("{}", uppercase_first_letter(name_singular.as_str())),
+        struct_name: format_ident!("{}", uppercase_first_letter(name_singular.as_str())),
+        dto_name: format_ident!("{}Dto", uppercase_first_letter(name_singular.as_str())),
+        create_function_name: format_ident!("create_{}", name_singular),
+        update_function_name: format_ident!("update_{}_by_id", name_singular.to_lowercase()),
+        delete_function_name: format_ident!("delete_{}_by_id", name_singular.to_lowercase()),
+    }
+}
+
+fn add_type_to_modfile(type_name: &str) -> Result<(), Error> {
+    let file_path = format!("{}/mod.rs", TYPES_DIR);
+    upsert_line_to_file(file_path, format!("pub mod {};", type_name.to_lowercase()))
+}
+
+fn add_controller_to_modfile(controller_name: &str) -> Result<(), Error> {
+    let file_path = format!("{}/mod.rs", CONTROLLERS_DIR);
+    upsert_line_to_file(
+        file_path,
+        format!("pub mod {};", controller_name.to_lowercase()),
+    )
+}
+
+fn generate_controller(name: &str) {
+    let identifiers = generate_identifiers(name);
+    let file = generate_controller_imports(&identifiers);
+    let functions = generate_functions(&identifiers);
+    write_controller_to_file(name, &file, &functions);
+}
+
+fn generate_controller_imports(identifiers: &Identifiers) -> String {
+    format!(
         "use kube::Resource;
          use kube::api::WatchEvent;
          use kube::api::Api;
          use log::info;
          use log::error;
-         use log::warn;
          use crate::add_finalizer;
          use crate::remove_finalizer;
          use crate::add_event;
          use crate::change_status;
          use crate::types::{}::{};
-         use openapi_client::models::{} as {}Dto;
-         use openapi_client::apis::configuration::Configuration;
-         use openapi_client::apis::default_api::{}s_post;
-         use openapi_client::apis::default_api::{}s_id_delete;
-         use openapi_client::apis::default_api::{}s_id_put;
+         use openapi::apis::{}_api::{};
+         use openapi::apis::{}_api::{};
+         use openapi::apis::{}_api::{};
+         use openapi::models::{} as {};
+         use openapi::apis::configuration::Configuration;
          \n\n",
-        struct_name.to_string().to_lowercase(),
-        struct_name,
-        struct_name,
-        struct_name,
-        arg_name,
-        arg_name,
-        arg_name
-    );
+        identifiers.arg_name,
+        identifiers.struct_name,
+        identifiers.tag_name,
+        identifiers.create_function_name,
+        identifiers.tag_name,
+        identifiers.update_function_name,
+        identifiers.tag_name,
+        identifiers.delete_function_name,
+        identifiers.struct_name,
+        identifiers.dto_name,
+    )
+}
 
-    let main_handler: ItemFn = parse_quote! {
-        pub async fn #function_name(event: WatchEvent<#struct_name>, api: Api<#struct_name>) {
-            let kind = #struct_name::kind(&());
-            let kind_str = kind.to_string();
-
-            let config = &Configuration {
-                base_path: "http://localhost:8080".to_string(),
-                user_agent: None,
-                client: reqwest::Client::new(),
-                ..Configuration::default()
-            };
-
-            match event {
-                WatchEvent::Added(mut #arg_name) => handle_added(config, kind_str, &mut #arg_name, api).await,
-                WatchEvent::Modified(mut #arg_name) => handle_modified(config, kind_str, &mut #arg_name, api).await,
-                // WatchEvent::Deleted(mut #arg_name) => handle_deleted(config, kind_str, &mut #arg_name, api).await,
-                WatchEvent::Bookmark(bookmark) => {
-                    info!("Cat Bookmark: {:?}", bookmark.metadata.resource_version);
-                    return;
-                }
-                _ => {
-                    info!("Cat Unknown event {:?}", event);
-                    return;
-                }
-            };
-        }
-    };
-
-    let dto = format_ident!("{}Dto", name);
-    let resource = format_ident!("{}_resource", arg_name);
-
-    let function_dto: TokenStream = quote! {
-        fn convert_to_dto(#resource: #struct_name) -> #dto {
-            let _uuid = match #resource.status {
-                Some(status) => status.uuid,
-                None => None,
-            };
-            todo!("Convert the resource to a DTO");
-        }
-    };
-
-    let handle_added: ItemFn = parse_quote! {
-        async fn handle_added(config: &Configuration, kind_str: String, #arg_name: &mut #struct_name, api: Api<#struct_name>) {
-            if #arg_name.metadata.deletion_timestamp.is_some() {
-                handle_deleted(config, kind_str, #arg_name, api).await;
-                return;
-            }
-
-            if #arg_name.status.is_none() {
-                #arg_name.status = Some(Default::default());
-            }
-
-            let model = #arg_name.clone();
-            let name = #arg_name.metadata.name.clone().unwrap();
-            let dto = convert_to_dto(model);
-
-            if dto.uuid.is_some() {
-                info!(
-                    "{} {} already exists",
-                    kind_str,
-                    name
-                );
-                // Todo - check drift
-                return;
-            }
-            add_finalizer(#arg_name, api.clone()).await;
-            match #create_function_name(config, dto).await {
-                Ok(resp) => {
-                    info!("{} {} created successfully", kind_str, name);
-                    add_event(
-                        kind_str.clone(),
-                        #arg_name,
-                        "Normal".into(),
-                        kind_str.clone(),
-                        format!("{} {} created remotely", kind_str, name),
-                    ).await;
-
-                    if let (Some(_status), Some(uuid)) = (#arg_name.status.as_mut(), resp.uuid.clone()) {
-                        change_status(#arg_name, api.clone(), "uuid", uuid).await;
-                    } else {
-                        warn!("Failed to retrieve uuid from response");
-                    }
-                }
-                Err(e) => {
-                    error!("Failed to add {} {}: {:?}", kind_str, name, e);
-                    add_event(
-                        kind_str.clone(),
-                        #arg_name,
-                        "Error".into(),
-                        kind_str.clone(),
-                        format!("Failed to create {} {} remotely", kind_str, name),
-                    ).await;
-                }
-            }
-        }
-    };
-
-    let handle_modified: ItemFn = parse_quote! {
-        async fn handle_modified(config: &Configuration, kind_str: String, #arg_name: &mut #struct_name, api: Api<#struct_name>) {
-            if #arg_name.metadata.deletion_timestamp.is_some() {
-                handle_deleted(config, kind_str, #arg_name, api).await;
-                return;
-            }
-
-            let model = #arg_name.clone();
-            let dto = convert_to_dto(model);
-            let name = #arg_name.metadata.name.clone().unwrap();
-
-            if let Some(ref uuid) = dto.uuid.clone() {
-                match #update_function_name(config, uuid.as_str(), dto).await {
-                    Ok(_) => {
-                        info!("{} {} modified successfully", kind_str, name);
-                        add_event(
-                            kind_str.clone(),
-                            #arg_name,
-                            "Normal".into(),
-                            kind_str.clone(),
-                            format!("{} {} modified remotely", kind_str, name),
-                        ).await;
-                    }
-                    Err(e) => {
-                        error!("Failed to update {} {}: {:?}", kind_str, name, e);
-                        add_event(
-                            kind_str.clone(),
-                            #arg_name,
-                            "Error".into(),
-                            kind_str.clone(),
-                            format!("Failed to update {} {} remotely", kind_str, name),
-                        ).await;
-                    }
-                }
-            } else {
-                error!(
-                    "{} {} has no id",
-                    kind_str,
-                    name,
-                );
-                add_event(
-                    kind_str.clone(),
-                    #arg_name,
-                    "Error".into(),
-                    kind_str.clone(),
-                    format!("Failed to update {} {}", kind_str, name),
-                ).await;
-            }
-        }
-    };
-
-    let handle_deleted: ItemFn = parse_quote! {
-        async fn handle_deleted(config: &Configuration, kind_str: String, #arg_name: &mut #struct_name, api: Api<#struct_name>) {
-            let model = #arg_name.clone();
-            let dto = convert_to_dto(model);
-            let name = #arg_name.metadata.name.clone().unwrap();
-
-            if let Some(uuid) = dto.uuid.clone() {
-                match #delete_function_name(config, uuid.as_str()).await {
-                    Ok(_res) => {
-                        info!("{} {} deleted successfully", kind_str, name);
-                        add_event(
-                            kind_str.clone(),
-                            #arg_name,
-                            "Normal".into(),
-                            kind_str.clone(),
-                            format!("{} {} deleted remotely", kind_str, name),
-                        ).await;
-                        remove_finalizer(#arg_name, api.clone()).await;
-                    }
-                    Err(e) => {
-                        error!("Failed to delete {} {}: {:?}", kind_str, name, e);
-                        add_event(
-                            kind_str.clone(),
-                            #arg_name,
-                            "Error".into(),
-                            kind_str.clone(),
-                            format!("Failed to delete {} {} remotely", kind_str, name),
-                        ).await;
-                    }
-                }
-            } else {
-                error!(
-                    "{} {} has no id",
-                    kind_str,
-                    #arg_name.metadata.name.clone().unwrap()
-                );
-                add_event(
-                    kind_str.clone(),
-                    #arg_name,
-                    "Error".into(),
-                    kind_str.clone(),
-                    format!("Failed to delete {} {}", kind_str, name),
-                )
-                .await;
-            }
-        }
-    };
-
-    // Convert the function into a string
-    let function_dto_string = quote! { #function_dto }.to_string();
-    let main_handler_string = quote! { #main_handler }.to_string();
-    let handle_added_string = quote! { #handle_added }.to_string();
-    let handle_modified_string = quote! { #handle_modified }.to_string();
-    let handle_deleted_string = quote! { #handle_deleted }.to_string();
-
-    file.push_str(&function_dto_string);
-    file.push_str("\n\n");
-    file.push_str(&main_handler_string);
-    file.push_str("\n\n");
-    file.push_str(&handle_added_string);
-    file.push_str("\n\n");
-    file.push_str(&handle_modified_string);
-    file.push_str("\n\n");
-    file.push_str(&handle_deleted_string);
-
-    // Write the function to a new file
-    let file_path = format!("src/controllers/{}.rs", name.to_lowercase());
-
-    // Check if the file_path is in the .openapi-generator-ignore file
-    let ignore_file =
-        std::fs::File::open(".openapi-generator-ignore").expect("Unable to open file");
-    let reader = BufReader::new(ignore_file);
-    let ignored_files: Vec<String> = reader.lines().filter_map(Result::ok).collect();
-
-    if !ignored_files.contains(&file_path) {
-        let file_path_clone = file_path.clone();
-        std::fs::write(file_path, file).expect("Unable to write file");
-
-        // Format the Rust code using rustfmt
-        let output = Command::new("rustfmt")
-            .arg(file_path_clone)
-            .output()
-            .expect("Failed to execute command");
-
-        // Check the output of the rustfmt command
-        if !output.status.success() {
-            eprintln!(
-                "rustfmt failed with output:\n{}",
-                String::from_utf8_lossy(&output.stderr)
-            );
-        }
+fn generate_functions(identifiers: &Identifiers) -> Functions {
+    Functions {
+        main_handler: generate_main_handler(identifiers),
+        function_dto: generate_function_dto(identifiers),
+        handle_added: generate_handle_added(identifiers),
+        handle_modified: generate_handle_modified(identifiers),
+        handle_deleted: generate_handle_deleted(identifiers),
     }
 }
 
-fn not_in_openapi_ignore(file_path: &str) -> bool {
+fn generate_main_handler(identifiers: &Identifiers) -> String {
+    format!(
+        "pub async fn {}(event: WatchEvent<{}>, kubernetes_api: Api<{}>) {{
+            let kind = {}::kind(&());
+            let kind_str = kind.to_string();
+            let config = &Configuration {{
+                base_path: \"http://localhost:8080\".to_string(),
+                user_agent: None,
+                client: reqwest::Client::new(),
+                ..Configuration::default()
+            }};
+            match event {{
+                WatchEvent::Added(mut {}) => handle_added(config, kind_str, &mut {}, kubernetes_api).await,
+                WatchEvent::Modified(mut {}) => handle_modified(config, kind_str, &mut {}, kubernetes_api).await,
+                WatchEvent::Bookmark(bookmark) => {{
+                    info!(\"{} Bookmark: {{:?}}\", bookmark.metadata.resource_version);
+                    return;
+                }},
+                _ => {{
+                    info!(\"{} Unknown event {{:?}}\", event);
+                    return;
+                }},
+            }};
+        }}",
+        identifiers.function_name,
+        identifiers.type_name,
+        identifiers.type_name,
+        identifiers.type_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.type_name,
+    )
+}
+
+fn generate_function_dto(identifiers: &Identifiers) -> String {
+    format!(
+        "fn convert_to_dto({}: {}) -> {}Dto {{
+            let _uuid = match {}.status {{
+                Some(status) => status.uuid,
+                None => None,
+            }};
+            {}Dto {{
+                uuid: _uuid,
+                name: {}.spec.name,
+                breed: {}.spec.breed,
+                age: {}.spec.age,
+            }}
+        }}",
+        identifiers.arg_name,
+        identifiers.struct_name,
+        identifiers.struct_name,
+        identifiers.arg_name,
+        identifiers.struct_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+    )
+}
+
+fn generate_handle_added(identifiers: &Identifiers) -> String {
+    format!(
+        "pub async fn handle_added(config: &Configuration, kind_str: String, {}: &mut {}, kubernetes_api: Api<{}>) {{
+            if {}.metadata.deletion_timestamp.is_some() {{
+                handle_deleted(config, kind_str, {}, kubernetes_api).await;
+                return;
+            }}
+            if {}.status.is_none() {{
+                {}.status = Some(Default::default());
+            }}
+            let model = {}.clone();
+            let name = {}.metadata.name.clone().unwrap();
+            let dto = convert_to_dto(model);
+            if dto.uuid.is_some() {{
+                info!(\"{{}} {{}} already exists\", kind_str, name);
+                return;
+            }}
+            add_finalizer({}, kubernetes_api.clone()).await;
+            match {}(config, dto).await {{
+                Ok(resp) => {{
+                    info!(\"{{}} {{}} created\", kind_str, name);
+                    change_status({}, kubernetes_api.clone(), \"uuid\", resp.uuid.unwrap()).await;
+                    add_event(kind_str, {}, \"Normal\", \"{}\", \"{} created\").await;
+                }},
+                Err(e) => {{
+                    error!(\"Failed to create {{}} {{}}: {{:?}}\", kind_str, name, e);
+                    remove_finalizer({}, kubernetes_api.clone()).await;
+                }},
+            }};
+        }}",
+        identifiers.arg_name,
+        identifiers.struct_name,
+        identifiers.struct_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.create_function_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+    )
+}
+
+fn generate_handle_modified(identifiers: &Identifiers) -> String {
+    format!(
+        "pub async fn handle_modified(config: &Configuration, kind_str: String, {}: &mut {}, kubernetes_api: Api<{}>) {{
+            if {}.metadata.deletion_timestamp.is_some() {{
+                handle_deleted(config, kind_str, {}, kubernetes_api).await;
+                return;
+            }}
+            if {}.status.is_none() {{
+                {}.status = Some(Default::default());
+            }}
+            let model = {}.clone();
+            let name = {}.metadata.name.clone().unwrap();
+            let dto = convert_to_dto(model);
+            if dto.uuid.is_none() {{
+                info!(\"{{}} {{}} does not exist\", kind_str, name);
+                return;
+            }}
+            let dto_clone = dto.clone();
+            match {}(config, &dto.uuid.unwrap(), dto_clone).await {{
+                Ok(_) => {{
+                    let msg = format!(\"{{}} {{}} updated\", kind_str.clone(), name);
+                    info!(\"{{}}\", msg);
+                    add_event(kind_str.clone(), {}, \"Normal\", &kind_str.clone(), &msg).await;
+                }},
+                Err(e) => {{
+                    let msg = format!(\"Failed to update {{}} {{}}: {{:?}}\", kind_str.clone(), name, e);
+                    error!(\"{{}}\", msg);
+                    add_event(kind_str.clone(), {}, \"Error\", &kind_str.clone(), &msg).await;
+                }},
+            }};
+        }}",
+        identifiers.arg_name,
+        identifiers.struct_name,
+        identifiers.struct_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.update_function_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+    )
+}
+
+fn generate_handle_deleted(identifiers: &Identifiers) -> String {
+    format!(
+        "pub async fn handle_deleted(config: &Configuration, kind_str: String, {}: &mut {}, _kubernetes_api: Api<{}>) {{
+            let name = {}.metadata.name.clone().unwrap();
+            match {}(config, &{}.metadata.name.clone().unwrap()).await {{
+                Ok(_) => {{
+                    info!(\"{{}} {{}} deleted\", kind_str, name);
+                    add_event(kind_str, {}, \"Normal\", \"{}\", \"{} deleted\").await;
+                }},
+                Err(e) => {{
+                    error!(\"Failed to delete {{}} {{}}: {{:?}}\", kind_str, name, e);
+                    add_event(kind_str, {}, \"Error\", \"{}\", \"Failed to delete {{}} {{}} remotely\").await;
+                }},
+            }};
+        }}",
+        identifiers.arg_name,
+        identifiers.struct_name,
+        identifiers.struct_name,
+        identifiers.arg_name,
+        identifiers.delete_function_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+        identifiers.arg_name,
+    )
+}
+
+fn write_controller_to_file(name: &str, file: &String, functions: &Functions) {
+    let mut file_content = file.clone();
+    file_content.push_str(&functions.function_dto);
+    file_content.push_str("\n\n");
+    file_content.push_str(&functions.main_handler);
+    file_content.push_str("\n\n");
+    file_content.push_str(&functions.handle_added);
+    file_content.push_str("\n\n");
+    file_content.push_str(&functions.handle_modified);
+    file_content.push_str("\n\n");
+    file_content.push_str(&functions.handle_deleted);
+
+    let file_path = format!("{}/{}.rs", CONTROLLERS_DIR, name.to_lowercase());
+    write_to_file(file_path.clone(), file_content.to_string());
+    format_file(file_path.clone())
+}
+
+fn get_ignored_files() -> Vec<String> {
     let ignore_file =
         std::fs::File::open(".openapi-generator-ignore").expect("Unable to open file");
     let reader = BufReader::new(ignore_file);
-    let ignored_files: Vec<String> = reader.lines().filter_map(Result::ok).collect();
-    !ignored_files.contains(&file_path.to_string())
+    reader.lines().filter_map(Result::ok).collect()
+}
+
+fn empty_file(file_path: String) -> Result<(), Error> {
+    match File::create(&file_path) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+
+fn write_to_file(file_path: String, file_content: String) {
+    if get_ignored_files().contains(&file_path) {
+        return;
+    }
+
+    std::fs::write(file_path, file_content).expect("Unable to write file");
+}
+
+fn upsert_line_to_file(file_path: String, line: String) -> Result<(), Error> {
+    if get_ignored_files().contains(&file_path) {
+        return Ok(());
+    }
+
+    let file = File::open(&file_path)?;
+    let reader = BufReader::new(file);
+
+    let exists = reader.lines().any(|l| l.unwrap() == line);
+
+    if !exists {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .append(true)
+            .open(&file_path)?;
+        if let Err(e) = writeln!(file, "{}", line) {
+            eprintln!("Couldn't write to file: {}", e);
+        }
+    }
+    Ok(())
+}
+
+fn format_file(file_path: String) {
+    if get_ignored_files().contains(&file_path) {
+        return;
+    }
+
+    let output = Command::new("rustfmt")
+        .arg(file_path)
+        .output()
+        .expect("Failed to execute command");
+
+    if !output.status.success() {
+        eprintln!(
+            "rustfmt failed with output:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
+fn convert_to_singular(name: &str) -> String {
+    if name.ends_with("ies") {
+        return name.trim_end_matches("ies").to_string() + "y";
+    } else if name.ends_with("s") {
+        return name.trim_end_matches("s").to_string();
+    }
+    name.to_string()
+}
+
+fn uppercase_first_letter(name: &str) -> String {
+    let mut chars = name.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + chars.as_str(),
+    }
 }

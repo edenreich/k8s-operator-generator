@@ -16,27 +16,27 @@ pub mod types;
 pub mod controllers;
 
 pub async fn watch_resource<T>(
-    api: Api<T>,
+    kubernetes_api: Api<T>,
     watch_params: WatchParams,
     handler: fn(WatchEvent<T>, Api<T>),
 ) -> anyhow::Result<()>
 where
     T: Clone + core::fmt::Debug + DeserializeOwned + 'static,
 {
-    let mut stream = api.watch(&watch_params, "0").await?.boxed();
+    let mut stream = kubernetes_api.watch(&watch_params, "0").await?.boxed();
     loop {
         while let Some(event) = stream.next().await {
             match event {
-                Ok(event) => handler(event, api.clone()),
+                Ok(event) => handler(event, kubernetes_api.clone()),
                 Err(e) => error!("Error watching resource: {:?}", e),
             }
         }
         sleep(Duration::from_secs(1)).await;
-        stream = api.watch(&watch_params, "0").await?.boxed();
+        stream = kubernetes_api.watch(&watch_params, "0").await?.boxed();
     }
 }
 
-pub async fn add_finalizer<T>(resource: &mut T, api: Api<T>)
+pub async fn add_finalizer<T>(resource: &mut T, kubernetes_api: Api<T>)
 where
     T: Clone
         + Serialize
@@ -60,13 +60,16 @@ where
         field_manager: resource.meta_mut().name.clone(),
         ..Default::default()
     };
-    match api.patch(&resource_name, &patch_params, &patch).await {
+    match kubernetes_api
+        .patch(&resource_name, &patch_params, &patch)
+        .await
+    {
         Ok(_) => debug!("Finalizer added successfully"),
         Err(e) => debug!("Failed to add finalizer: {:?}", e),
     };
 }
 
-pub async fn remove_finalizer<T>(resource: &mut T, api: Api<T>)
+pub async fn remove_finalizer<T>(resource: &mut T, kubernetes_api: Api<T>)
 where
     T: Clone
         + Serialize
@@ -86,7 +89,7 @@ where
                 field_manager: resource.meta_mut().name.clone(),
                 ..Default::default()
             };
-            match api
+            match kubernetes_api
                 .patch(
                     &resource.clone().meta_mut().name.clone().unwrap(),
                     &patch_params,
@@ -101,13 +104,8 @@ where
     }
 }
 
-pub async fn add_event<T>(
-    kind: String,
-    resource: &mut T,
-    reason: String,
-    from: String,
-    message: String,
-) where
+pub async fn add_event<T>(kind: String, resource: &mut T, reason: &str, from: &str, message: &str)
+where
     T: CustomResourceExt
         + Clone
         + Serialize
@@ -118,7 +116,7 @@ pub async fn add_event<T>(
 {
     let kube_client = kube::Client::try_default().await.unwrap();
     let namespace = resource.namespace().clone().unwrap_or_default();
-    let api: Api<Event> = Api::namespaced(kube_client.clone(), &namespace);
+    let kubernetes_api: Api<Event> = Api::namespaced(kube_client.clone(), &namespace);
     let resource_ref = ObjectReference {
         kind: Some(kind),
         namespace: resource.namespace().clone(),
@@ -138,20 +136,23 @@ pub async fn add_event<T>(
         message: Some(message.into()),
         type_: Some("Normal".into()),
         source: Some(EventSource {
-            component: Some(from),
+            component: Some(String::from(from)),
             ..Default::default()
         }),
         first_timestamp: Some(Time(chrono::Utc::now())),
         last_timestamp: Some(Time(chrono::Utc::now())),
         ..Default::default()
     };
-    match api.create(&PostParams::default(), &new_event).await {
+    match kubernetes_api
+        .create(&PostParams::default(), &new_event)
+        .await
+    {
         Ok(_) => debug!("Event added successfully"),
         Err(e) => debug!("Failed to add event: {:?}", e),
     };
 }
 
-pub async fn change_status<T>(resource: &mut T, api: Api<T>, field: &str, value: String)
+pub async fn change_status<T>(resource: &mut T, kubernetes_api: Api<T>, field: &str, value: String)
 where
     T: Clone
         + Serialize
@@ -168,7 +169,7 @@ where
     let new_resource: T =
         serde_json::from_value(resource_json).expect("Failed to deserialize resource");
     let resource_bytes = serde_json::to_vec(&new_resource).expect("Failed to serialize resource");
-    match api
+    match kubernetes_api
         .replace_status(&name, &PostParams::default(), resource_bytes)
         .await
     {

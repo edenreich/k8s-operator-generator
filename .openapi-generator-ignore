@@ -1,2 +1,1 @@
-src/controllers/cat.rs
-src/controllers/horse.rs
+src/controllers/cats.rs

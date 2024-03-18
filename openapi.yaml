@@ -5,6 +5,9 @@ info:
 paths:
   /cats:
     get:
+      tags:
+        - cats
+      operationId: getCats
       summary: Get all cats
       responses:
         '200':
@@ -16,6 +19,9 @@ paths:
                 items:
                   $ref: '#/components/schemas/Cat'
     post:
+      tags:
+        - cats
+      operationId: createCat
       summary: Create a new cat
       requestBody:
         required: true
@@ -32,6 +38,9 @@ paths:
                 $ref: '#/components/schemas/Cat'
   /cats/{id}:
     get:
+      tags:
+        - cats
+      operationId: getCatById
       summary: Get a cat by ID
       parameters:
         - in: path
@@ -49,6 +58,9 @@ paths:
         '404':
           description: Not found
     put:
+      tags:
+        - cats
+      operationId: updateCatById
       summary: Update a cat by ID
       parameters:
         - in: path
@@ -72,6 +84,9 @@ paths:
         '404':
           description: Not found
     delete:
+      tags:
+        - cats
+      operationId: deleteCatById
       summary: Delete a cat by ID
       parameters:
         - in: path
@@ -84,6 +99,9 @@ paths:
           description: No content
   /dogs:
     get:
+      tags:
+        - dogs
+      operationId: getDogs
       summary: Get all dogs
       responses:
         '200':
@@ -95,6 +113,9 @@ paths:
                 items:
                   $ref: '#/components/schemas/Dog'
     post:
+      tags:
+        - dogs
+      operationId: createDog
       summary: Create a new dog
       requestBody:
         required: true
@@ -111,6 +132,9 @@ paths:
                 $ref: '#/components/schemas/Dog'
   /dogs/{id}:
     get:
+      tags:
+        - dogs
+      operationId: getDogById
       summary: Get a dog by ID
       parameters:
         - in: path
@@ -128,6 +152,9 @@ paths:
         '404':
           description: Not found
     put:
+      tags:
+        - dogs
+      operationId: updateDogById
       summary: Update a dog by ID
       parameters:
         - in: path
@@ -151,6 +178,9 @@ paths:
         '404':
           description: Not found
     delete:
+      tags:
+        - dogs
+      operationId: deleteDogById
       summary: Delete a dog by ID
       parameters:
         - in: path
@@ -163,6 +193,9 @@ paths:
           description: No content
   /horses:
     get:
+      tags:
+        - horses
+      operationId: getHorses
       summary: Get all horses
       responses:
         '200':
@@ -174,6 +207,9 @@ paths:
                 items:
                   $ref: '#/components/schemas/Horse'
     post:
+      tags:
+        - horses
+      operationId: createHorse
       summary: Create a new horse
       requestBody:
         required: true
@@ -190,6 +226,9 @@ paths:
                 $ref: '#/components/schemas/Horse'
   /horses/{id}:
     get:
+      tags:
+        - horses
+      operationId: getHorseById
       summary: Get a horse by ID
       parameters:
         - in: path
@@ -207,6 +246,9 @@ paths:
         '404':
           description: Not found
     put:
+      tags:
+        - horses
+      operationId: updateHorseById
       summary: Update a horse by ID
       parameters:
         - in: path
@@ -230,6 +272,9 @@ paths:
         '404':
           description: Not found
     delete:
+      tags:
+        - horses
+      operationId: deleteHorseById
       summary: Delete a horse by ID
       parameters:
         - in: path

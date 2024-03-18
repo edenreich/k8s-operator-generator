@@ -887,7 +887,7 @@ dependencies = [
  "kube-derive",
  "kube-runtime",
  "log",
- "openapi_client",
+ "openapi",
  "openapiv3",
  "proc-macro2",
  "quote",
@@ -1138,7 +1138,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3fdb12b2476b595f9358c5161aa467c2438859caa136dec86c26fdd2efe17b92"
 
 [[package]]
-name = "openapi_client"
+name = "openapi"
 version = "1.0.0"
 dependencies = [
  "reqwest",

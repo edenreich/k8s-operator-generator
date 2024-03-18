@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-openapi_client = { path = "./client" }
+openapi = { path = "./client" }
 tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread"] }
 schemars = "0.8.12"
 k8s-openapi = { version = "0.21.1", features = ["v1_26"] }
@@ -33,7 +33,7 @@ reqwest = "0.11.26"
 serde_yaml = "0.9.21"
 codegen = "0.2.0"
 openapiv3 = "2.0.0"
-syn = "2.0.52"
+syn = { version = "2.0.52", features = ["full"] }
 quote = "1.0.35"
 proc-macro2 = "1.0.79"
 

@@ -35,22 +35,31 @@ async fn main() -> anyhow::Result<()> {
     tokio::spawn(watch_resource::<k8s_operator::types::cat::Cat>(
         Api::default_namespaced(client.clone()).clone(),
         watch_params.clone(),
-        |event, api| {
-            tokio::spawn(k8s_operator::controllers::cat::handle_cat(event, api));
+        |event, kubernetes_api| {
+            tokio::spawn(k8s_operator::controllers::cats::handle(
+                event,
+                kubernetes_api,
+            ));
         },
     ));
     tokio::spawn(watch_resource::<k8s_operator::types::dog::Dog>(
         Api::default_namespaced(client.clone()).clone(),
         watch_params.clone(),
-        |event, api| {
-            tokio::spawn(k8s_operator::controllers::dog::handle_dog(event, api));
+        |event, kubernetes_api| {
+            tokio::spawn(k8s_operator::controllers::dogs::handle(
+                event,
+                kubernetes_api,
+            ));
         },
     ));
     tokio::spawn(watch_resource::<k8s_operator::types::horse::Horse>(
         Api::default_namespaced(client.clone()).clone(),
         watch_params.clone(),
-        |event, api| {
-            tokio::spawn(k8s_operator::controllers::horse::handle_horse(event, api));
+        |event, kubernetes_api| {
+            tokio::spawn(k8s_operator::controllers::horses::handle(
+                event,
+                kubernetes_api,
+            ));
         },
     ));
 

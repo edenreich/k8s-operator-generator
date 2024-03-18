@@ -26,21 +26,21 @@ All URIs are relative to *http://localhost*
 
 Class | Method | HTTP request | Description
 ------------ | ------------- | ------------- | -------------
-*DefaultApi* | [**cats_get**](docs/DefaultApi.md#cats_get) | **GET** /cats | Get all cats
-*DefaultApi* | [**cats_id_delete**](docs/DefaultApi.md#cats_id_delete) | **DELETE** /cats/{id} | Delete a cat by ID
-*DefaultApi* | [**cats_id_get**](docs/DefaultApi.md#cats_id_get) | **GET** /cats/{id} | Get a cat by ID
-*DefaultApi* | [**cats_id_put**](docs/DefaultApi.md#cats_id_put) | **PUT** /cats/{id} | Update a cat by ID
-*DefaultApi* | [**cats_post**](docs/DefaultApi.md#cats_post) | **POST** /cats | Create a new cat
-*DefaultApi* | [**dogs_get**](docs/DefaultApi.md#dogs_get) | **GET** /dogs | Get all dogs
-*DefaultApi* | [**dogs_id_delete**](docs/DefaultApi.md#dogs_id_delete) | **DELETE** /dogs/{id} | Delete a dog by ID
-*DefaultApi* | [**dogs_id_get**](docs/DefaultApi.md#dogs_id_get) | **GET** /dogs/{id} | Get a dog by ID
-*DefaultApi* | [**dogs_id_put**](docs/DefaultApi.md#dogs_id_put) | **PUT** /dogs/{id} | Update a dog by ID
-*DefaultApi* | [**dogs_post**](docs/DefaultApi.md#dogs_post) | **POST** /dogs | Create a new dog
-*DefaultApi* | [**horses_get**](docs/DefaultApi.md#horses_get) | **GET** /horses | Get all horses
-*DefaultApi* | [**horses_id_delete**](docs/DefaultApi.md#horses_id_delete) | **DELETE** /horses/{id} | Delete a horse by ID
-*DefaultApi* | [**horses_id_get**](docs/DefaultApi.md#horses_id_get) | **GET** /horses/{id} | Get a horse by ID
-*DefaultApi* | [**horses_id_put**](docs/DefaultApi.md#horses_id_put) | **PUT** /horses/{id} | Update a horse by ID
-*DefaultApi* | [**horses_post**](docs/DefaultApi.md#horses_post) | **POST** /horses | Create a new horse
+*CatsApi* | [**create_cat**](docs/CatsApi.md#create_cat) | **POST** /cats | Create a new cat
+*CatsApi* | [**delete_cat_by_id**](docs/CatsApi.md#delete_cat_by_id) | **DELETE** /cats/{id} | Delete a cat by ID
+*CatsApi* | [**get_cat_by_id**](docs/CatsApi.md#get_cat_by_id) | **GET** /cats/{id} | Get a cat by ID
+*CatsApi* | [**get_cats**](docs/CatsApi.md#get_cats) | **GET** /cats | Get all cats
+*CatsApi* | [**update_cat_by_id**](docs/CatsApi.md#update_cat_by_id) | **PUT** /cats/{id} | Update a cat by ID
+*DogsApi* | [**create_dog**](docs/DogsApi.md#create_dog) | **POST** /dogs | Create a new dog
+*DogsApi* | [**delete_dog_by_id**](docs/DogsApi.md#delete_dog_by_id) | **DELETE** /dogs/{id} | Delete a dog by ID
+*DogsApi* | [**get_dog_by_id**](docs/DogsApi.md#get_dog_by_id) | **GET** /dogs/{id} | Get a dog by ID
+*DogsApi* | [**get_dogs**](docs/DogsApi.md#get_dogs) | **GET** /dogs | Get all dogs
+*DogsApi* | [**update_dog_by_id**](docs/DogsApi.md#update_dog_by_id) | **PUT** /dogs/{id} | Update a dog by ID
+*HorsesApi* | [**create_horse**](docs/HorsesApi.md#create_horse) | **POST** /horses | Create a new horse
+*HorsesApi* | [**delete_horse_by_id**](docs/HorsesApi.md#delete_horse_by_id) | **DELETE** /horses/{id} | Delete a horse by ID
+*HorsesApi* | [**get_horse_by_id**](docs/HorsesApi.md#get_horse_by_id) | **GET** /horses/{id} | Get a horse by ID
+*HorsesApi* | [**get_horses**](docs/HorsesApi.md#get_horses) | **GET** /horses | Get all horses
+*HorsesApi* | [**update_horse_by_id**](docs/HorsesApi.md#update_horse_by_id) | **PUT** /horses/{id} | Update a horse by ID
 
 
 ## Documentation For Models
