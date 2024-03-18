@@ -113,185 +113,42 @@ fn main() {
     }
     resources.pop();
 
-    let file_content = format!(
-        r#"---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: operator-role # Give this a meaningful name
-rules:
-  - apiGroups:
-      - {}
-    resources:
-{}
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-  - apiGroups:
-      - ''
-    resources:
-      - events
-    verbs:
-      - create
-      - patch
-"#,
-        api_group, resources
-    );
-    write_to_file("manifests/rbac/role.yaml".to_string(), file_content);
+    let role_file_content = get_role_file_content(api_group, &resources);
+    write_to_file("manifests/rbac/role.yaml".to_string(), role_file_content);
 
-    let cluster_role_file_content = format!(
-        r#"---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: operator-cluster-role
-rules:
-  - apiGroups:
-      - {}
-    resources:
-{}
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-"#,
-        api_group, resources
-    );
+    let cluster_role_file_content = get_cluster_role_file_content(api_group, &resources);
     write_to_file(
         "manifests/rbac/clusterrole.yaml".to_string(),
         cluster_role_file_content,
     );
 
-    let service_account_file_content = format!(
-        r#"---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: operator-service-account
-"#,
-    );
+    let service_account_file_content = get_service_account_file_content();
     write_to_file(
         "manifests/rbac/serviceaccount.yaml".to_string(),
         service_account_file_content,
     );
 
-    let role_binding_file_content = format!(
-        r#"---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: operator-role-binding
-subjects:
-  - kind: ServiceAccount
-    name: operator-service-account
-roleRef:
-  kind: Role
-  name: operator-role
-  apiGroup: rbac.authorization.k8s.io
-"#,
-    );
+    let role_binding_file_content = get_role_binding_file_content();
     write_to_file(
         "manifests/rbac/rolebinding.yaml".to_string(),
         role_binding_file_content,
     );
 
-    let cluster_role_binding_file_content = format!(
-        r#"---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: operator-cluster-role-binding
-subjects:
-  - kind: ServiceAccount
-    name: operator-service-account
-    namespace: default
-roleRef:
-  kind: ClusterRole
-  name: operator-cluster-role
-  apiGroup: rbac.authorization.k8s.io
-"#,
-    );
+    let cluster_role_binding_file_content = get_cluster_role_binding_file_content();
     write_to_file(
         "manifests/rbac/clusterrolebinding.yaml".to_string(),
         cluster_role_binding_file_content,
     );
 
     // Generate the operator deployment
-    let deployment_file_content = format!(
-        r#"---
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: operator-deployment
-  labels:
-    app: operator
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: operator
-  template:
-    metadata:
-      labels:
-        app: operator
-    spec:
-      serviceAccountName: operator-service-account
-      containers:
-        - name: operator
-          image: operator:latest
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-"#,
-    );
+    let deployment_file_content = get_operator_deployment_file_content();
     write_to_file(
         "manifests/operator/deployment.yaml".to_string(),
         deployment_file_content,
     );
 
     // Generate the code that generates the CRDs
-    let mut insert_lines = String::new();
-    for schema_name in schema_names.clone() {
-        let line = format!(
-            "k8s_operator::types::{}::{}::crd(),\n",
-            schema_name.to_lowercase(),
-            schema_name,
-        );
-        insert_lines.push_str(&line);
-    }
-
-    let crdgen_file_content = format!(
-        r#"
-use kube::CustomResourceExt;
-
-fn main() {{
-    let crds = vec![
-        {}
-    ];
-
-    for crd in crds {{
-        match serde_yaml::to_string(&crd) {{
-            Ok(yaml) => print!("---\n{{}}", yaml),
-            Err(e) => eprintln!("Error serializing CRD to YAML: {{}}", e),
-        }}
-    }}
-}}
-"#,
-        insert_lines
-    );
+    let crdgen_file_content = get_crdgen_file_content(&schema_names);
     write_to_file("src/crdgen.rs".to_string(), crdgen_file_content);
     format_file("src/crdgen.rs".to_string());
 }
@@ -955,4 +812,179 @@ fn uppercase_first_letter(name: &str) -> String {
         None => String::new(),
         Some(f) => f.to_uppercase().collect::<String>() + chars.as_str(),
     }
+}
+
+/// File templates
+///
+/// Later will be moved to a separate template files
+///
+fn get_role_file_content(api_group: &str, resources: &str) -> String {
+    format!(
+        r#"---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operator-role # Give this a meaningful name
+rules:
+  - apiGroups:
+      - {}
+    resources:
+{}
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ''
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+"#,
+        api_group, resources
+    )
+}
+
+fn get_cluster_role_file_content(api_group: &str, resources: &str) -> String {
+    format!(
+        r#"---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: operator-cluster-role
+rules:
+  - apiGroups:
+      - {}
+    resources:
+{}
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+"#,
+        api_group, resources
+    )
+}
+
+fn get_service_account_file_content() -> String {
+    format!(
+        r#"---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operator-service-account
+"#,
+    )
+}
+
+fn get_role_binding_file_content() -> String {
+    format!(
+        r#"---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operator-role-binding
+subjects:
+  - kind: ServiceAccount
+    name: operator-service-account
+roleRef:
+  kind: Role
+  name: operator-role
+  apiGroup: rbac.authorization.k8s.io
+"#,
+    )
+}
+
+fn get_cluster_role_binding_file_content() -> String {
+    format!(
+        r#"---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: operator-cluster-role-binding
+subjects:
+  - kind: ServiceAccount
+    name: operator-service-account
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: operator-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+"#,
+    )
+}
+
+fn get_operator_deployment_file_content() -> String {
+    format!(
+        r#"---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: operator-deployment
+  labels:
+    app: operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: operator
+  template:
+    metadata:
+      labels:
+        app: operator
+    spec:
+      serviceAccountName: operator-service-account
+      containers:
+        - name: operator
+          image: operator:latest
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+"#,
+    )
+}
+
+fn get_crdgen_file_content(schema_names: &Vec<String>) -> String {
+    let mut insert_lines = String::new();
+    for schema_name in schema_names.clone() {
+        let line = format!(
+            "k8s_operator::types::{}::{}::crd(),\n",
+            schema_name.to_lowercase(),
+            schema_name,
+        );
+        insert_lines.push_str(&line);
+    }
+
+    format!(
+        r#"
+use kube::CustomResourceExt;
+
+fn main() {{
+    let crds = vec![
+        {}
+    ];
+
+    for crd in crds {{
+        match serde_yaml::to_string(&crd) {{
+            Ok(yaml) => print!("---\n{{}}", yaml),
+            Err(e) => eprintln!("Error serializing CRD to YAML: {{}}", e),
+        }}
+    }}
+}}
+"#,
+        insert_lines
+    )
 }
