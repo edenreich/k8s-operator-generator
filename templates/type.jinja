@@ -1,0 +1,23 @@
+use kube::CustomResource;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema, CustomResource)]
+#[kube(
+    group = "{{ identifiers.group_name }}",
+    version = "{{ identifiers.api_version }}",
+    kind = "{{ identifiers.type_name }}",
+    plural = "{{ identifiers.tag_name }}",
+    status = "{{ identifiers.type_name }}Status",
+    namespaced
+)]
+pub struct {{ identifiers.type_name }}Spec {
+    {%- for field in identifiers.fields %}
+    pub {{ field.pub_name }}: {{ field.field_type|safe }},
+    {%- endfor %}
+}
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema)]
+pub struct {{ identifiers.tag_name }}Status {
+    pub uuid: Option<String>,
+}

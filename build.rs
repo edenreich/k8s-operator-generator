@@ -1,5 +1,4 @@
 use askama::Template;
-use codegen::Scope;
 use openapiv3::{OpenAPI, Schema};
 use std::{
     fs::{DirBuilder, File, OpenOptions},
@@ -41,14 +40,7 @@ fn main() {
                     // Handle references here if needed
                 }
                 openapiv3::ReferenceOr::Item(item) => {
-                    let rust_code = generate_rust_code(&name, "v1", &item);
-                    let mut file =
-                        File::create(format!("{}/{}.rs", TYPES_DIR, name.to_lowercase())).unwrap();
-                    write!(file, "{}", rust_code).unwrap();
-                    Command::new("rustfmt")
-                        .arg(format!("{}/{}.rs", TYPES_DIR, name.to_lowercase()))
-                        .status()
-                        .expect("Failed to run rustfmt on generated file");
+                    generate_type(&name, "v1", &item);
                 }
             }
         }
@@ -162,6 +154,132 @@ fn main() {
     }
 }
 
+struct Field {
+    pub_name: String,
+    field_type: String,
+}
+
+struct TypeIdentifiers {
+    tag_name: String,
+    type_name: String,
+    api_version: String,
+    group_name: String,
+    fields: Vec<Field>,
+}
+
+#[derive(Template)]
+#[template(path = "type.jinja")]
+struct TypeTemplate {
+    identifiers: TypeIdentifiers,
+}
+
+fn generate_type(name: &str, api_version: &str, schema: &Schema) {
+    let mut fields = Vec::new();
+
+    // Add fields to the struct based on the schema
+    if let openapiv3::SchemaKind::Type(openapiv3::Type::Object(object)) = &schema.schema_kind {
+        for (field_name, field_schema) in &object.properties {
+            match field_schema {
+                openapiv3::ReferenceOr::Reference { .. } => {
+                    // Handle references here if needed
+                }
+                openapiv3::ReferenceOr::Item(item) => {
+                    let base_field_type = match &item.schema_kind {
+                        openapiv3::SchemaKind::Type(openapiv3::Type::String(_)) => "String",
+                        openapiv3::SchemaKind::Type(openapiv3::Type::Integer(_)) => "i32",
+                        openapiv3::SchemaKind::Type(openapiv3::Type::Number(_)) => "f64",
+                        openapiv3::SchemaKind::Type(openapiv3::Type::Boolean(_)) => "bool",
+                        openapiv3::SchemaKind::Type(openapiv3::Type::Array(_)) => "Vec<_>",
+                        // Add more cases here for other types as needed
+                        _ => continue, // Skip unknown types
+                    };
+                    let field_type = if object.required.contains(field_name) {
+                        base_field_type.to_string()
+                    } else {
+                        format!("Option<{}>", base_field_type)
+                    };
+                    fields.push(Field {
+                        pub_name: field_name.clone(),
+                        field_type,
+                    });
+                }
+            }
+        }
+    }
+
+    let tag_name = name.to_string();
+    let arg_name = name.to_lowercase();
+    let type_name = uppercase_first_letter(name);
+    let arg_name_clone = arg_name.clone();
+
+    let content: String = TypeTemplate {
+        identifiers: TypeIdentifiers {
+            tag_name,
+            type_name,
+            api_version: api_version.to_string(),
+            group_name: API_GROUP.to_string(),
+            fields,
+        },
+    }
+    .render()
+    .unwrap();
+
+    let file_path = format!("src/types/{}.rs", arg_name_clone);
+    write_to_file(file_path.to_string(), content);
+    format_file(file_path.to_string());
+}
+#[derive(Template)]
+#[template(path = "lib.jinja")]
+struct LibTemplate {}
+
+fn generate_lib() {
+    let content: String = LibTemplate {}.render().unwrap();
+    let file_path = LIB_FILEPATH;
+    write_to_file(file_path.to_string(), content);
+    format_file(file_path.to_string());
+}
+
+fn add_type_to_modfile(type_name: &str) -> Result<(), Error> {
+    let file_path = format!("{}/mod.rs", TYPES_DIR);
+    upsert_line_to_file(file_path, format!("pub mod {};", type_name.to_lowercase()))
+}
+
+fn add_controller_to_modfile(controller_name: &str) -> Result<(), Error> {
+    let file_path = format!("{}/mod.rs", CONTROLLERS_DIR);
+    upsert_line_to_file(
+        file_path,
+        format!("pub mod {};", controller_name.to_lowercase()),
+    )
+}
+
+struct ControllerIdentifiers<'a> {
+    tag_name: &'a str,
+    arg_name: &'a str,
+    type_name: &'a str,
+}
+
+#[derive(Template)]
+#[template(path = "controller.jinja")]
+struct ControllerTemplate<'a> {
+    identifiers: ControllerIdentifiers<'a>,
+}
+
+fn generate_controller(name: &str) {
+    let name_singular = convert_to_singular(name);
+    let content: String = ControllerTemplate {
+        identifiers: ControllerIdentifiers {
+            tag_name: name,
+            arg_name: name_singular.clone().as_str(),
+            type_name: &uppercase_first_letter(name_singular.clone().as_str()),
+        },
+    }
+    .render()
+    .unwrap();
+    let file_path = format!("{}/{}.rs", CONTROLLERS_DIR, name.to_lowercase());
+    write_to_file(file_path.to_owned(), content);
+    format_file(file_path)
+}
+
 #[derive(serde::Serialize)]
 struct K8sManifest {
     #[serde(rename = "apiVersion")]
@@ -197,142 +315,6 @@ fn generate_manifest_from_example(name: &str, example: &openapiv3::Example) -> S
         manifest.push_str(&yaml_str);
     }
     manifest
-}
-
-fn generate_rust_code(name: &str, api_version: &str, schema: &Schema) -> String {
-    let mut scope = Scope::new();
-    generate_imports(&mut scope);
-    generate_struct(&mut scope, name, api_version, schema);
-    scope.to_string()
-}
-
-fn generate_imports(scope: &mut Scope) {
-    scope.import("kube", "CustomResource");
-    scope.import("serde", "Deserialize");
-    scope.import("serde", "Serialize");
-    scope.import("schemars", "JsonSchema");
-}
-
-fn generate_struct(scope: &mut Scope, name: &str, api_version: &str, schema: &Schema) {
-    // Create a new struct with the given name
-    let mut struct_ = codegen::Struct::new(&format!("{}Spec", name));
-
-    // Add derive attributes to the struct
-    struct_
-        .derive("Debug")
-        .derive("Default")
-        .derive("Clone")
-        .derive("Deserialize")
-        .derive("Serialize")
-        .derive("JsonSchema")
-        .derive("CustomResource");
-
-    struct_.attr(&format!(
-        "kube(group = \"{}\", version = \"{}\", kind = \"{}\", plural = \"{}\", status = \"{}\", namespaced)",
-        API_GROUP,
-        api_version,
-        name,
-        name.to_lowercase() + "s",
-        name.to_string() + "Status"
-    ));
-    struct_.vis("pub");
-
-    let mut struct_status = codegen::Struct::new(&format!("{}Status", name));
-
-    struct_status
-        .derive("Debug")
-        .derive("Default")
-        .derive("Clone")
-        .derive("Deserialize")
-        .derive("Serialize")
-        .derive("JsonSchema");
-
-    struct_status.field("pub uuid", "Option<String>");
-    struct_status.vis("pub");
-
-    // Add fields to the struct based on the schema
-    if let openapiv3::SchemaKind::Type(openapiv3::Type::Object(object)) = &schema.schema_kind {
-        for (field_name, field_schema) in &object.properties {
-            match field_schema {
-                openapiv3::ReferenceOr::Reference { .. } => {
-                    // Handle references here if needed
-                }
-                openapiv3::ReferenceOr::Item(item) => {
-                    let base_field_type = match &item.schema_kind {
-                        openapiv3::SchemaKind::Type(openapiv3::Type::String(_)) => "String",
-                        openapiv3::SchemaKind::Type(openapiv3::Type::Integer(_)) => "i32",
-                        openapiv3::SchemaKind::Type(openapiv3::Type::Number(_)) => "f64",
-                        openapiv3::SchemaKind::Type(openapiv3::Type::Boolean(_)) => "bool",
-                        openapiv3::SchemaKind::Type(openapiv3::Type::Array(_)) => "Vec<_>",
-                        // Add more cases here for other types as needed
-                        _ => continue, // Skip unknown types
-                    };
-                    let field_type = if object.required.contains(field_name) {
-                        base_field_type.to_string()
-                    } else {
-                        format!("Option<{}>", base_field_type)
-                    };
-                    struct_.field(format!("pub {}", field_name).as_str(), &field_type);
-                }
-            }
-        }
-    }
-
-    // Add the struct to the scope
-    scope.push_struct(struct_);
-    scope.push_struct(struct_status);
-}
-
-#[derive(Template)]
-#[template(path = "lib.jinja")]
-struct LibTemplate {}
-
-fn generate_lib() {
-    let content: String = LibTemplate {}.render().unwrap();
-    let file_path = LIB_FILEPATH;
-    write_to_file(file_path.to_string(), content);
-    format_file(file_path.to_string());
-}
-
-fn add_type_to_modfile(type_name: &str) -> Result<(), Error> {
-    let file_path = format!("{}/mod.rs", TYPES_DIR);
-    upsert_line_to_file(file_path, format!("pub mod {};", type_name.to_lowercase()))
-}
-
-fn add_controller_to_modfile(controller_name: &str) -> Result<(), Error> {
-    let file_path = format!("{}/mod.rs", CONTROLLERS_DIR);
-    upsert_line_to_file(
-        file_path,
-        format!("pub mod {};", controller_name.to_lowercase()),
-    )
-}
-
-struct Identifiers<'a> {
-    tag_name: &'a str,
-    arg_name: &'a str,
-    type_name: &'a str,
-}
-
-#[derive(Template)]
-#[template(path = "controller.jinja")]
-struct ControllerTemplate<'a> {
-    identifiers: Identifiers<'a>,
-}
-
-fn generate_controller(name: &str) {
-    let name_singular = convert_to_singular(name);
-    let content: String = ControllerTemplate {
-        identifiers: Identifiers {
-            tag_name: name,
-            arg_name: name_singular.clone().as_str(),
-            type_name: &uppercase_first_letter(name_singular.clone().as_str()),
-        },
-    }
-    .render()
-    .unwrap();
-    let file_path = format!("{}/{}.rs", CONTROLLERS_DIR, name.to_lowercase());
-    write_to_file(file_path.to_owned(), content);
-    format_file(file_path)
 }
 
 fn get_ignored_files() -> Vec<String> {
