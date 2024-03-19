@@ -1,13 +1,9 @@
-use crate::add_event;
-use crate::add_finalizer;
-use crate::change_status;
-use crate::remove_finalizer;
-use crate::types::dog::Dog;
-use kube::api::Api;
-use kube::api::WatchEvent;
-use kube::Resource;
-use log::error;
-use log::info;
+use crate::{add_event, add_finalizer, change_status, remove_finalizer, types::dog::Dog};
+use kube::{
+    api::{Api, WatchEvent},
+    Resource,
+};
+use log::{error, info};
 use openapi::apis::configuration::Configuration;
 use openapi::apis::dogs_api::create_dog;
 use openapi::apis::dogs_api::delete_dog_by_id;
@@ -21,7 +17,7 @@ fn convert_to_dto(dog: Dog) -> DogDto {
         None => None,
     };
     // DogDto {
-    //    uuid: uuid,
+    //     uuid: uuid,
     // }
     todo!("Implement the mapping for dogs")
 }
@@ -37,7 +33,7 @@ pub async fn handle(config: Arc<Configuration>, event: WatchEvent<Dog>, kubernet
             handle_modified(&config, kind_str, &mut dog, kubernetes_api).await
         }
         WatchEvent::Bookmark(bookmark) => {
-            info!("dog Bookmark: {:?}", bookmark.metadata.resource_version);
+            info!("Dog Bookmark: {:?}", bookmark.metadata.resource_version);
             return;
         }
         _ => {
@@ -72,7 +68,7 @@ pub async fn handle_added(
         Ok(resp) => {
             info!("{} {} created", kind_str, name);
             change_status(dog, kubernetes_api.clone(), "uuid", resp.uuid.unwrap()).await;
-            add_event(kind_str, dog, "Normal", "dog", "dog created").await;
+            add_event(kind_str, dog, "Normal", "dog", "Dog created").await;
         }
         Err(e) => {
             error!("Failed to create {} {}: {:?}", kind_str, name, e);
@@ -126,7 +122,7 @@ pub async fn handle_deleted(
     match delete_dog_by_id(config, &dog.metadata.name.clone().unwrap()).await {
         Ok(_) => {
             info!("{} {} deleted", kind_str, name);
-            add_event(kind_str, dog, "Normal", "dog", "dog deleted").await;
+            add_event(kind_str, dog, "Normal", "dog", "Dog deleted").await;
         }
         Err(e) => {
             error!("Failed to delete {} {}: {:?}", kind_str, name, e);

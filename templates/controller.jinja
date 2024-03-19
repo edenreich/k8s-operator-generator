@@ -1,0 +1,155 @@
+use crate::{
+    add_event,
+    add_finalizer,
+    change_status,
+    remove_finalizer,
+    types::{{ identifiers.arg_name }}::{{ identifiers.type_name }},
+};
+use kube::{
+    Resource,
+    api::{
+        Api,
+        WatchEvent,
+    }
+};
+use log::{
+    error,
+    info,
+};
+use openapi::apis::configuration::Configuration;
+use openapi::apis::{{ identifiers.tag_name }}_api::create_{{ identifiers.arg_name }};
+use openapi::apis::{{ identifiers.tag_name }}_api::delete_{{ identifiers.arg_name }}_by_id;
+use openapi::apis::{{ identifiers.tag_name }}_api::update_{{ identifiers.arg_name }}_by_id;
+use openapi::models::{{ identifiers.type_name }} as {{ identifiers.type_name }}Dto;
+use std::sync::Arc;
+
+fn convert_to_dto({{ identifiers.arg_name }}: {{ identifiers.type_name }}) -> {{ identifiers.type_name }}Dto {
+    let _uuid = match {{ identifiers.arg_name }}.status {
+        Some(status) => status.uuid,
+        None => None,
+    };
+    // {{ identifiers.type_name }}Dto {
+    //     uuid: uuid,
+    // }
+    todo!("Implement the mapping for {{ identifiers.tag_name }}")
+}
+
+pub async fn handle(
+    config: Arc<Configuration>,
+    event: WatchEvent<{{ identifiers.type_name }}>,
+    kubernetes_api: Api<{{ identifiers.type_name }}>,
+) {
+    let kind = {{ identifiers.type_name }}::kind(&());
+    let kind_str = kind.to_string();
+    match event {
+        WatchEvent::Added(mut {{ identifiers.arg_name }}) => {
+        handle_added(&config, kind_str, &mut {{ identifiers.arg_name }}, kubernetes_api).await
+        }
+        WatchEvent::Modified(mut {{ identifiers.arg_name }}) => {
+            handle_modified(&config, kind_str, &mut {{ identifiers.arg_name }}, kubernetes_api).await
+        }
+        WatchEvent::Bookmark(bookmark) => {
+            info!("{{ identifiers.type_name }} Bookmark: {:?}", bookmark.metadata.resource_version);
+            return;
+        }
+        _ => {
+            info!("{{ identifiers.type_name }} Unknown event {:?}", event);
+            return;
+        }
+    };
+}
+
+pub async fn handle_added(
+    config: &Configuration,
+    kind_str: String,
+    {{ identifiers.arg_name }}: &mut {{ identifiers.type_name }},
+    kubernetes_api: Api<{{ identifiers.type_name }}>,
+) {
+    if {{ identifiers.arg_name }}.metadata.deletion_timestamp.is_some() {
+        handle_deleted(config, kind_str, {{ identifiers.arg_name }}, kubernetes_api).await;
+        return;
+    }
+    if {{ identifiers.arg_name }}.status.is_none() {
+        {{ identifiers.arg_name }}.status = Some(Default::default());
+    }
+    let model = {{ identifiers.arg_name }}.clone();
+    let name = {{ identifiers.arg_name }}.metadata.name.clone().unwrap();
+    let dto = convert_to_dto(model);
+    if dto.uuid.is_some() {
+        info!("{} {} already exists", kind_str, name);
+        return;
+    }
+    add_finalizer({{ identifiers.arg_name }}, kubernetes_api.clone()).await;
+    match create_{{ identifiers.arg_name }}(config, dto).await {
+        Ok(resp) => {
+            info!("{} {} created", kind_str, name);
+            change_status({{ identifiers.arg_name }}, kubernetes_api.clone(), "uuid", resp.uuid.unwrap()).await;
+            add_event(kind_str, {{ identifiers.arg_name }}, "Normal", "{{ identifiers.arg_name }}", "{{ identifiers.type_name }} created").await;
+        }
+        Err(e) => {
+            error!("Failed to create {} {}: {:?}", kind_str, name, e);
+            remove_finalizer({{ identifiers.arg_name }}, kubernetes_api.clone()).await;
+        }
+    };
+}
+            
+pub async fn handle_modified(
+    config: &Configuration,
+    kind_str: String,
+    {{ identifiers.arg_name }}: &mut {{ identifiers.type_name }},
+    kubernetes_api: Api<{{ identifiers.type_name }}>,
+) {
+    if {{ identifiers.arg_name }}.metadata.deletion_timestamp.is_some() {
+        handle_deleted(config, kind_str, {{ identifiers.arg_name }}, kubernetes_api).await;
+        return;
+    }
+    if {{ identifiers.arg_name }}.status.is_none() {
+        {{ identifiers.arg_name }}.status = Some(Default::default());
+    }
+    let model = {{ identifiers.arg_name }}.clone();
+    let name = {{ identifiers.arg_name }}.metadata.name.clone().unwrap();
+    let dto = convert_to_dto(model);
+    if dto.uuid.is_none() {
+        info!("{} {} does not exist", kind_str, name);
+        return;
+    }
+    let dto_clone = dto.clone();
+    match update_{{ identifiers.arg_name }}_by_id(config, &dto.uuid.unwrap(), dto_clone).await {
+        Ok(_) => {
+            let msg = format!("{} {} updated", kind_str.clone(), name);
+            info!("{}", msg);
+            add_event(kind_str.clone(), {{ identifiers.arg_name }}, "Normal", &kind_str.clone(), &msg).await;
+        }
+        Err(e) => {
+            let msg = format!("Failed to update {} {}: {:?}", kind_str.clone(), name, e);
+            error!("{}", msg);
+            add_event(kind_str.clone(), {{ identifiers.arg_name }}, "Error", &kind_str.clone(), &msg).await;
+        }
+    };
+}
+
+pub async fn handle_deleted(
+    config: &Configuration,
+    kind_str: String,
+    {{ identifiers.arg_name }}: &mut {{ identifiers.type_name }},
+    _kubernetes_api: Api<{{ identifiers.type_name }}>,
+) {
+    let name = {{ identifiers.arg_name }}.metadata.name.clone().unwrap();
+    match delete_{{ identifiers.arg_name }}_by_id(config, &{{ identifiers.arg_name }}.metadata.name.clone().unwrap()).await {
+        Ok(_) => {
+            info!("{} {} deleted", kind_str, name);
+            add_event(kind_str, {{ identifiers.arg_name }}, "Normal", "{{ identifiers.arg_name }}", "{{ identifiers.type_name }} deleted").await;
+        }
+        Err(e) => {
+            error!("Failed to delete {} {}: {:?}", kind_str, name, e);
+            add_event(
+                kind_str,
+                {{ identifiers.arg_name }},
+                "Error",
+                "{{ identifiers.arg_name }}",
+                "Failed to delete {} {} remotely",
+            )
+            .await;
+        }
+    };
+}

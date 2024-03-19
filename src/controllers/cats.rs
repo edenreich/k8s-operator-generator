@@ -1,13 +1,9 @@
-use crate::add_event;
-use crate::add_finalizer;
-use crate::change_status;
-use crate::remove_finalizer;
-use crate::types::cat::Cat;
-use kube::api::Api;
-use kube::api::WatchEvent;
-use kube::Resource;
-use log::error;
-use log::info;
+use crate::{add_event, add_finalizer, change_status, remove_finalizer, types::cat::Cat};
+use kube::{
+    api::{Api, WatchEvent},
+    Resource,
+};
+use log::{error, info};
 use openapi::apis::cats_api::create_cat;
 use openapi::apis::cats_api::delete_cat_by_id;
 use openapi::apis::cats_api::update_cat_by_id;
@@ -16,16 +12,14 @@ use openapi::models::Cat as CatDto;
 use std::sync::Arc;
 
 fn convert_to_dto(cat: Cat) -> CatDto {
-    let uuid = match cat.status {
+    let _uuid = match cat.status {
         Some(status) => status.uuid,
         None => None,
     };
-    CatDto {
-        uuid,
-        name: cat.spec.name,
-        breed: cat.spec.breed,
-        age: cat.spec.age,
-    }
+    // CatDto {
+    //     uuid: uuid,
+    // }
+    todo!("Implement the mapping for cats")
 }
 
 pub async fn handle(config: Arc<Configuration>, event: WatchEvent<Cat>, kubernetes_api: Api<Cat>) {
@@ -39,7 +33,7 @@ pub async fn handle(config: Arc<Configuration>, event: WatchEvent<Cat>, kubernet
             handle_modified(&config, kind_str, &mut cat, kubernetes_api).await
         }
         WatchEvent::Bookmark(bookmark) => {
-            info!("cat Bookmark: {:?}", bookmark.metadata.resource_version);
+            info!("Cat Bookmark: {:?}", bookmark.metadata.resource_version);
             return;
         }
         _ => {
@@ -74,7 +68,7 @@ pub async fn handle_added(
         Ok(resp) => {
             info!("{} {} created", kind_str, name);
             change_status(cat, kubernetes_api.clone(), "uuid", resp.uuid.unwrap()).await;
-            add_event(kind_str, cat, "Normal", "cat", "cat created").await;
+            add_event(kind_str, cat, "Normal", "cat", "Cat created").await;
         }
         Err(e) => {
             error!("Failed to create {} {}: {:?}", kind_str, name, e);
@@ -128,7 +122,7 @@ pub async fn handle_deleted(
     match delete_cat_by_id(config, &cat.metadata.name.clone().unwrap()).await {
         Ok(_) => {
             info!("{} {} deleted", kind_str, name);
-            add_event(kind_str, cat, "Normal", "cat", "cat deleted").await;
+            add_event(kind_str, cat, "Normal", "cat", "Cat deleted").await;
         }
         Err(e) => {
             error!("Failed to delete {} {}: {:?}", kind_str, name, e);

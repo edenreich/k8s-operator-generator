@@ -1,6 +1,7 @@
+use askama::Template;
 use codegen::Scope;
 use openapiv3::{OpenAPI, Schema};
-use quote::{format_ident, quote};
+use quote::quote;
 use std::{
     fs::{DirBuilder, File, OpenOptions},
     io::{BufRead, BufReader, Error, Read, Write},
@@ -482,41 +483,6 @@ fn generate_event_capturing_function(scope: &mut Scope) {
     scope.raw(&change_status_function_string);
 }
 
-struct Functions {
-    main_handler: String,
-    function_dto: String,
-    handle_added: String,
-    handle_modified: String,
-    handle_deleted: String,
-}
-
-struct Identifiers {
-    tag_name: proc_macro2::Ident,
-    function_name: proc_macro2::Ident,
-    arg_name: proc_macro2::Ident,
-    type_name: proc_macro2::Ident,
-    struct_name: proc_macro2::Ident,
-    dto_name: proc_macro2::Ident,
-    create_function_name: proc_macro2::Ident,
-    update_function_name: proc_macro2::Ident,
-    delete_function_name: proc_macro2::Ident,
-}
-
-fn generate_identifiers(name: &str) -> Identifiers {
-    let name_singular = convert_to_singular(name);
-    Identifiers {
-        tag_name: format_ident!("{}", name),
-        arg_name: format_ident!("{}", name_singular),
-        function_name: format_ident!("handle"),
-        type_name: format_ident!("{}", uppercase_first_letter(name_singular.as_str())),
-        struct_name: format_ident!("{}", uppercase_first_letter(name_singular.as_str())),
-        dto_name: format_ident!("{}Dto", uppercase_first_letter(name_singular.as_str())),
-        create_function_name: format_ident!("create_{}", name_singular),
-        update_function_name: format_ident!("update_{}_by_id", name_singular.to_lowercase()),
-        delete_function_name: format_ident!("delete_{}_by_id", name_singular.to_lowercase()),
-    }
-}
-
 fn add_type_to_modfile(type_name: &str) -> Result<(), Error> {
     let file_path = format!("{}/mod.rs", TYPES_DIR);
     upsert_line_to_file(file_path, format!("pub mod {};", type_name.to_lowercase()))
@@ -530,246 +496,32 @@ fn add_controller_to_modfile(controller_name: &str) -> Result<(), Error> {
     )
 }
 
+struct Identifiers<'a> {
+    tag_name: &'a str,
+    arg_name: &'a str,
+    type_name: &'a str,
+}
+
+#[derive(Template)]
+#[template(path = "controller.jinja")]
+struct ControllerTemplate<'a> {
+    identifiers: Identifiers<'a>,
+}
+
 fn generate_controller(name: &str) {
-    let identifiers = generate_identifiers(name);
-    let file = generate_controller_imports(&identifiers);
-    let functions = generate_functions(&identifiers);
-    write_controller_to_file(name, &file, &functions);
-}
-
-fn generate_controller_imports(identifiers: &Identifiers) -> String {
-    format!(
-        "use kube::Resource;
-         use kube::api::WatchEvent;
-         use kube::api::Api;
-         use log::info;
-         use log::error;
-         use crate::add_finalizer;
-         use crate::remove_finalizer;
-         use crate::add_event;
-         use crate::change_status;
-         use crate::types::{}::{};
-         use openapi::apis::{}_api::{};
-         use openapi::apis::{}_api::{};
-         use openapi::apis::{}_api::{};
-         use openapi::models::{} as {};
-         use openapi::apis::configuration::Configuration;
-         use std::sync::Arc;
-         \n\n",
-        identifiers.arg_name,
-        identifiers.struct_name,
-        identifiers.tag_name,
-        identifiers.create_function_name,
-        identifiers.tag_name,
-        identifiers.update_function_name,
-        identifiers.tag_name,
-        identifiers.delete_function_name,
-        identifiers.struct_name,
-        identifiers.dto_name,
-    )
-}
-
-fn generate_functions(identifiers: &Identifiers) -> Functions {
-    Functions {
-        main_handler: generate_main_handler(identifiers),
-        function_dto: generate_function_dto(identifiers),
-        handle_added: generate_handle_added(identifiers),
-        handle_modified: generate_handle_modified(identifiers),
-        handle_deleted: generate_handle_deleted(identifiers),
+    let name_singular = convert_to_singular(name);
+    let content: String = ControllerTemplate {
+        identifiers: Identifiers {
+            tag_name: name,
+            arg_name: name_singular.clone().as_str(),
+            type_name: &uppercase_first_letter(name_singular.clone().as_str()),
+        },
     }
-}
-
-fn generate_main_handler(identifiers: &Identifiers) -> String {
-    format!(
-        "pub async fn {}(config: Arc<Configuration>, event: WatchEvent<{}>, kubernetes_api: Api<{}>) {{
-            let kind = {}::kind(&());
-            let kind_str = kind.to_string();
-            match event {{
-                WatchEvent::Added(mut {}) => handle_added(&config, kind_str, &mut {}, kubernetes_api).await,
-                WatchEvent::Modified(mut {}) => handle_modified(&config, kind_str, &mut {}, kubernetes_api).await,
-                WatchEvent::Bookmark(bookmark) => {{
-                    info!(\"{} Bookmark: {{:?}}\", bookmark.metadata.resource_version);
-                    return;
-                }},
-                _ => {{
-                    info!(\"{} Unknown event {{:?}}\", event);
-                    return;
-                }},
-            }};
-        }}",
-        identifiers.function_name,
-        identifiers.type_name,
-        identifiers.type_name,
-        identifiers.type_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.type_name,
-    )
-}
-
-fn generate_function_dto(identifiers: &Identifiers) -> String {
-    format!(
-        "fn convert_to_dto({}: {}) -> {}Dto {{
-            let _uuid = match {}.status {{
-                Some(status) => status.uuid,
-                None => None,
-            }};
-            // {}Dto {{
-            //    uuid: uuid,
-            // }}
-            todo!(\"Implement the mapping for {}\")
-        }}",
-        identifiers.arg_name,
-        identifiers.struct_name,
-        identifiers.struct_name,
-        identifiers.arg_name,
-        identifiers.struct_name,
-        identifiers.tag_name,
-    )
-}
-
-fn generate_handle_added(identifiers: &Identifiers) -> String {
-    format!(
-        "pub async fn handle_added(config: &Configuration, kind_str: String, {}: &mut {}, kubernetes_api: Api<{}>) {{
-            if {}.metadata.deletion_timestamp.is_some() {{
-                handle_deleted(config, kind_str, {}, kubernetes_api).await;
-                return;
-            }}
-            if {}.status.is_none() {{
-                {}.status = Some(Default::default());
-            }}
-            let model = {}.clone();
-            let name = {}.metadata.name.clone().unwrap();
-            let dto = convert_to_dto(model);
-            if dto.uuid.is_some() {{
-                info!(\"{{}} {{}} already exists\", kind_str, name);
-                return;
-            }}
-            add_finalizer({}, kubernetes_api.clone()).await;
-            match {}(config, dto).await {{
-                Ok(resp) => {{
-                    info!(\"{{}} {{}} created\", kind_str, name);
-                    change_status({}, kubernetes_api.clone(), \"uuid\", resp.uuid.unwrap()).await;
-                    add_event(kind_str, {}, \"Normal\", \"{}\", \"{} created\").await;
-                }},
-                Err(e) => {{
-                    error!(\"Failed to create {{}} {{}}: {{:?}}\", kind_str, name, e);
-                    remove_finalizer({}, kubernetes_api.clone()).await;
-                }},
-            }};
-        }}",
-        identifiers.arg_name,
-        identifiers.struct_name,
-        identifiers.struct_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.create_function_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-    )
-}
-
-fn generate_handle_modified(identifiers: &Identifiers) -> String {
-    format!(
-        "pub async fn handle_modified(config: &Configuration, kind_str: String, {}: &mut {}, kubernetes_api: Api<{}>) {{
-            if {}.metadata.deletion_timestamp.is_some() {{
-                handle_deleted(config, kind_str, {}, kubernetes_api).await;
-                return;
-            }}
-            if {}.status.is_none() {{
-                {}.status = Some(Default::default());
-            }}
-            let model = {}.clone();
-            let name = {}.metadata.name.clone().unwrap();
-            let dto = convert_to_dto(model);
-            if dto.uuid.is_none() {{
-                info!(\"{{}} {{}} does not exist\", kind_str, name);
-                return;
-            }}
-            let dto_clone = dto.clone();
-            match {}(config, &dto.uuid.unwrap(), dto_clone).await {{
-                Ok(_) => {{
-                    let msg = format!(\"{{}} {{}} updated\", kind_str.clone(), name);
-                    info!(\"{{}}\", msg);
-                    add_event(kind_str.clone(), {}, \"Normal\", &kind_str.clone(), &msg).await;
-                }},
-                Err(e) => {{
-                    let msg = format!(\"Failed to update {{}} {{}}: {{:?}}\", kind_str.clone(), name, e);
-                    error!(\"{{}}\", msg);
-                    add_event(kind_str.clone(), {}, \"Error\", &kind_str.clone(), &msg).await;
-                }},
-            }};
-        }}",
-        identifiers.arg_name,
-        identifiers.struct_name,
-        identifiers.struct_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.update_function_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-    )
-}
-
-fn generate_handle_deleted(identifiers: &Identifiers) -> String {
-    format!(
-        "pub async fn handle_deleted(config: &Configuration, kind_str: String, {}: &mut {}, _kubernetes_api: Api<{}>) {{
-            let name = {}.metadata.name.clone().unwrap();
-            match {}(config, &{}.metadata.name.clone().unwrap()).await {{
-                Ok(_) => {{
-                    info!(\"{{}} {{}} deleted\", kind_str, name);
-                    add_event(kind_str, {}, \"Normal\", \"{}\", \"{} deleted\").await;
-                }},
-                Err(e) => {{
-                    error!(\"Failed to delete {{}} {{}}: {{:?}}\", kind_str, name, e);
-                    add_event(kind_str, {}, \"Error\", \"{}\", \"Failed to delete {{}} {{}} remotely\").await;
-                }},
-            }};
-        }}",
-        identifiers.arg_name,
-        identifiers.struct_name,
-        identifiers.struct_name,
-        identifiers.arg_name,
-        identifiers.delete_function_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-    )
-}
-
-fn write_controller_to_file(name: &str, file: &String, functions: &Functions) {
-    let mut file_content = file.clone();
-    file_content.push_str(&functions.function_dto);
-    file_content.push_str("\n\n");
-    file_content.push_str(&functions.main_handler);
-    file_content.push_str("\n\n");
-    file_content.push_str(&functions.handle_added);
-    file_content.push_str("\n\n");
-    file_content.push_str(&functions.handle_modified);
-    file_content.push_str("\n\n");
-    file_content.push_str(&functions.handle_deleted);
-
+    .render()
+    .unwrap();
     let file_path = format!("{}/{}.rs", CONTROLLERS_DIR, name.to_lowercase());
-    write_to_file(file_path.clone(), file_content.to_string());
-    format_file(file_path.clone())
+    write_to_file(file_path.to_owned(), content);
+    format_file(file_path)
 }
 
 fn get_ignored_files() -> Vec<String> {
@@ -835,10 +587,17 @@ fn format_file(file_path: String) {
 }
 
 fn convert_to_singular(name: &str) -> String {
-    if name.ends_with("ies") {
-        return name.trim_end_matches("ies").to_string() + "y";
+    if name == "Kubernetes" {
+        return name.to_string();
+    } else if name.ends_with("ies") {
+        let mut s = name.to_string();
+        s.truncate(s.len() - 3);
+        s.push('y');
+        return s;
     } else if name.ends_with("s") {
-        return name.trim_end_matches("s").to_string();
+        let mut s = name.to_string();
+        s.pop();
+        return s;
     }
     name.to_string()
 }
