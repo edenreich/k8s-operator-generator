@@ -10,11 +10,11 @@ use syn::{parse_quote, ItemFn};
 
 const CONTROLLERS_DIR: &str = "src/controllers";
 const TYPES_DIR: &str = "src/types";
+const API_GROUP: &str = "example.com";
 
 fn main() {
     let input = "openapi.yaml";
     let lib_file_path: String = "src/lib.rs".to_string();
-    let api_group = "example.com";
 
     // Read the OpenAPI specification from the YAML file
     let mut file = File::open(input).expect("Unable to open file");
@@ -28,7 +28,7 @@ fn main() {
     // Generate lib.rs
     let mut scope = Scope::new();
     generate_lib_imports(&mut scope);
-    generate_event_capturing_function(&mut scope, api_group);
+    generate_event_capturing_function(&mut scope);
     write_to_file(lib_file_path.clone(), scope.to_string());
     format_file(lib_file_path.clone());
 
@@ -46,7 +46,7 @@ fn main() {
                     // Handle references here if needed
                 }
                 openapiv3::ReferenceOr::Item(item) => {
-                    let rust_code = generate_rust_code(&name, api_group, "v1", &item);
+                    let rust_code = generate_rust_code(&name, "v1", &item);
                     let mut file =
                         File::create(format!("{}/{}.rs", TYPES_DIR, name.to_lowercase())).unwrap();
                     write!(file, "{}", rust_code).unwrap();
@@ -93,9 +93,11 @@ fn main() {
         }
     }
 
-    let schema_names = openapi
+    let components = openapi
         .components
-        .expect("No components in OpenAPI spec")
+        .clone()
+        .expect("No components in OpenAPI spec");
+    let schema_names = components
         .schemas
         .keys()
         .map(|name| name.to_string())
@@ -113,10 +115,10 @@ fn main() {
     }
     resources.pop();
 
-    let role_file_content = get_role_file_content(api_group, &resources);
+    let role_file_content = get_role_file_content(&resources);
     write_to_file("manifests/rbac/role.yaml".to_string(), role_file_content);
 
-    let cluster_role_file_content = get_cluster_role_file_content(api_group, &resources);
+    let cluster_role_file_content = get_cluster_role_file_content(&resources);
     write_to_file(
         "manifests/rbac/clusterrole.yaml".to_string(),
         cluster_role_file_content,
@@ -151,12 +153,60 @@ fn main() {
     let crdgen_file_content = get_crdgen_file_content(&schema_names);
     write_to_file("src/crdgen.rs".to_string(), crdgen_file_content);
     format_file("src/crdgen.rs".to_string());
+
+    // Generate examples from OAS
+    for (name, example) in components.examples {
+        if let openapiv3::ReferenceOr::Item(example) = example {
+            let manifest = generate_manifest_from_example(&name, &example);
+
+            write_to_file(
+                format!("manifests/examples/{}.yaml", name.to_lowercase()),
+                manifest,
+            )
+        }
+    }
 }
 
-fn generate_rust_code(name: &str, api_group: &str, api_version: &str, schema: &Schema) -> String {
+#[derive(serde::Serialize)]
+struct K8sManifest {
+    api_version: String,
+    kind: String,
+    metadata: Metadata,
+    spec: serde_json::Value,
+}
+
+#[derive(serde::Serialize)]
+struct Metadata {
+    name: String,
+    namespace: String,
+}
+
+fn generate_manifest_from_example(name: &str, example: &openapiv3::Example) -> String {
+    let mut manifest = String::from("---\n");
+    if let Some(mut value) = example.value.clone() {
+        if value.is_object() {
+            let obj = value.as_object_mut().unwrap();
+            obj.remove("uuid");
+        }
+        let k8s_manifest = K8sManifest {
+            api_version: format!("{}s.{}/v1", name.to_lowercase(), API_GROUP),
+            kind: name.to_string(),
+            metadata: Metadata {
+                name: "example".to_string(),
+                namespace: "default".to_string(),
+            },
+            spec: value,
+        };
+        let yaml_str = serde_yaml::to_string(&k8s_manifest).unwrap();
+        manifest.push_str(&yaml_str);
+    }
+    manifest
+}
+
+fn generate_rust_code(name: &str, api_version: &str, schema: &Schema) -> String {
     let mut scope = Scope::new();
     generate_imports(&mut scope);
-    generate_struct(&mut scope, name, api_group, api_version, schema);
+    generate_struct(&mut scope, name, api_version, schema);
     scope.to_string()
 }
 
@@ -167,13 +217,7 @@ fn generate_imports(scope: &mut Scope) {
     scope.import("schemars", "JsonSchema");
 }
 
-fn generate_struct(
-    scope: &mut Scope,
-    name: &str,
-    api_group: &str,
-    api_version: &str,
-    schema: &Schema,
-) {
+fn generate_struct(scope: &mut Scope, name: &str, api_version: &str, schema: &Schema) {
     // Create a new struct with the given name
     let mut struct_ = codegen::Struct::new(&format!("{}Spec", name));
 
@@ -189,7 +233,7 @@ fn generate_struct(
 
     struct_.attr(&format!(
         "kube(group = \"{}\", version = \"{}\", kind = \"{}\", plural = \"{}\", status = \"{}\", namespaced)",
-        api_group,
+        API_GROUP,
         api_version,
         name,
         name.to_lowercase() + "s",
@@ -273,7 +317,7 @@ fn generate_lib_imports(scope: &mut Scope) {
     scope.raw("pub mod controllers;");
 }
 
-fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
+fn generate_event_capturing_function(scope: &mut Scope) {
     let function: ItemFn = parse_quote! {
         pub async fn watch_resource<T>(
             kubernetes_api: Api<T>,
@@ -310,7 +354,7 @@ fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
                 + core::fmt::Debug
                 + 'static,
         {
-            let finalizer = String::from(format!("finalizers.{}", #api_group));
+            let finalizer = String::from(format!("finalizers.{}", #API_GROUP));
             let finalizers = resource.meta_mut().finalizers.get_or_insert_with(Vec::new);
             if finalizers.contains(&finalizer) {
                 debug!("Finalizer already exists");
@@ -336,7 +380,7 @@ fn generate_event_capturing_function(scope: &mut Scope, api_group: &str) {
         pub async fn remove_finalizer<T>(resource: &mut T, kubernetes_api: Api<T>)
             where
                 T: Clone + Serialize + DeserializeOwned + Resource + CustomResourceExt + core::fmt::Debug + 'static {
-            let finalizer = String::from(format!("finalizers.{}", #api_group));
+            let finalizer = String::from(format!("finalizers.{}", #API_GROUP));
             if let Some(finalizers) = &mut resource.meta_mut().finalizers {
                 if finalizers.contains(&finalizer) {
                     finalizers.retain(|f| f != &finalizer);
@@ -818,7 +862,7 @@ fn uppercase_first_letter(name: &str) -> String {
 ///
 /// Later will be moved to a separate template files
 ///
-fn get_role_file_content(api_group: &str, resources: &str) -> String {
+fn get_role_file_content(resources: &str) -> String {
     format!(
         r#"---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -846,11 +890,11 @@ rules:
       - create
       - patch
 "#,
-        api_group, resources
+        API_GROUP, resources
     )
 }
 
-fn get_cluster_role_file_content(api_group: &str, resources: &str) -> String {
+fn get_cluster_role_file_content(resources: &str) -> String {
     format!(
         r#"---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -871,7 +915,7 @@ rules:
       - patch
       - delete
 "#,
-        api_group, resources
+        API_GROUP, resources
     )
 }
 

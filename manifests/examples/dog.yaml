@@ -1,9 +1,10 @@
 ---
-apiVersion: example.com/v1
+api_version: dogs.example.com/v1
 kind: Dog
 metadata:
-  name: fido
+  name: example
+  namespace: default
 spec:
-  age: 5
-  breed: bulldog
-  name: fido
+  age: 3
+  breed: Bulldog
+  name: Fido

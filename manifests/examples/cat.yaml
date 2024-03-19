@@ -1,9 +1,10 @@
 ---
-apiVersion: example.com/v1
+api_version: cats.example.com/v1
 kind: Cat
 metadata:
-  name: fluffy
+  name: example
+  namespace: default
 spec:
-  age: 1
-  breed: persian
-  name: fluffy
+  age: 3
+  breed: Persian
+  name: Fluffy

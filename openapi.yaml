@@ -286,6 +286,25 @@ paths:
         '204':
           description: No content
 components:
+  examples:
+    Cat:
+      value:
+        uuid: '76523f74-484c-4018-b9bf-1c03b134512a'
+        name: 'Fluffy'
+        breed: 'Persian'
+        age: 3
+    Dog:
+      value:
+        uuid: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
+        name: 'Fido'
+        breed: 'Bulldog'
+        age: 3
+    Horse:
+      value:
+        uuid: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
+        name: 'Star'
+        breed: 'Arabian'
+        age: 5
   schemas:
     Cat:
       type: object
@@ -296,16 +315,14 @@ components:
       properties:
         uuid:
           type: string
-          example: '76523f74-484c-4018-b9bf-1c03b134512a'
         name:
           type: string
-          example: 'Fluffy'
         breed:
           type: string
-          example: 'Persian'
         age:
           type: integer
-          example: 3
+      example:
+        $ref: '#/components/examples/Cat'
     Dog:
       type: object
       required:
@@ -315,16 +332,14 @@ components:
       properties:
         uuid:
           type: string
-          example: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
         name:
           type: string
-          example: 'Fido'
         breed:
           type: string
-          example: 'Bulldog'
         age:
           type: integer
-          example: 3
+      example:
+        $ref: '#/components/examples/Dog'
     Horse:
       type: object
       required:
@@ -334,13 +349,11 @@ components:
       properties:
         uuid:
           type: string
-          example: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
         name:
           type: string
-          example: 'Fido'
         breed:
           type: string
-          example: 'Bulldog'
         age:
           type: integer
-          example: 3
+      example:
+        $ref: '#/components/examples/Horse'
