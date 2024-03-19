@@ -1,21 +1,19 @@
 use askama::Template;
 use codegen::Scope;
 use openapiv3::{OpenAPI, Schema};
-use quote::quote;
 use std::{
     fs::{DirBuilder, File, OpenOptions},
     io::{BufRead, BufReader, Error, Read, Write},
     process::Command,
 };
-use syn::{parse_quote, ItemFn};
 
 const CONTROLLERS_DIR: &str = "src/controllers";
 const TYPES_DIR: &str = "src/types";
+const LIB_FILEPATH: &str = "src/lib.rs";
 const API_GROUP: &str = "example.com";
 
 fn main() {
     let input = "openapi.yaml";
-    let lib_file_path: String = "src/lib.rs".to_string();
 
     // Read the OpenAPI specification from the YAML file
     let mut file = File::open(input).expect("Unable to open file");
@@ -27,11 +25,7 @@ fn main() {
     let openapi: OpenAPI = serde_yaml::from_str(&contents).expect("Unable to parse OpenAPI spec");
 
     // Generate lib.rs
-    let mut scope = Scope::new();
-    generate_lib_imports(&mut scope);
-    generate_event_capturing_function(&mut scope);
-    write_to_file(lib_file_path.clone(), scope.to_string());
-    format_file(lib_file_path.clone());
+    generate_lib();
 
     // Create the types directory if it doesn't exist
     DirBuilder::new()
@@ -289,198 +283,15 @@ fn generate_struct(scope: &mut Scope, name: &str, api_version: &str, schema: &Sc
     scope.push_struct(struct_status);
 }
 
-fn generate_lib_imports(scope: &mut Scope) {
-    scope.import("log", "error");
-    scope.import("log", "info");
-    scope.import("log", "debug");
-    scope.import("kube", "Resource");
-    scope.import("kube", "ResourceExt");
-    scope.import("kube::core", "CustomResourceExt");
-    scope.import("kube::api", "Api");
-    scope.import("kube::api", "WatchEvent");
-    scope.import("kube::api", "WatchParams");
-    scope.import("kube::api", "Patch");
-    scope.import("kube::api", "PatchParams");
-    scope.import("kube::api", "PostParams");
-    scope.import("kube::api", "ObjectMeta");
-    scope.import("futures_util::stream", "StreamExt");
-    scope.import("tokio::time", "sleep");
-    scope.import("tokio::time", "Duration");
-    scope.import("serde::de", "DeserializeOwned");
-    scope.import("serde", "Serialize");
-    scope.import("serde_json", "json");
-    scope.import("k8s_openapi", "chrono");
-    scope.import("k8s_openapi::api::core::v1", "Event");
-    scope.import("k8s_openapi::api::core::v1", "EventSource");
-    scope.import("k8s_openapi::api::core::v1", "ObjectReference");
-    scope.import("k8s_openapi::apimachinery::pkg::apis::meta::v1", "Time");
-    scope.import("openapi::apis::configuration", "Configuration");
-    scope.import("std::sync", "Arc");
+#[derive(Template)]
+#[template(path = "lib.jinja")]
+struct LibTemplate {}
 
-    scope.raw("pub mod types;");
-    scope.raw("pub mod controllers;");
-}
-
-fn generate_event_capturing_function(scope: &mut Scope) {
-    let function: ItemFn = parse_quote! {
-        pub async fn watch_resource<T>(
-            config: Arc<Configuration>,
-            kubernetes_api: Api<T>,
-            watch_params: WatchParams,
-            handler: fn(Arc<Configuration>, WatchEvent<T>, Api<T>),
-        ) -> anyhow::Result<()>
-        where
-            T: Clone + core::fmt::Debug + DeserializeOwned + 'static,
-        {
-            let mut stream = kubernetes_api.watch(&watch_params, "0").await?.boxed();
-            loop {
-                while let Some(event) = stream.next().await {
-                    match event {
-                        Ok(event) => handler(Arc::clone(&config), event, kubernetes_api.clone()),
-                        Err(e) => error!("Error watching resource: {:?}", e),
-                    }
-                }
-                sleep(Duration::from_secs(1)).await;
-                stream = kubernetes_api.watch(&watch_params, "0").await?.boxed();
-            }
-        }
-    };
-
-    let add_finalizer_function: ItemFn = parse_quote! {
-        pub async fn add_finalizer<T>(resource: &mut T, kubernetes_api: Api<T>)
-        where
-            T: Clone
-                + Serialize
-                + DeserializeOwned
-                + Resource
-                + CustomResourceExt
-                + core::fmt::Debug
-                + 'static,
-        {
-            let finalizer = String::from(format!("finalizers.{}", #API_GROUP));
-            let finalizers = resource.meta_mut().finalizers.get_or_insert_with(Vec::new);
-            if finalizers.contains(&finalizer) {
-                debug!("Finalizer already exists");
-                return;
-            }
-            finalizers.push(finalizer);
-
-            let resource_name = resource.meta_mut().name.clone().unwrap();
-            let resource_clone = resource.clone();
-            let patch = Patch::Merge(&resource_clone);
-            let patch_params = PatchParams {
-                field_manager: resource.meta_mut().name.clone(),
-                ..Default::default()
-            };
-            match kubernetes_api.patch(&resource_name, &patch_params, &patch).await {
-                Ok(_) => debug!("Finalizer added successfully"),
-                Err(e) => debug!("Failed to add finalizer: {:?}", e),
-            };
-        }
-    };
-
-    let remove_finalizer_function: ItemFn = parse_quote! {
-        pub async fn remove_finalizer<T>(resource: &mut T, kubernetes_api: Api<T>)
-            where
-                T: Clone + Serialize + DeserializeOwned + Resource + CustomResourceExt + core::fmt::Debug + 'static {
-            let finalizer = String::from(format!("finalizers.{}", #API_GROUP));
-            if let Some(finalizers) = &mut resource.meta_mut().finalizers {
-                if finalizers.contains(&finalizer) {
-                    finalizers.retain(|f| f != &finalizer);
-                    let patch = json ! ({ "metadata" : { "finalizers" : finalizers } });
-                    let patch = Patch::Merge(&patch);
-                    let patch_params = PatchParams {
-                        field_manager: resource.meta_mut().name.clone(),
-                        ..Default::default()
-                    };
-                    match kubernetes_api.patch(&resource.clone().meta_mut().name.clone().unwrap(), &patch_params, &patch).await {
-                        Ok(_) => debug!("Finalizer removed successfully"),
-                        Err(e) => debug!("Failed to remove finalizer: {:?}", e),
-                    };
-                }
-            }
-        }
-    };
-
-    let add_event_function: ItemFn = parse_quote! {
-        pub async fn add_event<T>(kind: String, resource: &mut T, reason: &str, from: &str, message: &str)
-        where
-            T: CustomResourceExt
-                + Clone
-                + Serialize
-                + DeserializeOwned
-                + Resource
-                + core::fmt::Debug
-                + 'static,
-        {
-            let kube_client = kube::Client::try_default().await.unwrap();
-            let namespace = resource.namespace().clone().unwrap_or_default();
-            let kubernetes_api: Api<Event> = Api::namespaced(kube_client.clone(), &namespace);
-
-            let resource_ref = ObjectReference {
-                kind: Some(kind),
-                namespace: resource.namespace().clone(),
-                name: Some(resource.meta().name.clone().unwrap()),
-                uid: resource.uid().clone(),
-                ..Default::default()
-            };
-
-            let timestamp = chrono::Utc::now().to_rfc3339();
-            let event_name = format!("{}-{}", resource.meta().name.clone().unwrap(), timestamp);
-
-            let new_event = Event {
-                metadata: ObjectMeta {
-                    name: Some(event_name),
-                    ..Default::default()
-                },
-                involved_object: resource_ref,
-                reason: Some(reason.into()),
-                message: Some(message.into()),
-                type_: Some("Normal".into()),
-                source: Some(EventSource {
-                    component: Some(String::from(from)),
-                    ..Default::default()
-                }),
-                first_timestamp: Some(Time(chrono::Utc::now())),
-                last_timestamp: Some(Time(chrono::Utc::now())),
-                ..Default::default()
-            };
-
-            match kubernetes_api.create(&PostParams::default(), &new_event).await {
-                Ok(_) => debug!("Event added successfully"),
-                Err(e) => debug!("Failed to add event: {:?}", e),
-            };
-        }
-    };
-
-    let change_status_function: ItemFn = parse_quote! {
-        pub async fn change_status<T>(resource: &mut T, kubernetes_api: Api<T>, field: &str, value: String)
-        where
-            T: Clone + Serialize + DeserializeOwned + Resource + CustomResourceExt + core::fmt::Debug + 'static,
-        {
-            let name = resource.meta().name.clone().unwrap();
-            let mut resource_json: serde_json::Value = serde_json::to_value(&resource).expect("Failed to serialize resource");
-            resource_json["status"][field] = serde_json::json!(value);
-            let new_resource: T = serde_json::from_value(resource_json).expect("Failed to deserialize resource");
-            let resource_bytes = serde_json::to_vec(&new_resource).expect("Failed to serialize resource");
-            match kubernetes_api.replace_status(&name, &PostParams::default(), resource_bytes).await {
-                Ok(_) => info!("Status updated successfully for {}", name),
-                Err(e) => info!("Failed to update status for {}: {:?}", name, e),
-            };
-        }
-    };
-
-    let function_string = quote! { #function }.to_string();
-    let add_finalizer_function_string = quote! { #add_finalizer_function }.to_string();
-    let remove_finalizer_function_string = quote! { #remove_finalizer_function }.to_string();
-    let add_event_function_string = quote! { #add_event_function }.to_string();
-    let change_status_function_string = quote! { #change_status_function }.to_string();
-
-    scope.raw(&function_string);
-    scope.raw(&add_finalizer_function_string);
-    scope.raw(&remove_finalizer_function_string);
-    scope.raw(&add_event_function_string);
-    scope.raw(&change_status_function_string);
+fn generate_lib() {
+    let content: String = LibTemplate {}.render().unwrap();
+    let file_path = LIB_FILEPATH;
+    write_to_file(file_path.to_string(), content);
+    format_file(file_path.to_string());
 }
 
 fn add_type_to_modfile(type_name: &str) -> Result<(), Error> {
