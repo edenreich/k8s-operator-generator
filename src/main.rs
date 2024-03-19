@@ -6,6 +6,8 @@ use kube::{
     Client,
 };
 use log::{error, info};
+use openapi::apis::configuration::Configuration;
+use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 
 async fn check_any_crd_from_group(client: Client, group: &str) -> anyhow::Result<bool> {
@@ -32,31 +34,44 @@ async fn main() -> anyhow::Result<()> {
         return Ok(());
     }
 
+    let config = Arc::new(Configuration {
+        base_path: "http://localhost:8080".to_string(),
+        user_agent: None,
+        client: reqwest::Client::new(),
+        ..Configuration::default()
+    });
+
     tokio::spawn(watch_resource::<k8s_operator::types::cat::Cat>(
+        Arc::clone(&config),
         Api::default_namespaced(client.clone()).clone(),
         watch_params.clone(),
-        |event, kubernetes_api| {
+        |config, event, kubernetes_api| {
             tokio::spawn(k8s_operator::controllers::cats::handle(
+                config,
                 event,
                 kubernetes_api,
             ));
         },
     ));
     tokio::spawn(watch_resource::<k8s_operator::types::dog::Dog>(
+        Arc::clone(&config),
         Api::default_namespaced(client.clone()).clone(),
         watch_params.clone(),
-        |event, kubernetes_api| {
+        |config, event, kubernetes_api| {
             tokio::spawn(k8s_operator::controllers::dogs::handle(
+                config,
                 event,
                 kubernetes_api,
             ));
         },
     ));
     tokio::spawn(watch_resource::<k8s_operator::types::horse::Horse>(
+        Arc::clone(&config),
         Api::default_namespaced(client.clone()).clone(),
         watch_params.clone(),
-        |event, kubernetes_api| {
+        |config, event, kubernetes_api| {
             tokio::spawn(k8s_operator::controllers::horses::handle(
+                config,
                 event,
                 kubernetes_api,
             ));

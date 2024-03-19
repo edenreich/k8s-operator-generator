@@ -6,9 +6,11 @@ use kube::api::{Api, ObjectMeta, Patch, PatchParams, PostParams, WatchEvent, Wat
 use kube::core::CustomResourceExt;
 use kube::{Resource, ResourceExt};
 use log::{debug, error, info};
+use openapi::apis::configuration::Configuration;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::json;
+use std::sync::Arc;
 use tokio::time::{sleep, Duration};
 
 pub mod types;
@@ -16,9 +18,10 @@ pub mod types;
 pub mod controllers;
 
 pub async fn watch_resource<T>(
+    config: Arc<Configuration>,
     kubernetes_api: Api<T>,
     watch_params: WatchParams,
-    handler: fn(WatchEvent<T>, Api<T>),
+    handler: fn(Arc<Configuration>, WatchEvent<T>, Api<T>),
 ) -> anyhow::Result<()>
 where
     T: Clone + core::fmt::Debug + DeserializeOwned + 'static,
@@ -27,7 +30,7 @@ where
     loop {
         while let Some(event) = stream.next().await {
             match event {
-                Ok(event) => handler(event, kubernetes_api.clone()),
+                Ok(event) => handler(Arc::clone(&config), event, kubernetes_api.clone()),
                 Err(e) => error!("Error watching resource: {:?}", e),
             }
         }

@@ -13,30 +13,32 @@ use openapi::apis::horses_api::create_horse;
 use openapi::apis::horses_api::delete_horse_by_id;
 use openapi::apis::horses_api::update_horse_by_id;
 use openapi::models::Horse as HorseDto;
+use std::sync::Arc;
 
 fn convert_to_dto(horse: Horse) -> HorseDto {
-    let uuid = match horse.status {
+    let _uuid = match horse.status {
         Some(status) => status.uuid,
         None => None,
     };
-    HorseDto { uuid: uuid }
+    // HorseDto {
+    //    uuid: uuid,
+    // }
+    todo!("Implement the mapping for horses")
 }
 
-pub async fn handle(event: WatchEvent<Horse>, kubernetes_api: Api<Horse>) {
+pub async fn handle(
+    config: Arc<Configuration>,
+    event: WatchEvent<Horse>,
+    kubernetes_api: Api<Horse>,
+) {
     let kind = Horse::kind(&());
     let kind_str = kind.to_string();
-    let config = &Configuration {
-        base_path: "http://localhost:8080".to_string(),
-        user_agent: None,
-        client: reqwest::Client::new(),
-        ..Configuration::default()
-    };
     match event {
         WatchEvent::Added(mut horse) => {
-            handle_added(config, kind_str, &mut horse, kubernetes_api).await
+            handle_added(&config, kind_str, &mut horse, kubernetes_api).await
         }
         WatchEvent::Modified(mut horse) => {
-            handle_modified(config, kind_str, &mut horse, kubernetes_api).await
+            handle_modified(&config, kind_str, &mut horse, kubernetes_api).await
         }
         WatchEvent::Bookmark(bookmark) => {
             info!("horse Bookmark: {:?}", bookmark.metadata.resource_version);

@@ -1,5 +1,5 @@
 ---
-api_version: cats.example.com/v1
+apiVersion: example.com/v1
 kind: Cat
 metadata:
   name: example

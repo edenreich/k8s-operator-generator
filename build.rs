@@ -169,6 +169,7 @@ fn main() {
 
 #[derive(serde::Serialize)]
 struct K8sManifest {
+    #[serde(rename = "apiVersion")]
     api_version: String,
     kind: String,
     metadata: Metadata,
@@ -189,7 +190,7 @@ fn generate_manifest_from_example(name: &str, example: &openapiv3::Example) -> S
             obj.remove("uuid");
         }
         let k8s_manifest = K8sManifest {
-            api_version: format!("{}s.{}/v1", name.to_lowercase(), API_GROUP),
+            api_version: format!("{}/v1", API_GROUP),
             kind: name.to_string(),
             metadata: Metadata {
                 name: "example".to_string(),
@@ -312,6 +313,8 @@ fn generate_lib_imports(scope: &mut Scope) {
     scope.import("k8s_openapi::api::core::v1", "EventSource");
     scope.import("k8s_openapi::api::core::v1", "ObjectReference");
     scope.import("k8s_openapi::apimachinery::pkg::apis::meta::v1", "Time");
+    scope.import("openapi::apis::configuration", "Configuration");
+    scope.import("std::sync", "Arc");
 
     scope.raw("pub mod types;");
     scope.raw("pub mod controllers;");
@@ -320,23 +323,22 @@ fn generate_lib_imports(scope: &mut Scope) {
 fn generate_event_capturing_function(scope: &mut Scope) {
     let function: ItemFn = parse_quote! {
         pub async fn watch_resource<T>(
+            config: Arc<Configuration>,
             kubernetes_api: Api<T>,
             watch_params: WatchParams,
-            handler: fn(WatchEvent<T>, Api<T>),
+            handler: fn(Arc<Configuration>, WatchEvent<T>, Api<T>),
         ) -> anyhow::Result<()>
         where
             T: Clone + core::fmt::Debug + DeserializeOwned + 'static,
         {
             let mut stream = kubernetes_api.watch(&watch_params, "0").await?.boxed();
-
             loop {
                 while let Some(event) = stream.next().await {
                     match event {
-                        Ok(event) => handler(event, kubernetes_api.clone()),
+                        Ok(event) => handler(Arc::clone(&config), event, kubernetes_api.clone()),
                         Err(e) => error!("Error watching resource: {:?}", e),
                     }
                 }
-
                 sleep(Duration::from_secs(1)).await;
                 stream = kubernetes_api.watch(&watch_params, "0").await?.boxed();
             }
@@ -552,6 +554,7 @@ fn generate_controller_imports(identifiers: &Identifiers) -> String {
          use openapi::apis::{}_api::{};
          use openapi::models::{} as {};
          use openapi::apis::configuration::Configuration;
+         use std::sync::Arc;
          \n\n",
         identifiers.arg_name,
         identifiers.struct_name,
@@ -578,18 +581,12 @@ fn generate_functions(identifiers: &Identifiers) -> Functions {
 
 fn generate_main_handler(identifiers: &Identifiers) -> String {
     format!(
-        "pub async fn {}(event: WatchEvent<{}>, kubernetes_api: Api<{}>) {{
+        "pub async fn {}(config: Arc<Configuration>, event: WatchEvent<{}>, kubernetes_api: Api<{}>) {{
             let kind = {}::kind(&());
             let kind_str = kind.to_string();
-            let config = &Configuration {{
-                base_path: \"http://localhost:8080\".to_string(),
-                user_agent: None,
-                client: reqwest::Client::new(),
-                ..Configuration::default()
-            }};
             match event {{
-                WatchEvent::Added(mut {}) => handle_added(config, kind_str, &mut {}, kubernetes_api).await,
-                WatchEvent::Modified(mut {}) => handle_modified(config, kind_str, &mut {}, kubernetes_api).await,
+                WatchEvent::Added(mut {}) => handle_added(&config, kind_str, &mut {}, kubernetes_api).await,
+                WatchEvent::Modified(mut {}) => handle_modified(&config, kind_str, &mut {}, kubernetes_api).await,
                 WatchEvent::Bookmark(bookmark) => {{
                     info!(\"{} Bookmark: {{:?}}\", bookmark.metadata.resource_version);
                     return;
@@ -616,19 +613,21 @@ fn generate_main_handler(identifiers: &Identifiers) -> String {
 fn generate_function_dto(identifiers: &Identifiers) -> String {
     format!(
         "fn convert_to_dto({}: {}) -> {}Dto {{
-            let uuid = match {}.status {{
+            let _uuid = match {}.status {{
                 Some(status) => status.uuid,
                 None => None,
             }};
-            {}Dto {{
-                uuid: uuid,
-            }}
+            // {}Dto {{
+            //    uuid: uuid,
+            // }}
+            todo!(\"Implement the mapping for {}\")
         }}",
         identifiers.arg_name,
         identifiers.struct_name,
         identifiers.struct_name,
         identifiers.arg_name,
         identifiers.struct_name,
+        identifiers.tag_name,
     )
 }
 

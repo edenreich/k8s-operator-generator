@@ -13,30 +13,28 @@ use openapi::apis::dogs_api::create_dog;
 use openapi::apis::dogs_api::delete_dog_by_id;
 use openapi::apis::dogs_api::update_dog_by_id;
 use openapi::models::Dog as DogDto;
+use std::sync::Arc;
 
 fn convert_to_dto(dog: Dog) -> DogDto {
-    let uuid = match dog.status {
+    let _uuid = match dog.status {
         Some(status) => status.uuid,
         None => None,
     };
-    DogDto { uuid: uuid }
+    // DogDto {
+    //    uuid: uuid,
+    // }
+    todo!("Implement the mapping for dogs")
 }
 
-pub async fn handle(event: WatchEvent<Dog>, kubernetes_api: Api<Dog>) {
+pub async fn handle(config: Arc<Configuration>, event: WatchEvent<Dog>, kubernetes_api: Api<Dog>) {
     let kind = Dog::kind(&());
     let kind_str = kind.to_string();
-    let config = &Configuration {
-        base_path: "http://localhost:8080".to_string(),
-        user_agent: None,
-        client: reqwest::Client::new(),
-        ..Configuration::default()
-    };
     match event {
         WatchEvent::Added(mut dog) => {
-            handle_added(config, kind_str, &mut dog, kubernetes_api).await
+            handle_added(&config, kind_str, &mut dog, kubernetes_api).await
         }
         WatchEvent::Modified(mut dog) => {
-            handle_modified(config, kind_str, &mut dog, kubernetes_api).await
+            handle_modified(&config, kind_str, &mut dog, kubernetes_api).await
         }
         WatchEvent::Bookmark(bookmark) => {
             info!("dog Bookmark: {:?}", bookmark.metadata.resource_version);

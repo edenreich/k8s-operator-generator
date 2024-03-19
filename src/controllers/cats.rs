@@ -13,30 +13,30 @@ use openapi::apis::cats_api::delete_cat_by_id;
 use openapi::apis::cats_api::update_cat_by_id;
 use openapi::apis::configuration::Configuration;
 use openapi::models::Cat as CatDto;
+use std::sync::Arc;
 
 fn convert_to_dto(cat: Cat) -> CatDto {
     let uuid = match cat.status {
         Some(status) => status.uuid,
         None => None,
     };
-    CatDto { uuid: uuid }
+    CatDto {
+        uuid,
+        name: cat.spec.name,
+        breed: cat.spec.breed,
+        age: cat.spec.age,
+    }
 }
 
-pub async fn handle(event: WatchEvent<Cat>, kubernetes_api: Api<Cat>) {
+pub async fn handle(config: Arc<Configuration>, event: WatchEvent<Cat>, kubernetes_api: Api<Cat>) {
     let kind = Cat::kind(&());
     let kind_str = kind.to_string();
-    let config = &Configuration {
-        base_path: "http://localhost:8080".to_string(),
-        user_agent: None,
-        client: reqwest::Client::new(),
-        ..Configuration::default()
-    };
     match event {
         WatchEvent::Added(mut cat) => {
-            handle_added(config, kind_str, &mut cat, kubernetes_api).await
+            handle_added(&config, kind_str, &mut cat, kubernetes_api).await
         }
         WatchEvent::Modified(mut cat) => {
-            handle_modified(config, kind_str, &mut cat, kubernetes_api).await
+            handle_modified(&config, kind_str, &mut cat, kubernetes_api).await
         }
         WatchEvent::Bookmark(bookmark) => {
             info!("cat Bookmark: {:?}", bookmark.metadata.resource_version);
