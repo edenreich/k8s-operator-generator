@@ -616,15 +616,12 @@ fn generate_main_handler(identifiers: &Identifiers) -> String {
 fn generate_function_dto(identifiers: &Identifiers) -> String {
     format!(
         "fn convert_to_dto({}: {}) -> {}Dto {{
-            let _uuid = match {}.status {{
+            let uuid = match {}.status {{
                 Some(status) => status.uuid,
                 None => None,
             }};
             {}Dto {{
-                uuid: _uuid,
-                name: {}.spec.name,
-                breed: {}.spec.breed,
-                age: {}.spec.age,
+                uuid: uuid,
             }}
         }}",
         identifiers.arg_name,
@@ -632,9 +629,6 @@ fn generate_function_dto(identifiers: &Identifiers) -> String {
         identifiers.struct_name,
         identifiers.arg_name,
         identifiers.struct_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
-        identifiers.arg_name,
     )
 }
 

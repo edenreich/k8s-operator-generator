@@ -15,16 +15,11 @@ use openapi::apis::dogs_api::update_dog_by_id;
 use openapi::models::Dog as DogDto;
 
 fn convert_to_dto(dog: Dog) -> DogDto {
-    let _uuid = match dog.status {
+    let uuid = match dog.status {
         Some(status) => status.uuid,
         None => None,
     };
-    DogDto {
-        uuid: _uuid,
-        name: dog.spec.name,
-        breed: dog.spec.breed,
-        age: dog.spec.age,
-    }
+    DogDto { uuid: uuid }
 }
 
 pub async fn handle(event: WatchEvent<Dog>, kubernetes_api: Api<Dog>) {

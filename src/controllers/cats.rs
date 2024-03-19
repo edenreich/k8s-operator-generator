@@ -15,16 +15,11 @@ use openapi::apis::configuration::Configuration;
 use openapi::models::Cat as CatDto;
 
 fn convert_to_dto(cat: Cat) -> CatDto {
-    let _uuid = match cat.status {
+    let uuid = match cat.status {
         Some(status) => status.uuid,
         None => None,
     };
-    CatDto {
-        uuid: _uuid,
-        name: cat.spec.name,
-        breed: cat.spec.breed,
-        age: cat.spec.age,
-    }
+    CatDto { uuid: uuid }
 }
 
 pub async fn handle(event: WatchEvent<Cat>, kubernetes_api: Api<Cat>) {
