@@ -1,0 +1,16 @@
+use kube::CustomResourceExt;
+
+fn main() {
+    let crds = vec![
+        {% for resource in resources %}
+        k8s_operator::types::{{ resource|lower }}::{{ resource|capitalize }}::crd(),
+        {% endfor %}
+    ];
+
+    for crd in crds {
+        match serde_yaml::to_string(&crd) {
+            Ok(yaml) => print!("---\n{}", yaml),
+            Err(e) => eprintln!("Error serializing CRD to YAML: {}", e),
+        }
+    }
+}

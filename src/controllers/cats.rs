@@ -16,10 +16,12 @@ fn convert_to_dto(cat: Cat) -> CatDto {
         Some(status) => status.uuid,
         None => None,
     };
-    // CatDto {
-    //     uuid: uuid,
-    // }
-    todo!("Implement the mapping for cats")
+    CatDto {
+        uuid: cat.spec.uuid,
+        name: cat.spec.name,
+        breed: cat.spec.breed,
+        age: cat.spec.age,
+    }
 }
 
 pub async fn handle(config: Arc<Configuration>, event: WatchEvent<Cat>, kubernetes_api: Api<Cat>) {

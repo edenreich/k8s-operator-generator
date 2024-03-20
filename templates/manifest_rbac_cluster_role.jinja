@@ -1,0 +1,20 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: operator-cluster-role
+rules:
+  - apiGroups:
+      - {{ identifiers.api_group }}
+    resources:
+    {%- for resource in identifiers.resources %}
+      - {{ resource }}
+    {%- endfor %}
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete

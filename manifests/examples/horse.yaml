@@ -1,9 +1,8 @@
 ---
-apiVersion: example.com/v1
+apiVersion: v1
 kind: Horse
 metadata:
   name: example
-  namespace: default
 spec:
   age: 5
   breed: Arabian

@@ -1,9 +1,13 @@
 use askama::Template;
+use inflector::Inflector;
 use openapiv3::{OpenAPI, Schema};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use std::{
     fs::{DirBuilder, File, OpenOptions},
     io::{BufRead, BufReader, Error, Read, Write},
     process::Command,
+    vec,
 };
 
 const CONTROLLERS_DIR: &str = "src/controllers";
@@ -26,130 +30,55 @@ fn main() {
     // Generate lib.rs
     generate_lib();
 
+    let components = openapi
+        .components
+        .clone()
+        .expect("No components in OpenAPI spec");
+
     // Create the types directory if it doesn't exist
     DirBuilder::new()
         .recursive(true)
         .create(TYPES_DIR)
         .expect("Unable to create types directory");
 
-    // Generate Rust code for each schema in the components
-    if let Some(components) = openapi.components.clone() {
-        for (name, schema) in components.schemas {
-            match schema {
-                openapiv3::ReferenceOr::Reference { .. } => {
-                    // Handle references here if needed
-                }
-                openapiv3::ReferenceOr::Item(item) => {
-                    generate_type(&name, "v1", &item);
-                }
+    // Generate types for each schema in the components
+    for (name, schema_item) in components.schemas.iter() {
+        let controller_name = format!("{}", name.to_plural());
+        match schema_item {
+            openapiv3::ReferenceOr::Reference { reference } => {
+                // Handle the case where the item is a reference.
+                // You might need to look up the actual schema using the reference.
             }
-        }
-    }
-
-    // Generate Rust code for each operation in the paths
-    empty_file(format!("{}/mod.rs", CONTROLLERS_DIR))
-        .expect("Unable to empty controllers mod.rs file");
-    for (_, path_item) in openapi.paths.iter() {
-        let path_item = match path_item {
-            openapiv3::ReferenceOr::Item(i) => i,
-            openapiv3::ReferenceOr::Reference { .. } => {
-                // Handle the case where the path item is a reference, not a direct item
-                continue;
-            }
-        };
-
-        // Iterate over the operations of each path
-        let operations = [
-            &path_item.get,
-            &path_item.put,
-            &path_item.post,
-            &path_item.delete,
-            &path_item.options,
-            &path_item.head,
-            &path_item.patch,
-            &path_item.trace,
-        ];
-        for operation in operations.iter().filter_map(|o| o.as_ref()) {
-            // Generate a controller for each tag
-            for tag in &operation.tags {
-                let controller_name = format!("{}", tag);
-                generate_controller(&controller_name);
-                add_controller_to_modfile(&controller_name)
+            openapiv3::ReferenceOr::Item(item) => {
+                // Here, `item` is an `openapiv3::Schema`.
+                // You can generate a type for it and add it to the mod file.
+                generate_type(&name, "v1", &item);
+                add_type_to_modfile(&name).expect("Unable to add type to mod file");
+                generate_controller(&controller_name, item);
+                add_controller_to_modfile(controller_name.as_str())
                     .expect("Unable to add controller to mod file");
             }
         }
     }
 
-    let components = openapi
-        .components
-        .clone()
-        .expect("No components in OpenAPI spec");
-    let schema_names = components
-        .schemas
-        .keys()
-        .map(|name| name.to_string())
-        .collect::<Vec<String>>();
-
-    // Generate a mod.rs file that publicly exports all the generated modules
-    for name in schema_names.clone() {
-        add_type_to_modfile(&name).expect("Unable to add type to mod file");
-    }
-
     // Generate the RBAC for the operator
-    let mut resources = String::new();
-    for schema_name in schema_names.clone() {
-        resources.push_str(&format!("      - {}\n", schema_name.to_lowercase() + "s"));
+    let mut resources = vec![];
+    for (schema_name, _) in components.schemas.iter() {
+        resources.push(schema_name.to_lowercase().to_plural());
     }
-    resources.pop();
 
-    let role_file_content = get_role_file_content(&resources);
-    write_to_file("manifests/rbac/role.yaml".to_string(), role_file_content);
-
-    let cluster_role_file_content = get_cluster_role_file_content(&resources);
-    write_to_file(
-        "manifests/rbac/clusterrole.yaml".to_string(),
-        cluster_role_file_content,
-    );
-
-    let service_account_file_content = get_service_account_file_content();
-    write_to_file(
-        "manifests/rbac/serviceaccount.yaml".to_string(),
-        service_account_file_content,
-    );
-
-    let role_binding_file_content = get_role_binding_file_content();
-    write_to_file(
-        "manifests/rbac/rolebinding.yaml".to_string(),
-        role_binding_file_content,
-    );
-
-    let cluster_role_binding_file_content = get_cluster_role_binding_file_content();
-    write_to_file(
-        "manifests/rbac/clusterrolebinding.yaml".to_string(),
-        cluster_role_binding_file_content,
-    );
-
-    // Generate the operator deployment
-    let deployment_file_content = get_operator_deployment_file_content();
-    write_to_file(
-        "manifests/operator/deployment.yaml".to_string(),
-        deployment_file_content,
-    );
-
-    // Generate the code that generates the CRDs
-    let crdgen_file_content = get_crdgen_file_content(&schema_names);
-    write_to_file("src/crdgen.rs".to_string(), crdgen_file_content);
-    format_file("src/crdgen.rs".to_string());
+    generate_role_file(resources.to_owned());
+    generate_cluster_role_file(resources.to_owned());
+    generate_service_account_file();
+    generate_role_binding_file_content();
+    generate_cluster_role_binding_file_content();
+    generate_operator_deployment_file();
+    generate_crdgen_file(resources);
 
     // Generate examples from OAS
     for (name, example) in components.examples {
         if let openapiv3::ReferenceOr::Item(example) = example {
-            let manifest = generate_manifest_from_example(&name, &example);
-
-            write_to_file(
-                format!("manifests/examples/{}.yaml", name.to_lowercase()),
-                manifest,
-            )
+            generate_manifest_from_example(&name, &example);
         }
     }
 }
@@ -159,7 +88,9 @@ struct Field {
     field_type: String,
 }
 
-struct TypeIdentifiers {
+#[derive(Template)]
+#[template(path = "type.jinja")]
+struct TypeTemplate {
     tag_name: String,
     type_name: String,
     api_version: String,
@@ -167,16 +98,8 @@ struct TypeIdentifiers {
     fields: Vec<Field>,
 }
 
-#[derive(Template)]
-#[template(path = "type.jinja")]
-struct TypeTemplate {
-    identifiers: TypeIdentifiers,
-}
-
-fn generate_type(name: &str, api_version: &str, schema: &Schema) {
-    let mut fields = Vec::new();
-
-    // Add fields to the struct based on the schema
+fn get_fields_for_type(schema: &Schema) -> Vec<Field> {
+    let mut fields = vec![];
     if let openapiv3::SchemaKind::Type(openapiv3::Type::Object(object)) = &schema.schema_kind {
         for (field_name, field_schema) in &object.properties {
             match field_schema {
@@ -206,20 +129,23 @@ fn generate_type(name: &str, api_version: &str, schema: &Schema) {
             }
         }
     }
+    fields
+}
 
-    let tag_name = name.to_string();
+fn generate_type(name: &str, api_version: &str, schema: &Schema) {
+    let fields = get_fields_for_type(schema);
+
+    let tag_name = name.to_string().to_lowercase().to_plural();
     let arg_name = name.to_lowercase();
     let type_name = uppercase_first_letter(name);
     let arg_name_clone = arg_name.clone();
 
     let content: String = TypeTemplate {
-        identifiers: TypeIdentifiers {
-            tag_name,
-            type_name,
-            api_version: api_version.to_string(),
-            group_name: API_GROUP.to_string(),
-            fields,
-        },
+        tag_name,
+        type_name,
+        api_version: api_version.to_string(),
+        group_name: API_GROUP.to_string(),
+        fields,
     }
     .render()
     .unwrap();
@@ -252,26 +178,23 @@ fn add_controller_to_modfile(controller_name: &str) -> Result<(), Error> {
     )
 }
 
-struct ControllerIdentifiers<'a> {
-    tag_name: &'a str,
-    arg_name: &'a str,
-    type_name: &'a str,
-}
-
 #[derive(Template)]
 #[template(path = "controller.jinja")]
 struct ControllerTemplate<'a> {
-    identifiers: ControllerIdentifiers<'a>,
+    tag_name: &'a str,
+    arg_name: &'a str,
+    type_name: &'a str,
+    fields: Vec<Field>,
 }
 
-fn generate_controller(name: &str) {
-    let name_singular = convert_to_singular(name);
+fn generate_controller(name: &str, schema: &Schema) {
+    let fields = get_fields_for_type(schema);
+    let name_singular = name.to_singular();
     let content: String = ControllerTemplate {
-        identifiers: ControllerIdentifiers {
-            tag_name: name,
-            arg_name: name_singular.clone().as_str(),
-            type_name: &uppercase_first_letter(name_singular.clone().as_str()),
-        },
+        tag_name: &name.to_lowercase(),
+        arg_name: name_singular.clone().to_lowercase().as_str(),
+        type_name: &uppercase_first_letter(name_singular.clone().as_str()),
+        fields: fields,
     }
     .render()
     .unwrap();
@@ -280,41 +203,21 @@ fn generate_controller(name: &str) {
     format_file(file_path)
 }
 
-#[derive(serde::Serialize)]
-struct K8sManifest {
-    #[serde(rename = "apiVersion")]
-    api_version: String,
-    kind: String,
-    metadata: Metadata,
-    spec: serde_json::Value,
+#[derive(Template)]
+#[template(path = "crdgen.jinja")]
+struct CrdGenTemplate {
+    resources: Vec<String>,
 }
 
-#[derive(serde::Serialize)]
-struct Metadata {
-    name: String,
-    namespace: String,
-}
-
-fn generate_manifest_from_example(name: &str, example: &openapiv3::Example) -> String {
-    let mut manifest = String::from("---\n");
-    if let Some(mut value) = example.value.clone() {
-        if value.is_object() {
-            let obj = value.as_object_mut().unwrap();
-            obj.remove("uuid");
-        }
-        let k8s_manifest = K8sManifest {
-            api_version: format!("{}/v1", API_GROUP),
-            kind: name.to_string(),
-            metadata: Metadata {
-                name: "example".to_string(),
-                namespace: "default".to_string(),
-            },
-            spec: value,
-        };
-        let yaml_str = serde_yaml::to_string(&k8s_manifest).unwrap();
-        manifest.push_str(&yaml_str);
-    }
-    manifest
+fn generate_crdgen_file(resources: Vec<String>) {
+    let resources = resources
+        .into_iter()
+        .map(|resource| resource.to_singular())
+        .collect();
+    let template = CrdGenTemplate { resources };
+    let content = template.render().unwrap();
+    write_to_file("src/crdgen.rs".to_string(), content);
+    format_file("src/crdgen.rs".to_string());
 }
 
 fn get_ignored_files() -> Vec<String> {
@@ -336,7 +239,7 @@ fn write_to_file(file_path: String, file_content: String) {
         return;
     }
 
-    std::fs::write(file_path, file_content).expect("Unable to write file");
+    std::fs::write(file_path, file_content + "\n").expect("Unable to write file");
 }
 
 fn upsert_line_to_file(file_path: String, line: String) -> Result<(), Error> {
@@ -379,22 +282,6 @@ fn format_file(file_path: String) {
     }
 }
 
-fn convert_to_singular(name: &str) -> String {
-    if name == "Kubernetes" {
-        return name.to_string();
-    } else if name.ends_with("ies") {
-        let mut s = name.to_string();
-        s.truncate(s.len() - 3);
-        s.push('y');
-        return s;
-    } else if name.ends_with("s") {
-        let mut s = name.to_string();
-        s.pop();
-        return s;
-    }
-    name.to_string()
-}
-
 fn uppercase_first_letter(name: &str) -> String {
     let mut chars = name.chars();
     match chars.next() {
@@ -403,177 +290,146 @@ fn uppercase_first_letter(name: &str) -> String {
     }
 }
 
-/// File templates
-///
-/// Later will be moved to a separate template files
-///
-fn get_role_file_content(resources: &str) -> String {
-    format!(
-        r#"---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: operator-role # Give this a meaningful name
-rules:
-  - apiGroups:
-      - {}
-    resources:
-{}
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-  - apiGroups:
-      - ''
-    resources:
-      - events
-    verbs:
-      - create
-      - patch
-"#,
-        API_GROUP, resources
-    )
+struct RoleTemplateIdentifiers {
+    api_group: String,
+    resources: Vec<String>,
 }
 
-fn get_cluster_role_file_content(resources: &str) -> String {
-    format!(
-        r#"---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: operator-cluster-role
-rules:
-  - apiGroups:
-      - {}
-    resources:
-{}
-    verbs:
-      - get
-      - list
-      - watch
-      - create
-      - update
-      - patch
-      - delete
-"#,
-        API_GROUP, resources
-    )
+#[derive(Template)]
+#[template(path = "manifest_rbac_role.jinja")]
+struct RoleTemplate {
+    identifiers: RoleTemplateIdentifiers,
 }
 
-fn get_service_account_file_content() -> String {
-    format!(
-        r#"---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: operator-service-account
-"#,
-    )
-}
-
-fn get_role_binding_file_content() -> String {
-    format!(
-        r#"---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: operator-role-binding
-subjects:
-  - kind: ServiceAccount
-    name: operator-service-account
-roleRef:
-  kind: Role
-  name: operator-role
-  apiGroup: rbac.authorization.k8s.io
-"#,
-    )
-}
-
-fn get_cluster_role_binding_file_content() -> String {
-    format!(
-        r#"---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: operator-cluster-role-binding
-subjects:
-  - kind: ServiceAccount
-    name: operator-service-account
-    namespace: default
-roleRef:
-  kind: ClusterRole
-  name: operator-cluster-role
-  apiGroup: rbac.authorization.k8s.io
-"#,
-    )
-}
-
-fn get_operator_deployment_file_content() -> String {
-    format!(
-        r#"---
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: operator-deployment
-  labels:
-    app: operator
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: operator
-  template:
-    metadata:
-      labels:
-        app: operator
-    spec:
-      serviceAccountName: operator-service-account
-      containers:
-        - name: operator
-          image: operator:latest
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 512Mi
-"#,
-    )
-}
-
-fn get_crdgen_file_content(schema_names: &Vec<String>) -> String {
-    let mut insert_lines = String::new();
-    for schema_name in schema_names.clone() {
-        let line = format!(
-            "k8s_operator::types::{}::{}::crd(),\n",
-            schema_name.to_lowercase(),
-            schema_name,
-        );
-        insert_lines.push_str(&line);
+fn generate_role_file(resources: Vec<String>) {
+    let content = RoleTemplate {
+        identifiers: RoleTemplateIdentifiers {
+            api_group: API_GROUP.to_string(),
+            resources: resources,
+        },
     }
+    .render()
+    .unwrap();
+    write_to_file("manifests/rbac/role.yaml".to_string(), content);
+}
 
-    format!(
-        r#"
-use kube::CustomResourceExt;
+struct ClusterRoleTemplateIdentifiers {
+    api_group: String,
+    resources: Vec<String>,
+}
 
-fn main() {{
-    let crds = vec![
-        {}
-    ];
+#[derive(Template)]
+#[template(path = "manifest_rbac_role.jinja")]
+struct ClusterRoleTemplate {
+    identifiers: ClusterRoleTemplateIdentifiers,
+}
 
-    for crd in crds {{
-        match serde_yaml::to_string(&crd) {{
-            Ok(yaml) => print!("---\n{{}}", yaml),
-            Err(e) => eprintln!("Error serializing CRD to YAML: {{}}", e),
-        }}
-    }}
-}}
-"#,
-        insert_lines
-    )
+fn generate_cluster_role_file(resources: Vec<String>) {
+    let content = ClusterRoleTemplate {
+        identifiers: ClusterRoleTemplateIdentifiers {
+            api_group: API_GROUP.to_string(),
+            resources: resources,
+        },
+    }
+    .render()
+    .unwrap();
+    write_to_file("manifests/rbac/clusterrole.yaml".to_string(), content);
+}
+
+#[derive(Template)]
+#[template(path = "manifest_rbac_service_account.jinja")]
+struct ServiceAccountTemplate {}
+
+fn generate_service_account_file() {
+    let content = ServiceAccountTemplate {}.render().unwrap();
+    write_to_file("manifests/rbac/serviceaccount.yaml".to_string(), content);
+}
+
+#[derive(Template)]
+#[template(path = "manifest_rbac_role_binding.jinja")]
+struct RoleBindingTemplate {}
+
+fn generate_role_binding_file_content() {
+    let content = RoleBindingTemplate {}.render().unwrap();
+    write_to_file("manifests/rbac/rolebinding.yaml".to_string(), content);
+}
+
+#[derive(Template)]
+#[template(path = "manifest_rbac_cluster_role_binding.jinja")]
+struct ClusterRoleBindingTemplate {}
+
+fn generate_cluster_role_binding_file_content() {
+    let content = ClusterRoleBindingTemplate {}.render().unwrap();
+    write_to_file(
+        "manifests/rbac/clusterrolebinding.yaml".to_string(),
+        content,
+    );
+}
+
+#[derive(Template)]
+#[template(path = "manifest_operator_deployment.jinja")]
+struct OperatorDeploymentTemplate {}
+
+fn generate_operator_deployment_file() {
+    let content = OperatorDeploymentTemplate {}.render().unwrap();
+    write_to_file("manifests/operator/deployment.yaml".to_string(), content);
+}
+
+#[derive(Template, Deserialize, Serialize)]
+#[template(path = "manifest_example.jinja")]
+struct ExampleTemplate {
+    api_version: String,
+    kind: String,
+    metadata: Metadata,
+    spec: String,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Metadata {
+    name: String,
+}
+
+fn generate_manifest_from_example(name: &str, example: &openapiv3::Example) {
+    let spec = match &example.value {
+        Some(Value::Object(map)) => {
+            let mut map = map.clone();
+            map.remove("uuid");
+            map.remove("id");
+            let json_value = Value::Object(map);
+            let yaml_value = json!(json_value);
+            let mut yaml_string =
+                serde_yaml::to_string(&yaml_value).unwrap_or_else(|_| String::from("{}"));
+            yaml_string = yaml_string
+                .lines()
+                .map(|line| format!("  {}", line))
+                .collect::<Vec<_>>()
+                .join("\n");
+            yaml_string
+        }
+        _ => {
+            eprintln!("Example value is not an object");
+            return;
+        }
+    };
+
+    let template = ExampleTemplate {
+        api_version: "v1".to_string(),
+        kind: uppercase_first_letter(name),
+        metadata: Metadata {
+            name: "example".to_string(),
+        },
+        spec,
+    };
+
+    match template.render() {
+        Ok(content) => {
+            write_to_file(
+                format!("manifests/examples/{}.yaml", name.to_lowercase()),
+                content,
+            );
+        }
+        Err(e) => {
+            eprintln!("Failed to render template: {}", e);
+        }
+    }
 }

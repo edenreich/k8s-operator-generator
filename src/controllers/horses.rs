@@ -16,10 +16,12 @@ fn convert_to_dto(horse: Horse) -> HorseDto {
         Some(status) => status.uuid,
         None => None,
     };
-    // HorseDto {
-    //     uuid: uuid,
-    // }
-    todo!("Implement the mapping for horses")
+    HorseDto {
+        uuid: horse.spec.uuid,
+        name: horse.spec.name,
+        breed: horse.spec.breed,
+        age: horse.spec.age,
+    }
 }
 
 pub async fn handle(

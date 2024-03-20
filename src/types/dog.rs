@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
     group = "example.com",
     version = "v1",
     kind = "Dog",
-    plural = "Dog",
+    plural = "dogs",
     status = "DogStatus",
     namespaced
 )]

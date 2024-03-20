@@ -5,11 +5,11 @@ metadata:
   name: operator-role # Give this a meaningful name
 rules:
   - apiGroups:
-      - example.com
+      - {{ identifiers.api_group }}
     resources:
-      - cats
-      - dogs
-      - horses
+    {%- for resource in identifiers.resources %}
+      - {{ resource }}
+    {%- endfor %}
     verbs:
       - get
       - list
