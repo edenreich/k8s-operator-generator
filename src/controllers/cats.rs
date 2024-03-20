@@ -12,12 +12,12 @@ use openapi::models::Cat as CatDto;
 use std::sync::Arc;
 
 fn convert_to_dto(cat: Cat) -> CatDto {
-    let _uuid = match cat.status {
+    let uuid = match cat.status {
         Some(status) => status.uuid,
         None => None,
     };
     CatDto {
-        uuid: cat.spec.uuid,
+        uuid: uuid,
         name: cat.spec.name,
         breed: cat.spec.breed,
         age: cat.spec.age,

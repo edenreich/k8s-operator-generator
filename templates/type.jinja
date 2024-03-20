@@ -19,5 +19,5 @@ pub struct {{ type_name }}Spec {
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct {{ type_name }}Status {
-    pub uuid: Option<String>,
+    pub {{ reference_id }}: Option<String>,
 }

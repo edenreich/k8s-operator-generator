@@ -12,7 +12,6 @@ use serde::{Deserialize, Serialize};
     namespaced
 )]
 pub struct DogSpec {
-    pub uuid: Option<String>,
     pub name: String,
     pub breed: String,
     pub age: i32,

@@ -12,12 +12,12 @@ use openapi::models::Horse as HorseDto;
 use std::sync::Arc;
 
 fn convert_to_dto(horse: Horse) -> HorseDto {
-    let _uuid = match horse.status {
+    let uuid = match horse.status {
         Some(status) => status.uuid,
         None => None,
     };
     HorseDto {
-        uuid: horse.spec.uuid,
+        uuid: uuid,
         name: horse.spec.name,
         breed: horse.spec.breed,
         age: horse.spec.age,

@@ -98,6 +98,7 @@ struct TypeTemplate {
     api_version: String,
     group_name: String,
     fields: Vec<Field>,
+    reference_id: String,
 }
 
 fn get_fields_for_type(schema: &Schema) -> Vec<Field> {
@@ -131,6 +132,7 @@ fn get_fields_for_type(schema: &Schema) -> Vec<Field> {
             }
         }
     }
+    fields.retain(|field| field.pub_name != RESOURCE_REF);
     fields
 }
 
@@ -152,6 +154,7 @@ fn generate_type(name: &str, api_version: &str, schema: &Schema) {
         api_version: api_version.to_string(),
         group_name: API_GROUP.to_string(),
         fields,
+        reference_id: RESOURCE_REF.to_string(),
     }
     .render()
     .unwrap();
@@ -195,6 +198,7 @@ struct ControllerTemplate<'a> {
     arg_name: &'a str,
     type_name: &'a str,
     fields: Vec<Field>,
+    reference_id: &'a str,
 }
 
 fn generate_controller(name: &str, schema: &Schema) {
@@ -209,6 +213,7 @@ fn generate_controller(name: &str, schema: &Schema) {
         arg_name: name_singular.clone().to_lowercase().as_str(),
         type_name: &uppercase_first_letter(name_singular.clone().as_str()),
         fields: fields,
+        reference_id: RESOURCE_REF,
     }
     .render()
     .unwrap();
