@@ -57,6 +57,11 @@ fn main() {
                 generate_controller(&controller_name, item);
                 add_controller_to_modfile(controller_name.as_str())
                     .expect("Unable to add controller to mod file");
+                upsert_line_to_file(
+                    ".openapi-generator-ignore".to_string(),
+                    format!("src/controllers/{}.rs", controller_name.to_lowercase()),
+                )
+                .expect("Unable to add controller to .openapi-generator-ignore");
             }
         }
     }
@@ -133,6 +138,10 @@ fn get_fields_for_type(schema: &Schema) -> Vec<Field> {
 }
 
 fn generate_type(name: &str, api_version: &str, schema: &Schema) {
+    if get_ignored_files().contains(&format!("src/types/{}.rs", name.to_lowercase())) {
+        return;
+    }
+
     let fields = get_fields_for_type(schema);
 
     let tag_name = name.to_string().to_lowercase().to_plural();
@@ -159,6 +168,10 @@ fn generate_type(name: &str, api_version: &str, schema: &Schema) {
 struct LibTemplate {}
 
 fn generate_lib() {
+    if get_ignored_files().contains(&"src/lib.rs".to_string()) {
+        return;
+    }
+
     let content: String = LibTemplate {}.render().unwrap();
     let file_path = LIB_FILEPATH;
     write_to_file(file_path.to_string(), content);
@@ -188,6 +201,10 @@ struct ControllerTemplate<'a> {
 }
 
 fn generate_controller(name: &str, schema: &Schema) {
+    if get_ignored_files().contains(&format!("{}/{}.rs", CONTROLLERS_DIR, name.to_lowercase())) {
+        return;
+    }
+
     let fields = get_fields_for_type(schema);
     let name_singular = name.to_singular();
     let content: String = ControllerTemplate {
@@ -210,6 +227,10 @@ struct CrdGenTemplate {
 }
 
 fn generate_crdgen_file(resources: Vec<String>) {
+    if get_ignored_files().contains(&"src/crdgen.rs".to_string()) {
+        return;
+    }
+
     let resources = resources
         .into_iter()
         .map(|resource| resource.to_singular())
@@ -302,6 +323,10 @@ struct RoleTemplate {
 }
 
 fn generate_role_file(resources: Vec<String>) {
+    if get_ignored_files().contains(&"manifests/rbac/role.yaml".to_string()) {
+        return;
+    }
+
     let content = RoleTemplate {
         identifiers: RoleTemplateIdentifiers {
             api_group: API_GROUP.to_string(),
@@ -325,6 +350,10 @@ struct ClusterRoleTemplate {
 }
 
 fn generate_cluster_role_file(resources: Vec<String>) {
+    if get_ignored_files().contains(&"manifests/rbac/clusterrole.yaml".to_string()) {
+        return;
+    }
+
     let content = ClusterRoleTemplate {
         identifiers: ClusterRoleTemplateIdentifiers {
             api_group: API_GROUP.to_string(),
@@ -341,6 +370,10 @@ fn generate_cluster_role_file(resources: Vec<String>) {
 struct ServiceAccountTemplate {}
 
 fn generate_service_account_file() {
+    if get_ignored_files().contains(&"manifests/rbac/serviceaccount.yaml".to_string()) {
+        return;
+    }
+
     let content = ServiceAccountTemplate {}.render().unwrap();
     write_to_file("manifests/rbac/serviceaccount.yaml".to_string(), content);
 }
@@ -350,6 +383,10 @@ fn generate_service_account_file() {
 struct RoleBindingTemplate {}
 
 fn generate_role_binding_file_content() {
+    if get_ignored_files().contains(&"manifests/rbac/rolebinding.yaml".to_string()) {
+        return;
+    }
+
     let content = RoleBindingTemplate {}.render().unwrap();
     write_to_file("manifests/rbac/rolebinding.yaml".to_string(), content);
 }
@@ -359,6 +396,10 @@ fn generate_role_binding_file_content() {
 struct ClusterRoleBindingTemplate {}
 
 fn generate_cluster_role_binding_file_content() {
+    if get_ignored_files().contains(&"manifests/rbac/clusterrolebinding.yaml".to_string()) {
+        return;
+    }
+
     let content = ClusterRoleBindingTemplate {}.render().unwrap();
     write_to_file(
         "manifests/rbac/clusterrolebinding.yaml".to_string(),
@@ -371,6 +412,10 @@ fn generate_cluster_role_binding_file_content() {
 struct OperatorDeploymentTemplate {}
 
 fn generate_operator_deployment_file() {
+    if get_ignored_files().contains(&"manifests/operator/deployment.yaml".to_string()) {
+        return;
+    }
+
     let content = OperatorDeploymentTemplate {}.render().unwrap();
     write_to_file("manifests/operator/deployment.yaml".to_string(), content);
 }
