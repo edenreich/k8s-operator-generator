@@ -249,15 +249,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "codegen"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff61280aed771c3070e7dcc9e050c66f1eb1e3b96431ba66f9f74641d02fc41d"
-dependencies = [
- "indexmap 1.9.3",
-]
-
-[[package]]
 name = "codespan-reporting"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -953,7 +944,6 @@ dependencies = [
  "Inflector",
  "anyhow",
  "askama",
- "codegen",
  "env_logger",
  "futures-util",
  "k8s-openapi",
@@ -963,15 +953,12 @@ dependencies = [
  "log",
  "openapi",
  "openapiv3",
- "proc-macro2",
- "quote",
  "reqwest",
  "schemars",
  "serde",
  "serde_derive",
  "serde_json",
  "serde_yaml",
- "syn 2.0.52",
  "tokio",
 ]
 
@@ -1089,9 +1076,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.142"
+version = "0.2.153"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a987beff54b60ffa6d51982e1aa1146bc42f19bd26be28b0586f252fccf5317"
+checksum = "9c198f91728a82281a64e1f4f9eeb25d82cb32a5de251c6bd1b5154d63a8e7bd"
 
 [[package]]
 name = "libm"
@@ -1849,9 +1836,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.10.0"
+version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
+checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 
 [[package]]
 name = "socket2"
