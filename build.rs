@@ -82,13 +82,7 @@ fn main() {
     generate_cluster_role_binding_file_content();
     generate_operator_deployment_file();
     generate_crdgen_file(resources);
-
-    // Generate examples from OAS
-    for (name, example) in components.examples {
-        if let openapiv3::ReferenceOr::Item(example) = example {
-            generate_manifest_from_example(&name, &example);
-        }
-    }
+    generate_examples(components.examples.into_iter().collect());
 }
 
 struct Field {
@@ -432,6 +426,21 @@ struct ExampleTemplate {
 #[derive(Serialize, Deserialize)]
 struct Metadata {
     name: String,
+}
+
+fn generate_examples(
+    examples: std::collections::HashMap<String, openapiv3::ReferenceOr<openapiv3::Example>>,
+) {
+    let examples_map: std::collections::HashMap<String, openapiv3::Example> = examples
+        .into_iter()
+        .filter_map(|(k, v)| match v {
+            openapiv3::ReferenceOr::Item(item) => Some((k, item)),
+            openapiv3::ReferenceOr::Reference { .. } => None,
+        })
+        .collect();
+    for (name, example) in &examples_map {
+        generate_manifest_from_example(&name, example);
+    }
 }
 
 fn generate_manifest_from_example(name: &str, example: &openapiv3::Example) {
