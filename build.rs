@@ -12,8 +12,11 @@ use std::{
 
 const CONTROLLERS_DIR: &str = "src/controllers";
 const TYPES_DIR: &str = "src/types";
+const RBAC_DIR: &str = "manifests/rbac";
 const LIB_FILEPATH: &str = "src/lib.rs";
 const API_GROUP: &str = "example.com";
+const API_VERSION: &str = "v1";
+const RESOURCE_REF: &str = "uuid";
 
 fn main() {
     let input = "openapi.yaml";
@@ -52,7 +55,7 @@ fn main() {
             openapiv3::ReferenceOr::Item(item) => {
                 // Here, `item` is an `openapiv3::Schema`.
                 // You can generate a type for it and add it to the mod file.
-                generate_type(&name, "v1", &item);
+                generate_type(&name, API_VERSION, &item);
                 add_type_to_modfile(&name).expect("Unable to add type to mod file");
                 generate_controller(&controller_name, item);
                 add_controller_to_modfile(controller_name.as_str())
@@ -323,7 +326,7 @@ struct RoleTemplate {
 }
 
 fn generate_role_file(resources: Vec<String>) {
-    if get_ignored_files().contains(&"manifests/rbac/role.yaml".to_string()) {
+    if get_ignored_files().contains(&format!("{}/role.yaml", RBAC_DIR)) {
         return;
     }
 
@@ -335,7 +338,7 @@ fn generate_role_file(resources: Vec<String>) {
     }
     .render()
     .unwrap();
-    write_to_file("manifests/rbac/role.yaml".to_string(), content);
+    write_to_file(format!("{}/role.yaml", RBAC_DIR), content);
 }
 
 struct ClusterRoleTemplateIdentifiers {
@@ -350,7 +353,7 @@ struct ClusterRoleTemplate {
 }
 
 fn generate_cluster_role_file(resources: Vec<String>) {
-    if get_ignored_files().contains(&"manifests/rbac/clusterrole.yaml".to_string()) {
+    if get_ignored_files().contains(&format!("{}/clusterrole.yaml", RBAC_DIR)) {
         return;
     }
 
@@ -362,7 +365,7 @@ fn generate_cluster_role_file(resources: Vec<String>) {
     }
     .render()
     .unwrap();
-    write_to_file("manifests/rbac/clusterrole.yaml".to_string(), content);
+    write_to_file(format!("{}/clusterrole.yaml", RBAC_DIR), content);
 }
 
 #[derive(Template)]
@@ -370,12 +373,12 @@ fn generate_cluster_role_file(resources: Vec<String>) {
 struct ServiceAccountTemplate {}
 
 fn generate_service_account_file() {
-    if get_ignored_files().contains(&"manifests/rbac/serviceaccount.yaml".to_string()) {
+    if get_ignored_files().contains(&format!("{}/serviceaccount.yaml", RBAC_DIR)) {
         return;
     }
 
     let content = ServiceAccountTemplate {}.render().unwrap();
-    write_to_file("manifests/rbac/serviceaccount.yaml".to_string(), content);
+    write_to_file(format!("{}/serviceaccount.yaml", RBAC_DIR), content);
 }
 
 #[derive(Template)]
@@ -383,12 +386,12 @@ fn generate_service_account_file() {
 struct RoleBindingTemplate {}
 
 fn generate_role_binding_file_content() {
-    if get_ignored_files().contains(&"manifests/rbac/rolebinding.yaml".to_string()) {
+    if get_ignored_files().contains(&format!("{}/rolebinding.yaml", RBAC_DIR)) {
         return;
     }
 
     let content = RoleBindingTemplate {}.render().unwrap();
-    write_to_file("manifests/rbac/rolebinding.yaml".to_string(), content);
+    write_to_file(format!("{}/rolebinding.yaml", RBAC_DIR), content);
 }
 
 #[derive(Template)]
@@ -396,15 +399,12 @@ fn generate_role_binding_file_content() {
 struct ClusterRoleBindingTemplate {}
 
 fn generate_cluster_role_binding_file_content() {
-    if get_ignored_files().contains(&"manifests/rbac/clusterrolebinding.yaml".to_string()) {
+    if get_ignored_files().contains(&format!("{}/clusterrolebinding.yaml", RBAC_DIR)) {
         return;
     }
 
     let content = ClusterRoleBindingTemplate {}.render().unwrap();
-    write_to_file(
-        "manifests/rbac/clusterrolebinding.yaml".to_string(),
-        content,
-    );
+    write_to_file(format!("{}/clusterrolebinding.yaml", RBAC_DIR), content);
 }
 
 #[derive(Template)]
@@ -438,8 +438,7 @@ fn generate_manifest_from_example(name: &str, example: &openapiv3::Example) {
     let spec = match &example.value {
         Some(Value::Object(map)) => {
             let mut map = map.clone();
-            map.remove("uuid");
-            map.remove("id");
+            map.remove(RESOURCE_REF);
             let json_value = Value::Object(map);
             let yaml_value = json!(json_value);
             let mut yaml_string =
@@ -458,7 +457,7 @@ fn generate_manifest_from_example(name: &str, example: &openapiv3::Example) {
     };
 
     let template = ExampleTemplate {
-        api_version: "v1".to_string(),
+        api_version: API_VERSION.to_string(),
         kind: uppercase_first_letter(name),
         metadata: Metadata {
             name: "example".to_string(),
