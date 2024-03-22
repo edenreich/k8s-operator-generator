@@ -28,9 +28,6 @@ spec:
                 type: string
               name:
                 type: string
-              uuid:
-                nullable: true
-                type: string
             required:
             - age
             - breed
@@ -81,9 +78,6 @@ spec:
                 type: string
               name:
                 type: string
-              uuid:
-                nullable: true
-                type: string
             required:
             - age
             - breed
@@ -133,9 +127,6 @@ spec:
               breed:
                 type: string
               name:
-                type: string
-              uuid:
-                nullable: true
                 type: string
             required:
             - age

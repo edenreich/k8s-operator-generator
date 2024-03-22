@@ -15,8 +15,10 @@ use kube::{
 use log::{
     error,
     info,
+    warn,
 };
 use openapi::apis::configuration::Configuration;
+use openapi::apis::{{ tag_name }}_api::get_{{ arg_name }}_by_id;
 use openapi::apis::{{ tag_name }}_api::create_{{ arg_name }};
 use openapi::apis::{{ tag_name }}_api::delete_{{ arg_name }}_by_id;
 use openapi::apis::{{ tag_name }}_api::update_{{ arg_name }}_by_id;
@@ -72,6 +74,7 @@ pub async fn handle_added(
         return;
     }
     if {{ arg_name }}.status.is_none() {
+        info!("{} {} status is None", kind_str, {{ arg_name }}.metadata.name.clone().unwrap());
         {{ arg_name }}.status = Some(Default::default());
     }
     let model = {{ arg_name }}.clone();
@@ -79,6 +82,7 @@ pub async fn handle_added(
     let dto = convert_to_dto(model);
     if dto.{{ reference_id }}.is_some() {
         info!("{} {} already exists", kind_str, name);
+        check_for_drift({{ arg_name }}.clone(), kubernetes_api.clone()).await.unwrap();
         return;
     }
     add_finalizer({{ arg_name }}, kubernetes_api.clone()).await;
@@ -111,21 +115,38 @@ pub async fn handle_modified(
     let model = {{ arg_name }}.clone();
     let name = {{ arg_name }}.metadata.name.clone().unwrap();
     let dto = convert_to_dto(model);
-    if dto.{{ reference_id }}.is_none() {
+    if dto.uuid.is_none() {
         info!("{} {} does not exist", kind_str, name);
         return;
     }
-    let dto_clone = dto.clone();
-    match update_{{ arg_name }}_by_id(config, &dto.{{ reference_id }}.unwrap(), dto_clone).await {
-        Ok(_) => {
-            let msg = format!("{} {} updated", kind_str.clone(), name);
-            info!("{}", msg);
-            add_event(kind_str.clone(), {{ arg_name }}, "Normal", &kind_str.clone(), &msg).await;
+    let uuid_clone = dto.uuid.clone().unwrap();
+    match get_{{ arg_name }}_by_id(config, &uuid_clone).await {
+        Ok(current_{{ arg_name }}) => {
+            if dto != current_{{ arg_name }} {
+                warn!(
+                    "Drift detected for {} {}. Desired: {:?}, Current: {:?}",
+                    kind_str, name, dto, current_{{ arg_name }}
+                );
+                match update_{{ arg_name }}_by_id(config, &uuid_clone, dto).await {
+                    Ok(_) => {
+                        let msg = format!("{} {} updated", kind_str.clone(), name);
+                        info!("{}", msg);
+                        add_event(kind_str.clone(), {{ arg_name }}, "Normal", &kind_str.clone(), &msg).await;
+                    }
+                    Err(e) => {
+                        let msg =
+                            format!("Failed to update {} {}: {:?}", kind_str.clone(), name, e);
+                        error!("{}", msg);
+                        add_event(kind_str.clone(), {{ arg_name }}, "Error", &kind_str.clone(), &msg).await;
+                    }
+                };
+            }
         }
         Err(e) => {
-            let msg = format!("Failed to update {} {}: {:?}", kind_str.clone(), name, e);
-            error!("{}", msg);
-            add_event(kind_str.clone(), {{ arg_name }}, "Error", &kind_str.clone(), &msg).await;
+            error!(
+                "Failed to get current state of {} {}: {:?}",
+                kind_str, name, e
+            );
         }
     };
 }
@@ -137,7 +158,13 @@ pub async fn handle_deleted(
     _kubernetes_api: Api<{{ type_name }}>,
 ) {
     let name = {{ arg_name }}.metadata.name.clone().unwrap();
-    match delete_{{ arg_name }}_by_id(config, &{{ arg_name }}.metadata.name.clone().unwrap()).await {
+
+    let {{ reference_id }} = match {{ arg_name }}.status.clone() {
+        Some(status) => status.{{ reference_id }},
+        None => None,
+    }.unwrap();
+
+    match delete_{{ arg_name }}_by_id(config, &{{ reference_id }}).await {
         Ok(_) => {
             info!("{} {} deleted", kind_str, name);
             add_event(kind_str, {{ arg_name }}, "Normal", "{{ arg_name }}", "{{ type_name }} deleted").await;
@@ -154,4 +181,50 @@ pub async fn handle_deleted(
             .await;
         }
     };
+}
+
+pub async fn check_for_drift({{ arg_name }}: {{ type_name }}, kubernetes_api: Api<{{ type_name }}>) -> Result<bool, kube::Error> {
+    let kind = {{ type_name }}::kind(&());
+    let kind_str = kind.to_string();
+    let config = Configuration::new();
+    let {{ arg_name }}_clone = {{ arg_name }}.clone();
+    let dto = convert_to_dto({{ arg_name }}_clone);
+    if dto.uuid.is_none() {
+        info!(
+            "{} {} does not exist",
+            kind_str,
+            {{ arg_name }}.metadata.name.clone().unwrap()
+        );
+        return Ok(false);
+    }
+    let uuid_clone = dto.uuid.clone().unwrap();
+    match get_{{ arg_name }}_by_id(&config, &uuid_clone).await {
+        Ok(current_{{ arg_name }}) => {
+            if dto != current_{{ arg_name }} {
+                warn!(
+                    "Drift detected for {} {}. Desired: {:?}, Current: {:?}",
+                    kind_str,
+                    {{ arg_name }}.metadata.name.clone().unwrap(),
+                    dto,
+                    current_{{ arg_name }}
+                );
+                let mut kube_{{ arg_name }} = kubernetes_api
+                    .get(&{{ arg_name }}.metadata.name.clone().unwrap())
+                    .await?;
+                if kube_{{ arg_name }} != {{ arg_name }} {
+                    handle_modified(&config, kind_str, &mut kube_{{ arg_name }}, kubernetes_api).await;
+                }
+                return Ok(true);
+            }
+        }
+        Err(e) => {
+            error!(
+                "Failed to get current state of {} {}: {:?}",
+                kind_str,
+                {{ arg_name }}.metadata.name.clone().unwrap(),
+                e
+            );
+        }
+    };
+    Ok(false)
 }

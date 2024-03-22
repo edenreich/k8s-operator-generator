@@ -422,6 +422,7 @@ fn generate_operator_deployment_file() {
 #[derive(Template, Deserialize, Serialize)]
 #[template(path = "manifest_example.jinja")]
 struct ExampleTemplate {
+    api_group: String,
     api_version: String,
     kind: String,
     metadata: Metadata,
@@ -471,6 +472,7 @@ fn generate_manifest_from_example(name: &str, example: &openapiv3::Example) {
     };
 
     let template = ExampleTemplate {
+        api_group: API_GROUP.to_string(),
         api_version: API_VERSION.to_string(),
         kind: uppercase_first_letter(name),
         metadata: Metadata {

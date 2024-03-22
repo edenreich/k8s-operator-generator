@@ -172,11 +172,26 @@ where
     let new_resource: T =
         serde_json::from_value(resource_json).expect("Failed to deserialize resource");
     let resource_bytes = serde_json::to_vec(&new_resource).expect("Failed to serialize resource");
-    match kubernetes_api
-        .replace_status(&name, &PostParams::default(), resource_bytes)
-        .await
-    {
-        Ok(_) => info!("Status updated successfully for {}", name),
-        Err(e) => info!("Failed to update status for {}: {:?}", name, e),
-    };
+
+    let mut retries = 0;
+    loop {
+        match kubernetes_api
+            .replace_status(&name, &PostParams::default(), resource_bytes.clone())
+            .await
+        {
+            Ok(_) => {
+                info!("Status updated successfully for {}", name);
+                break;
+            }
+            Err(kube::Error::Api(ae)) if ae.code == 409 && retries < 5 => {
+                info!("Conflict updating status for {}, retrying...", name);
+                retries += 1;
+                continue;
+            }
+            Err(e) => {
+                info!("Failed to update status for {}: {:?}", name, e);
+                break;
+            }
+        }
+    }
 }

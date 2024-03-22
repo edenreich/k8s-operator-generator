@@ -3,10 +3,11 @@ use kube::{
     api::{Api, WatchEvent},
     Resource,
 };
-use log::{error, info};
+use log::{error, info, warn};
 use openapi::apis::configuration::Configuration;
 use openapi::apis::horses_api::create_horse;
 use openapi::apis::horses_api::delete_horse_by_id;
+use openapi::apis::horses_api::get_horse_by_id;
 use openapi::apis::horses_api::update_horse_by_id;
 use openapi::models::Horse as HorseDto;
 use std::sync::Arc;
@@ -60,6 +61,11 @@ pub async fn handle_added(
         return;
     }
     if horse.status.is_none() {
+        info!(
+            "{} {} status is None",
+            kind_str,
+            horse.metadata.name.clone().unwrap()
+        );
         horse.status = Some(Default::default());
     }
     let model = horse.clone();
@@ -67,6 +73,9 @@ pub async fn handle_added(
     let dto = convert_to_dto(model);
     if dto.uuid.is_some() {
         info!("{} {} already exists", kind_str, name);
+        check_for_drift(horse.clone(), kubernetes_api.clone())
+            .await
+            .unwrap();
         return;
     }
     add_finalizer(horse, kubernetes_api.clone()).await;
@@ -103,17 +112,34 @@ pub async fn handle_modified(
         info!("{} {} does not exist", kind_str, name);
         return;
     }
-    let dto_clone = dto.clone();
-    match update_horse_by_id(config, &dto.uuid.unwrap(), dto_clone).await {
-        Ok(_) => {
-            let msg = format!("{} {} updated", kind_str.clone(), name);
-            info!("{}", msg);
-            add_event(kind_str.clone(), horse, "Normal", &kind_str.clone(), &msg).await;
+    let uuid_clone = dto.uuid.clone().unwrap();
+    match get_horse_by_id(config, &uuid_clone).await {
+        Ok(current_horse) => {
+            if dto != current_horse {
+                warn!(
+                    "Drift detected for {} {}. Desired: {:?}, Current: {:?}",
+                    kind_str, name, dto, current_horse
+                );
+                match update_horse_by_id(config, &uuid_clone, dto).await {
+                    Ok(_) => {
+                        let msg = format!("{} {} updated", kind_str.clone(), name);
+                        info!("{}", msg);
+                        add_event(kind_str.clone(), horse, "Normal", &kind_str.clone(), &msg).await;
+                    }
+                    Err(e) => {
+                        let msg =
+                            format!("Failed to update {} {}: {:?}", kind_str.clone(), name, e);
+                        error!("{}", msg);
+                        add_event(kind_str.clone(), horse, "Error", &kind_str.clone(), &msg).await;
+                    }
+                };
+            }
         }
         Err(e) => {
-            let msg = format!("Failed to update {} {}: {:?}", kind_str.clone(), name, e);
-            error!("{}", msg);
-            add_event(kind_str.clone(), horse, "Error", &kind_str.clone(), &msg).await;
+            error!(
+                "Failed to get current state of {} {}: {:?}",
+                kind_str, name, e
+            );
         }
     };
 }
@@ -125,7 +151,14 @@ pub async fn handle_deleted(
     _kubernetes_api: Api<Horse>,
 ) {
     let name = horse.metadata.name.clone().unwrap();
-    match delete_horse_by_id(config, &horse.metadata.name.clone().unwrap()).await {
+
+    let uuid = match horse.status.clone() {
+        Some(status) => status.uuid,
+        None => None,
+    }
+    .unwrap();
+
+    match delete_horse_by_id(config, &uuid).await {
         Ok(_) => {
             info!("{} {} deleted", kind_str, name);
             add_event(kind_str, horse, "Normal", "horse", "Horse deleted").await;
@@ -142,4 +175,53 @@ pub async fn handle_deleted(
             .await;
         }
     };
+}
+
+pub async fn check_for_drift(
+    horse: Horse,
+    kubernetes_api: Api<Horse>,
+) -> Result<bool, kube::Error> {
+    let kind = Horse::kind(&());
+    let kind_str = kind.to_string();
+    let config = Configuration::new();
+    let horse_clone = horse.clone();
+    let dto = convert_to_dto(horse_clone);
+    if dto.uuid.is_none() {
+        info!(
+            "{} {} does not exist",
+            kind_str,
+            horse.metadata.name.clone().unwrap()
+        );
+        return Ok(false);
+    }
+    let uuid_clone = dto.uuid.clone().unwrap();
+    match get_horse_by_id(&config, &uuid_clone).await {
+        Ok(current_horse) => {
+            if dto != current_horse {
+                warn!(
+                    "Drift detected for {} {}. Desired: {:?}, Current: {:?}",
+                    kind_str,
+                    horse.metadata.name.clone().unwrap(),
+                    dto,
+                    current_horse
+                );
+                let mut kube_horse = kubernetes_api
+                    .get(&horse.metadata.name.clone().unwrap())
+                    .await?;
+                if kube_horse != horse {
+                    handle_modified(&config, kind_str, &mut kube_horse, kubernetes_api).await;
+                }
+                return Ok(true);
+            }
+        }
+        Err(e) => {
+            error!(
+                "Failed to get current state of {} {}: {:?}",
+                kind_str,
+                horse.metadata.name.clone().unwrap(),
+                e
+            );
+        }
+    };
+    Ok(false)
 }

@@ -2,12 +2,13 @@ use kube::CustomResource;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema, CustomResource)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema, PartialEq, CustomResource)]
 #[kube(
     group = "example.com",
     version = "v1",
     kind = "Horse",
     plural = "horses",
+    derive = "PartialEq",
     status = "HorseStatus",
     namespaced
 )]
@@ -17,7 +18,7 @@ pub struct HorseSpec {
     pub age: i32,
 }
 
-#[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, JsonSchema, PartialEq)]
 pub struct HorseStatus {
     pub uuid: Option<String>,
 }
