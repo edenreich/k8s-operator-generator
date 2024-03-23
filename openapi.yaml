@@ -20,7 +20,7 @@ paths:
                   $ref: '#/components/schemas/Cat'
               examples:
                 Cat:
-                  $ref: '#/components/examples/Cat'
+                  $ref: '#/components/examples/Cats'
     post:
       tags:
         - cats
@@ -132,7 +132,7 @@ paths:
                   $ref: '#/components/schemas/Dog'
               examples:
                 Dog:
-                  $ref: '#/components/examples/Dog'
+                  $ref: '#/components/examples/Dogs'
     post:
       tags:
         - dogs
@@ -244,7 +244,7 @@ paths:
                   $ref: '#/components/schemas/Horse'
               examples:
                 Horse:
-                  $ref: '#/components/examples/Horse'
+                  $ref: '#/components/examples/Horses'
     post:
       tags:
         - horses
@@ -347,18 +347,48 @@ components:
         name: 'Fluffy'
         breed: 'Persian'
         age: 3
+    Cats:
+      value:
+        - uuid: '76523f74-484c-4018-b9bf-1c03b134512a'
+          name: 'Fluffy'
+          breed: 'Persian'
+          age: 3
+        - uuid: 'f8d3e6e6-1620-4ff0-8fe0-6f31b4a87266'
+          name: 'Whiskers'
+          breed: 'Siamese'
+          age: 2
     Dog:
       value:
         uuid: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
         name: 'Fido'
         breed: 'Bulldog'
         age: 3
+    Dogs:
+      value:
+        - uuid: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
+          name: 'Fido'
+          breed: 'Bulldog'
+          age: 3
+        - uuid: 'a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d'
+          name: 'Rex'
+          breed: 'German Shepherd'
+          age: 5
     Horse:
       value:
         uuid: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
         name: 'Star'
         breed: 'Arabian'
         age: 5
+    Horses:
+      value:
+        - uuid: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
+          name: 'Star'
+          breed: 'Arabian'
+          age: 5
+        - uuid: 'b1c2d3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e'
+          name: 'Thunder'
+          breed: 'Thoroughbred'
+          age: 7
   schemas:
     Cat:
       type: object
