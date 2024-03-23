@@ -6,6 +6,9 @@ info:
   x-kubernetes-operator-group: 'example.com'
   x-kubernetes-operator-version: 'v1'
   x-kubernetes-operator-resource-ref: 'uuid'
+  x-kubernetes-operator-include-tags:
+    - dogs
+    - cats
 servers:
   - url: http://localhost:8080
     description: Development server
