@@ -18,6 +18,9 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Cat'
+              examples:
+                Cat:
+                  $ref: '#/components/examples/Cat'
     post:
       tags:
         - cats
@@ -29,6 +32,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Cat'
+            examples:
+              Cat:
+                $ref: '#/components/examples/Cat'
       responses:
         '201':
           description: Created
@@ -36,6 +42,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Cat'
+              examples:
+                Cat:
+                  $ref: '#/components/examples/Cat'
   /cats/{id}:
     get:
       tags:
@@ -55,6 +64,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Cat'
+              examples:
+                Cat:
+                  $ref: '#/components/examples/Cat'
         '404':
           description: Not found
     put:
@@ -74,6 +86,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Cat'
+            examples:
+              Cat:
+                $ref: '#/components/examples/Cat'
       responses:
         '200':
           description: OK
@@ -81,6 +96,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Cat'
+              examples:
+                Cat:
+                  $ref: '#/components/examples/Cat'
         '404':
           description: Not found
     delete:
@@ -112,6 +130,9 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Dog'
+              examples:
+                Dog:
+                  $ref: '#/components/examples/Dog'
     post:
       tags:
         - dogs
@@ -123,6 +144,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Dog'
+            examples:
+              Dog:
+                $ref: '#/components/examples/Dog'
       responses:
         '201':
           description: Created
@@ -130,6 +154,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Dog'
+              examples:
+                Dog:
+                  $ref: '#/components/examples/Dog'
   /dogs/{id}:
     get:
       tags:
@@ -149,6 +176,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Dog'
+              examples:
+                Dog:
+                  $ref: '#/components/examples/Dog'
         '404':
           description: Not found
     put:
@@ -168,6 +198,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Dog'
+            examples:
+              Dog:
+                $ref: '#/components/examples/Dog'
       responses:
         '200':
           description: OK
@@ -175,6 +208,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Dog'
+              examples:
+                Dog:
+                  $ref: '#/components/examples/Dog'
         '404':
           description: Not found
     delete:
@@ -206,6 +242,9 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Horse'
+              examples:
+                Horse:
+                  $ref: '#/components/examples/Horse'
     post:
       tags:
         - horses
@@ -217,6 +256,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Horse'
+            examples:
+              Horse:
+                $ref: '#/components/examples/Horse'
       responses:
         '201':
           description: Created
@@ -224,6 +266,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Horse'
+              examples:
+                Horse:
+                  $ref: '#/components/examples/Horse'
   /horses/{id}:
     get:
       tags:
@@ -243,6 +288,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Horse'
+              examples:
+                Horse:
+                  $ref: '#/components/examples/Horse'
         '404':
           description: Not found
     put:
@@ -262,6 +310,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Horse'
+            examples:
+              Horse:
+                $ref: '#/components/examples/Horse'
       responses:
         '200':
           description: OK
@@ -269,6 +320,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Horse'
+              examples:
+                Horse:
+                  $ref: '#/components/examples/Horse'
         '404':
           description: Not found
     delete:
@@ -321,8 +375,6 @@ components:
           type: string
         age:
           type: integer
-      example:
-        $ref: '#/components/examples/Cat'
     Dog:
       type: object
       required:
@@ -338,8 +390,6 @@ components:
           type: string
         age:
           type: integer
-      example:
-        $ref: '#/components/examples/Dog'
     Horse:
       type: object
       required:
@@ -355,5 +405,3 @@ components:
           type: string
         age:
           type: integer
-      example:
-        $ref: '#/components/examples/Horse'
