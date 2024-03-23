@@ -1,4 +1,7 @@
-use crate::{add_event, add_finalizer, change_status, remove_finalizer, types::horse::Horse};
+use crate::{
+    add_event, add_finalizer, change_status, remove_finalizer, types::horse::Horse,
+    types::horse::HorseSpec,
+};
 use kube::{
     api::{Api, WatchEvent},
     Resource,
@@ -12,7 +15,7 @@ use openapi::apis::horses_api::update_horse_by_id;
 use openapi::models::Horse as HorseDto;
 use std::sync::Arc;
 
-fn convert_to_dto(horse: Horse) -> HorseDto {
+fn convert_kube_type_to_dto(horse: Horse) -> HorseDto {
     let uuid = match horse.status {
         Some(status) => status.uuid,
         None => None,
@@ -22,6 +25,14 @@ fn convert_to_dto(horse: Horse) -> HorseDto {
         name: horse.spec.name,
         breed: horse.spec.breed,
         age: horse.spec.age,
+    }
+}
+
+fn convert_dto_to_kube_type(horse: HorseDto) -> HorseSpec {
+    HorseSpec {
+        name: horse.name,
+        breed: horse.breed,
+        age: horse.age,
     }
 }
 
@@ -70,7 +81,7 @@ pub async fn handle_added(
     }
     let model = horse.clone();
     let name = horse.metadata.name.clone().unwrap();
-    let dto = convert_to_dto(model);
+    let dto = convert_kube_type_to_dto(model);
     if dto.uuid.is_some() {
         info!("{} {} already exists", kind_str, name);
         check_for_drift(config.clone(), horse.clone(), kubernetes_api.clone())
@@ -81,9 +92,10 @@ pub async fn handle_added(
     add_finalizer(horse, kubernetes_api.clone()).await;
     match create_horse(config, dto).await {
         Ok(resp) => {
-            info!("{} {} created", kind_str, name);
+            let msg = format!("{} {} created", kind_str.clone(), name);
+            info!("{}", msg);
             change_status(horse, kubernetes_api.clone(), "uuid", resp.uuid.unwrap()).await;
-            add_event(kind_str, horse, "Normal", "horse", "Horse created").await;
+            add_event(kind_str, horse, "Normal", "horse", &msg).await;
         }
         Err(e) => {
             error!("Failed to create {} {}: {:?}", kind_str, name, e);
@@ -107,7 +119,7 @@ pub async fn handle_modified(
     }
     let model = horse.clone();
     let name = horse.metadata.name.clone().unwrap();
-    let dto = convert_to_dto(model);
+    let dto = convert_kube_type_to_dto(model);
     if dto.uuid.is_none() {
         info!("{} {} does not exist", kind_str, name);
         return;
@@ -186,7 +198,7 @@ pub async fn check_for_drift(
     let kind = Horse::kind(&());
     let kind_str = kind.to_string();
     let horse_clone = horse.clone();
-    let dto = convert_to_dto(horse_clone);
+    let dto = convert_kube_type_to_dto(horse_clone);
     if dto.uuid.is_none() {
         info!(
             "{} {} does not exist",
@@ -197,20 +209,19 @@ pub async fn check_for_drift(
     }
     let uuid_clone = dto.uuid.clone().unwrap();
     match get_horse_by_id(&config, &uuid_clone).await {
-        Ok(current_horse) => {
-            if dto != current_horse {
+        Ok(remote_horse) => {
+            if dto != remote_horse {
                 warn!(
                     "Drift detected for {} {}. Desired: {:?}, Current: {:?}",
                     kind_str,
                     horse.metadata.name.clone().unwrap(),
                     dto,
-                    current_horse
+                    remote_horse
                 );
-                let mut kube_horse = kubernetes_api
-                    .get(&horse.metadata.name.clone().unwrap())
-                    .await?;
-                if kube_horse != horse {
-                    handle_modified(&config, kind_str, &mut kube_horse, kubernetes_api).await;
+                let remote_horse_spec = convert_dto_to_kube_type(remote_horse.clone());
+
+                if horse.spec != remote_horse_spec {
+                    handle_modified(&config, kind_str, &mut horse.clone(), kubernetes_api).await;
                 }
                 return Ok(true);
             }

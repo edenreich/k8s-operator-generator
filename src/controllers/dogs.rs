@@ -1,4 +1,6 @@
-use crate::{add_event, add_finalizer, change_status, remove_finalizer, types::dog::Dog};
+use crate::{
+    add_event, add_finalizer, change_status, remove_finalizer, types::dog::Dog, types::dog::DogSpec,
+};
 use kube::{
     api::{Api, WatchEvent},
     Resource,
@@ -12,7 +14,7 @@ use openapi::apis::dogs_api::update_dog_by_id;
 use openapi::models::Dog as DogDto;
 use std::sync::Arc;
 
-fn convert_to_dto(dog: Dog) -> DogDto {
+fn convert_kube_type_to_dto(dog: Dog) -> DogDto {
     let uuid = match dog.status {
         Some(status) => status.uuid,
         None => None,
@@ -22,6 +24,14 @@ fn convert_to_dto(dog: Dog) -> DogDto {
         name: dog.spec.name,
         breed: dog.spec.breed,
         age: dog.spec.age,
+    }
+}
+
+fn convert_dto_to_kube_type(dog: DogDto) -> DogSpec {
+    DogSpec {
+        name: dog.name,
+        breed: dog.breed,
+        age: dog.age,
     }
 }
 
@@ -66,7 +76,7 @@ pub async fn handle_added(
     }
     let model = dog.clone();
     let name = dog.metadata.name.clone().unwrap();
-    let dto = convert_to_dto(model);
+    let dto = convert_kube_type_to_dto(model);
     if dto.uuid.is_some() {
         info!("{} {} already exists", kind_str, name);
         check_for_drift(config.clone(), dog.clone(), kubernetes_api.clone())
@@ -77,9 +87,10 @@ pub async fn handle_added(
     add_finalizer(dog, kubernetes_api.clone()).await;
     match create_dog(config, dto).await {
         Ok(resp) => {
-            info!("{} {} created", kind_str, name);
+            let msg = format!("{} {} created", kind_str.clone(), name);
+            info!("{}", msg);
             change_status(dog, kubernetes_api.clone(), "uuid", resp.uuid.unwrap()).await;
-            add_event(kind_str, dog, "Normal", "dog", "Dog created").await;
+            add_event(kind_str, dog, "Normal", "dog", &msg).await;
         }
         Err(e) => {
             error!("Failed to create {} {}: {:?}", kind_str, name, e);
@@ -103,7 +114,7 @@ pub async fn handle_modified(
     }
     let model = dog.clone();
     let name = dog.metadata.name.clone().unwrap();
-    let dto = convert_to_dto(model);
+    let dto = convert_kube_type_to_dto(model);
     if dto.uuid.is_none() {
         info!("{} {} does not exist", kind_str, name);
         return;
@@ -182,7 +193,7 @@ pub async fn check_for_drift(
     let kind = Dog::kind(&());
     let kind_str = kind.to_string();
     let dog_clone = dog.clone();
-    let dto = convert_to_dto(dog_clone);
+    let dto = convert_kube_type_to_dto(dog_clone);
     if dto.uuid.is_none() {
         info!(
             "{} {} does not exist",
@@ -193,20 +204,19 @@ pub async fn check_for_drift(
     }
     let uuid_clone = dto.uuid.clone().unwrap();
     match get_dog_by_id(&config, &uuid_clone).await {
-        Ok(current_dog) => {
-            if dto != current_dog {
+        Ok(remote_dog) => {
+            if dto != remote_dog {
                 warn!(
                     "Drift detected for {} {}. Desired: {:?}, Current: {:?}",
                     kind_str,
                     dog.metadata.name.clone().unwrap(),
                     dto,
-                    current_dog
+                    remote_dog
                 );
-                let mut kube_dog = kubernetes_api
-                    .get(&dog.metadata.name.clone().unwrap())
-                    .await?;
-                if kube_dog != dog {
-                    handle_modified(&config, kind_str, &mut kube_dog, kubernetes_api).await;
+                let remote_dog_spec = convert_dto_to_kube_type(remote_dog.clone());
+
+                if dog.spec != remote_dog_spec {
+                    handle_modified(&config, kind_str, &mut dog.clone(), kubernetes_api).await;
                 }
                 return Ok(true);
             }

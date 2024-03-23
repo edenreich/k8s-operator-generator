@@ -1,4 +1,6 @@
-use crate::{add_event, add_finalizer, change_status, remove_finalizer, types::cat::Cat};
+use crate::{
+    add_event, add_finalizer, change_status, remove_finalizer, types::cat::Cat, types::cat::CatSpec,
+};
 use kube::{
     api::{Api, WatchEvent},
     Resource,
@@ -12,7 +14,7 @@ use openapi::apis::configuration::Configuration;
 use openapi::models::Cat as CatDto;
 use std::sync::Arc;
 
-fn convert_to_dto(cat: Cat) -> CatDto {
+fn convert_kube_type_to_dto(cat: Cat) -> CatDto {
     let uuid = match cat.status {
         Some(status) => status.uuid,
         None => None,
@@ -22,6 +24,14 @@ fn convert_to_dto(cat: Cat) -> CatDto {
         name: cat.spec.name,
         breed: cat.spec.breed,
         age: cat.spec.age,
+    }
+}
+
+fn convert_dto_to_kube_type(cat: CatDto) -> CatSpec {
+    CatSpec {
+        name: cat.name,
+        breed: cat.breed,
+        age: cat.age,
     }
 }
 
@@ -66,7 +76,7 @@ pub async fn handle_added(
     }
     let model = cat.clone();
     let name = cat.metadata.name.clone().unwrap();
-    let dto = convert_to_dto(model);
+    let dto = convert_kube_type_to_dto(model);
     if dto.uuid.is_some() {
         info!("{} {} already exists", kind_str, name);
         check_for_drift(config.clone(), cat.clone(), kubernetes_api.clone())
@@ -77,9 +87,10 @@ pub async fn handle_added(
     add_finalizer(cat, kubernetes_api.clone()).await;
     match create_cat(config, dto).await {
         Ok(resp) => {
-            info!("{} {} created", kind_str, name);
+            let msg = format!("{} {} created", kind_str.clone(), name);
+            info!("{}", msg);
             change_status(cat, kubernetes_api.clone(), "uuid", resp.uuid.unwrap()).await;
-            add_event(kind_str, cat, "Normal", "cat", "Cat created").await;
+            add_event(kind_str, cat, "Normal", "cat", &msg).await;
         }
         Err(e) => {
             error!("Failed to create {} {}: {:?}", kind_str, name, e);
@@ -103,7 +114,7 @@ pub async fn handle_modified(
     }
     let model = cat.clone();
     let name = cat.metadata.name.clone().unwrap();
-    let dto = convert_to_dto(model);
+    let dto = convert_kube_type_to_dto(model);
     if dto.uuid.is_none() {
         info!("{} {} does not exist", kind_str, name);
         return;
@@ -182,7 +193,7 @@ pub async fn check_for_drift(
     let kind = Cat::kind(&());
     let kind_str = kind.to_string();
     let cat_clone = cat.clone();
-    let dto = convert_to_dto(cat_clone);
+    let dto = convert_kube_type_to_dto(cat_clone);
     if dto.uuid.is_none() {
         info!(
             "{} {} does not exist",
@@ -193,20 +204,19 @@ pub async fn check_for_drift(
     }
     let uuid_clone = dto.uuid.clone().unwrap();
     match get_cat_by_id(&config, &uuid_clone).await {
-        Ok(current_cat) => {
-            if dto != current_cat {
+        Ok(remote_cat) => {
+            if dto != remote_cat {
                 warn!(
                     "Drift detected for {} {}. Desired: {:?}, Current: {:?}",
                     kind_str,
                     cat.metadata.name.clone().unwrap(),
                     dto,
-                    current_cat
+                    remote_cat
                 );
-                let mut kube_cat = kubernetes_api
-                    .get(&cat.metadata.name.clone().unwrap())
-                    .await?;
-                if kube_cat != cat {
-                    handle_modified(&config, kind_str, &mut kube_cat, kubernetes_api).await;
+                let remote_cat_spec = convert_dto_to_kube_type(remote_cat.clone());
+
+                if cat.spec != remote_cat_spec {
+                    handle_modified(&config, kind_str, &mut cat.clone(), kubernetes_api).await;
                 }
                 return Ok(true);
             }

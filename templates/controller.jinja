@@ -4,6 +4,7 @@ use crate::{
     change_status,
     remove_finalizer,
     types::{{ arg_name }}::{{ type_name }},
+    types::{{ arg_name }}::{{ type_name }}Spec,
 };
 use kube::{
     Resource,
@@ -25,7 +26,7 @@ use openapi::apis::{{ tag_name }}_api::update_{{ arg_name }}_by_id;
 use openapi::models::{{ type_name }} as {{ type_name }}Dto;
 use std::sync::Arc;
 
-fn convert_to_dto({{ arg_name }}: {{ type_name }}) -> {{ type_name }}Dto {
+fn convert_kube_type_to_dto({{ arg_name }}: {{ type_name }}) -> {{ type_name }}Dto {
     let {{ reference_id }} = match {{ arg_name }}.status {
         Some(status) => status.{{ reference_id }},
         None => None,
@@ -34,6 +35,14 @@ fn convert_to_dto({{ arg_name }}: {{ type_name }}) -> {{ type_name }}Dto {
         {{ reference_id }}: {{ reference_id }},
          {%- for field in fields %}
          {{ field.pub_name }}: {{ arg_name }}.spec.{{ field.pub_name }},
+         {%- endfor %}
+    }
+}
+
+fn convert_dto_to_kube_type({{ arg_name }}: {{ type_name }}Dto) -> {{ type_name }}Spec {
+    {{ type_name }}Spec {
+         {%- for field in fields %}
+         {{ field.pub_name }}: {{ arg_name }}.{{ field.pub_name }},
          {%- endfor %}
     }
 }
@@ -79,7 +88,7 @@ pub async fn handle_added(
     }
     let model = {{ arg_name }}.clone();
     let name = {{ arg_name }}.metadata.name.clone().unwrap();
-    let dto = convert_to_dto(model);
+    let dto = convert_kube_type_to_dto(model);
     if dto.{{ reference_id }}.is_some() {
         info!("{} {} already exists", kind_str, name);
         check_for_drift(config.clone(), {{ arg_name }}.clone(), kubernetes_api.clone()).await.unwrap();
@@ -88,9 +97,10 @@ pub async fn handle_added(
     add_finalizer({{ arg_name }}, kubernetes_api.clone()).await;
     match create_{{ arg_name }}(config, dto).await {
         Ok(resp) => {
-            info!("{} {} created", kind_str, name);
+            let msg = format!("{} {} created", kind_str.clone(), name);
+            info!("{}", msg);
             change_status({{ arg_name }}, kubernetes_api.clone(), "{{ reference_id }}", resp.{{ reference_id }}.unwrap()).await;
-            add_event(kind_str, {{ arg_name }}, "Normal", "{{ arg_name }}", "{{ type_name }} created").await;
+            add_event(kind_str, {{ arg_name }}, "Normal", "{{ arg_name }}", &msg).await;
         }
         Err(e) => {
             error!("Failed to create {} {}: {:?}", kind_str, name, e);
@@ -114,7 +124,7 @@ pub async fn handle_modified(
     }
     let model = {{ arg_name }}.clone();
     let name = {{ arg_name }}.metadata.name.clone().unwrap();
-    let dto = convert_to_dto(model);
+    let dto = convert_kube_type_to_dto(model);
     if dto.uuid.is_none() {
         info!("{} {} does not exist", kind_str, name);
         return;
@@ -188,7 +198,7 @@ pub async fn check_for_drift(config: Configuration, {{ arg_name }}: {{ type_name
     let kind = {{ type_name }}::kind(&());
     let kind_str = kind.to_string();
     let {{ arg_name }}_clone = {{ arg_name }}.clone();
-    let dto = convert_to_dto({{ arg_name }}_clone);
+    let dto = convert_kube_type_to_dto({{ arg_name }}_clone);
     if dto.uuid.is_none() {
         info!(
             "{} {} does not exist",
@@ -199,20 +209,19 @@ pub async fn check_for_drift(config: Configuration, {{ arg_name }}: {{ type_name
     }
     let uuid_clone = dto.uuid.clone().unwrap();
     match get_{{ arg_name }}_by_id(&config, &uuid_clone).await {
-        Ok(current_{{ arg_name }}) => {
-            if dto != current_{{ arg_name }} {
+        Ok(remote_{{ arg_name }}) => {
+            if dto != remote_{{ arg_name }} {
                 warn!(
                     "Drift detected for {} {}. Desired: {:?}, Current: {:?}",
                     kind_str,
                     {{ arg_name }}.metadata.name.clone().unwrap(),
                     dto,
-                    current_{{ arg_name }}
+                    remote_{{ arg_name }}
                 );
-                let mut kube_{{ arg_name }} = kubernetes_api
-                    .get(&{{ arg_name }}.metadata.name.clone().unwrap())
-                    .await?;
-                if kube_{{ arg_name }} != {{ arg_name }} {
-                    handle_modified(&config, kind_str, &mut kube_{{ arg_name }}, kubernetes_api).await;
+                let remote_{{ arg_name }}_spec = convert_dto_to_kube_type(remote_{{ arg_name }}.clone());
+
+                if {{ arg_name }}.spec != remote_{{ arg_name }}_spec {
+                    handle_modified(&config, kind_str, &mut {{ arg_name }}.clone(), kubernetes_api).await;
                 }
                 return Ok(true);
             }
