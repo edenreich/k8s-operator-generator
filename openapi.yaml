@@ -3,6 +3,9 @@ info:
   title: Pets API
   version: 1.0.0
   description: An API for managing pets
+  x-kubernetes-operator-group: 'example.com'
+  x-kubernetes-operator-version: 'v1'
+  x-kubernetes-operator-resource-ref: 'uuid'
 servers:
   - url: http://localhost:8080
     description: Development server

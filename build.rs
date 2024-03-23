@@ -14,9 +14,6 @@ const CONTROLLERS_DIR: &str = "src/controllers";
 const TYPES_DIR: &str = "src/types";
 const RBAC_DIR: &str = "manifests/rbac";
 const LIB_FILEPATH: &str = "src/lib.rs";
-const API_GROUP: &str = "example.com";
-const API_VERSION: &str = "v1";
-const RESOURCE_REF: &str = "uuid";
 
 fn main() {
     let input = "openapi.yaml";
@@ -29,6 +26,30 @@ fn main() {
 
     // Parse the OpenAPI specification
     let openapi: OpenAPI = serde_yaml::from_str(&contents).expect("Unable to parse OpenAPI spec");
+
+    let kubernetes_operator_group = openapi
+        .info
+        .extensions
+        .get("x-kubernetes-operator-group")
+        .expect("No x-kubernetes-operator-group in OpenAPI spec")
+        .as_str()
+        .expect("x-kubernetes-operator-group is not a string");
+
+    let kubernetes_operator_version = openapi
+        .info
+        .extensions
+        .get("x-kubernetes-operator-version")
+        .expect("No x-kubernetes-operator-version in OpenAPI spec")
+        .as_str()
+        .expect("x-kubernetes-operator-version is not a string");
+
+    let kubernetes_operator_resource_ref = openapi
+        .info
+        .extensions
+        .get("x-kubernetes-operator-resource-ref")
+        .expect("No x-kubernetes-operator-resource-ref in OpenAPI spec")
+        .as_str()
+        .expect("x-kubernetes-operator-resource-ref is not a string");
 
     // Generate lib.rs
     generate_lib();
@@ -55,9 +76,15 @@ fn main() {
             openapiv3::ReferenceOr::Item(item) => {
                 // Here, `item` is an `openapiv3::Schema`.
                 // You can generate a type for it and add it to the mod file.
-                generate_type(&name, API_VERSION, &item);
+                generate_type(
+                    &name,
+                    kubernetes_operator_group,
+                    kubernetes_operator_version,
+                    kubernetes_operator_resource_ref,
+                    &item,
+                );
                 add_type_to_modfile(&name).expect("Unable to add type to mod file");
-                generate_controller(&controller_name, item);
+                generate_controller(&controller_name, kubernetes_operator_resource_ref, item);
                 add_controller_to_modfile(controller_name.as_str())
                     .expect("Unable to add controller to mod file");
                 upsert_line_to_file(
@@ -75,14 +102,19 @@ fn main() {
         resources.push(schema_name.to_lowercase().to_plural());
     }
 
-    generate_role_file(resources.to_owned());
-    generate_cluster_role_file(resources.to_owned());
+    generate_role_file(resources.to_owned(), kubernetes_operator_group);
+    generate_cluster_role_file(resources.to_owned(), kubernetes_operator_group);
     generate_service_account_file();
     generate_role_binding_file_content();
     generate_cluster_role_binding_file_content();
     generate_operator_deployment_file();
     generate_crdgen_file(resources);
-    generate_examples(components.examples.into_iter().collect());
+    generate_examples(
+        components.examples.into_iter().collect(),
+        kubernetes_operator_group,
+        kubernetes_operator_version,
+        kubernetes_operator_resource_ref,
+    );
 }
 
 struct Field {
@@ -101,7 +133,7 @@ struct TypeTemplate {
     reference_id: String,
 }
 
-fn get_fields_for_type(schema: &Schema) -> Vec<Field> {
+fn get_fields_for_type(schema: &Schema, operator_resource_ref: &str) -> Vec<Field> {
     let mut fields = vec![];
     if let openapiv3::SchemaKind::Type(openapiv3::Type::Object(object)) = &schema.schema_kind {
         for (field_name, field_schema) in &object.properties {
@@ -132,16 +164,22 @@ fn get_fields_for_type(schema: &Schema) -> Vec<Field> {
             }
         }
     }
-    fields.retain(|field| field.pub_name != RESOURCE_REF);
+    fields.retain(|field| field.pub_name != operator_resource_ref);
     fields
 }
 
-fn generate_type(name: &str, api_version: &str, schema: &Schema) {
+fn generate_type(
+    name: &str,
+    operator_group: &str,
+    operator_version: &str,
+    operator_resource_ref: &str,
+    schema: &Schema,
+) {
     if get_ignored_files().contains(&format!("src/types/{}.rs", name.to_lowercase())) {
         return;
     }
 
-    let fields = get_fields_for_type(schema);
+    let fields = get_fields_for_type(schema, operator_resource_ref);
 
     let tag_name = name.to_string().to_lowercase().to_plural();
     let arg_name = name.to_lowercase();
@@ -151,10 +189,10 @@ fn generate_type(name: &str, api_version: &str, schema: &Schema) {
     let content: String = TypeTemplate {
         tag_name,
         type_name,
-        api_version: api_version.to_string(),
-        group_name: API_GROUP.to_string(),
+        api_version: operator_version.to_string(),
+        group_name: operator_group.to_string(),
         fields,
-        reference_id: RESOURCE_REF.to_string(),
+        reference_id: operator_resource_ref.to_string(),
     }
     .render()
     .unwrap();
@@ -201,19 +239,19 @@ struct ControllerTemplate<'a> {
     reference_id: &'a str,
 }
 
-fn generate_controller(name: &str, schema: &Schema) {
+fn generate_controller(name: &str, operator_resource_ref: &str, schema: &Schema) {
     if get_ignored_files().contains(&format!("{}/{}.rs", CONTROLLERS_DIR, name.to_lowercase())) {
         return;
     }
 
-    let fields = get_fields_for_type(schema);
+    let fields = get_fields_for_type(schema, operator_resource_ref);
     let name_singular = name.to_singular();
     let content: String = ControllerTemplate {
         tag_name: &name.to_lowercase(),
         arg_name: name_singular.clone().to_lowercase().as_str(),
         type_name: &uppercase_first_letter(name_singular.clone().as_str()),
         fields: fields,
-        reference_id: RESOURCE_REF,
+        reference_id: operator_resource_ref,
     }
     .render()
     .unwrap();
@@ -324,14 +362,14 @@ struct RoleTemplate {
     identifiers: RoleTemplateIdentifiers,
 }
 
-fn generate_role_file(resources: Vec<String>) {
+fn generate_role_file(resources: Vec<String>, api_group: &str) {
     if get_ignored_files().contains(&format!("{}/role.yaml", RBAC_DIR)) {
         return;
     }
 
     let content = RoleTemplate {
         identifiers: RoleTemplateIdentifiers {
-            api_group: API_GROUP.to_string(),
+            api_group: api_group.to_string(),
             resources: resources,
         },
     }
@@ -351,14 +389,14 @@ struct ClusterRoleTemplate {
     identifiers: ClusterRoleTemplateIdentifiers,
 }
 
-fn generate_cluster_role_file(resources: Vec<String>) {
+fn generate_cluster_role_file(resources: Vec<String>, api_group: &str) {
     if get_ignored_files().contains(&format!("{}/clusterrole.yaml", RBAC_DIR)) {
         return;
     }
 
     let content = ClusterRoleTemplate {
         identifiers: ClusterRoleTemplateIdentifiers {
-            api_group: API_GROUP.to_string(),
+            api_group: api_group.to_string(),
             resources: resources,
         },
     }
@@ -436,6 +474,9 @@ struct Metadata {
 
 fn generate_examples(
     examples: std::collections::HashMap<String, openapiv3::ReferenceOr<openapiv3::Example>>,
+    operator_group: &str,
+    operator_version: &str,
+    operator_resource_ref: &str,
 ) {
     let examples_map: std::collections::HashMap<String, openapiv3::Example> = examples
         .into_iter()
@@ -445,15 +486,27 @@ fn generate_examples(
         })
         .collect();
     for (name, example) in &examples_map {
-        generate_manifest_from_example(&name, example);
+        generate_manifest_from_example(
+            &name,
+            example,
+            operator_group,
+            operator_version,
+            operator_resource_ref,
+        );
     }
 }
 
-fn generate_manifest_from_example(name: &str, example: &openapiv3::Example) {
+fn generate_manifest_from_example(
+    name: &str,
+    example: &openapiv3::Example,
+    operator_group: &str,
+    operator_version: &str,
+    operator_resource_ref: &str,
+) {
     let spec = match &example.value {
         Some(Value::Object(map)) => {
             let mut map = map.clone();
-            map.remove(RESOURCE_REF);
+            map.remove(operator_resource_ref);
             let json_value = Value::Object(map);
             let yaml_value = json!(json_value);
             let mut yaml_string =
@@ -472,8 +525,8 @@ fn generate_manifest_from_example(name: &str, example: &openapiv3::Example) {
     };
 
     let template = ExampleTemplate {
-        api_group: API_GROUP.to_string(),
-        api_version: API_VERSION.to_string(),
+        api_group: operator_group.to_string(),
+        api_version: operator_version.to_string(),
         kind: uppercase_first_letter(name),
         metadata: Metadata {
             name: "example".to_string(),
