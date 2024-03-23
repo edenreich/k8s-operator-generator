@@ -167,8 +167,9 @@ pub async fn handle_deleted(
 
     match delete_cat_by_id(config, &uuid).await {
         Ok(_) => {
-            info!("{} {} deleted", kind_str, name);
-            add_event(kind_str, cat, "Normal", "cat", "Cat deleted").await;
+            let msg = format!("{} {} deleted", kind_str, name);
+            info!("{}", msg);
+            add_event(kind_str, cat, "Normal", "cat", &msg).await;
             remove_finalizer(cat, kubernetes_api.clone()).await;
         }
         Err(e) => {
