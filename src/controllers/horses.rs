@@ -73,7 +73,7 @@ pub async fn handle_added(
     let dto = convert_to_dto(model);
     if dto.uuid.is_some() {
         info!("{} {} already exists", kind_str, name);
-        check_for_drift(horse.clone(), kubernetes_api.clone())
+        check_for_drift(config.clone(), horse.clone(), kubernetes_api.clone())
             .await
             .unwrap();
         return;
@@ -148,7 +148,7 @@ pub async fn handle_deleted(
     config: &Configuration,
     kind_str: String,
     horse: &mut Horse,
-    _kubernetes_api: Api<Horse>,
+    kubernetes_api: Api<Horse>,
 ) {
     let name = horse.metadata.name.clone().unwrap();
 
@@ -162,6 +162,7 @@ pub async fn handle_deleted(
         Ok(_) => {
             info!("{} {} deleted", kind_str, name);
             add_event(kind_str, horse, "Normal", "horse", "Horse deleted").await;
+            remove_finalizer(horse, kubernetes_api.clone()).await;
         }
         Err(e) => {
             error!("Failed to delete {} {}: {:?}", kind_str, name, e);
@@ -178,12 +179,12 @@ pub async fn handle_deleted(
 }
 
 pub async fn check_for_drift(
+    config: Configuration,
     horse: Horse,
     kubernetes_api: Api<Horse>,
 ) -> Result<bool, kube::Error> {
     let kind = Horse::kind(&());
     let kind_str = kind.to_string();
-    let config = Configuration::new();
     let horse_clone = horse.clone();
     let dto = convert_to_dto(horse_clone);
     if dto.uuid.is_none() {

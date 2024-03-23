@@ -82,7 +82,7 @@ pub async fn handle_added(
     let dto = convert_to_dto(model);
     if dto.{{ reference_id }}.is_some() {
         info!("{} {} already exists", kind_str, name);
-        check_for_drift({{ arg_name }}.clone(), kubernetes_api.clone()).await.unwrap();
+        check_for_drift(config.clone(), {{ arg_name }}.clone(), kubernetes_api.clone()).await.unwrap();
         return;
     }
     add_finalizer({{ arg_name }}, kubernetes_api.clone()).await;
@@ -155,7 +155,7 @@ pub async fn handle_deleted(
     config: &Configuration,
     kind_str: String,
     {{ arg_name }}: &mut {{ type_name }},
-    _kubernetes_api: Api<{{ type_name }}>,
+    kubernetes_api: Api<{{ type_name }}>,
 ) {
     let name = {{ arg_name }}.metadata.name.clone().unwrap();
 
@@ -168,6 +168,7 @@ pub async fn handle_deleted(
         Ok(_) => {
             info!("{} {} deleted", kind_str, name);
             add_event(kind_str, {{ arg_name }}, "Normal", "{{ arg_name }}", "{{ type_name }} deleted").await;
+            remove_finalizer({{ arg_name }}, kubernetes_api.clone()).await;
         }
         Err(e) => {
             error!("Failed to delete {} {}: {:?}", kind_str, name, e);
@@ -183,10 +184,9 @@ pub async fn handle_deleted(
     };
 }
 
-pub async fn check_for_drift({{ arg_name }}: {{ type_name }}, kubernetes_api: Api<{{ type_name }}>) -> Result<bool, kube::Error> {
+pub async fn check_for_drift(config: Configuration, {{ arg_name }}: {{ type_name }}, kubernetes_api: Api<{{ type_name }}>) -> Result<bool, kube::Error> {
     let kind = {{ type_name }}::kind(&());
     let kind_str = kind.to_string();
-    let config = Configuration::new();
     let {{ arg_name }}_clone = {{ arg_name }}.clone();
     let dto = convert_to_dto({{ arg_name }}_clone);
     if dto.uuid.is_none() {

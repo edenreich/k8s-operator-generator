@@ -69,7 +69,7 @@ pub async fn handle_added(
     let dto = convert_to_dto(model);
     if dto.uuid.is_some() {
         info!("{} {} already exists", kind_str, name);
-        check_for_drift(dog.clone(), kubernetes_api.clone())
+        check_for_drift(config.clone(), dog.clone(), kubernetes_api.clone())
             .await
             .unwrap();
         return;
@@ -144,7 +144,7 @@ pub async fn handle_deleted(
     config: &Configuration,
     kind_str: String,
     dog: &mut Dog,
-    _kubernetes_api: Api<Dog>,
+    kubernetes_api: Api<Dog>,
 ) {
     let name = dog.metadata.name.clone().unwrap();
 
@@ -158,6 +158,7 @@ pub async fn handle_deleted(
         Ok(_) => {
             info!("{} {} deleted", kind_str, name);
             add_event(kind_str, dog, "Normal", "dog", "Dog deleted").await;
+            remove_finalizer(dog, kubernetes_api.clone()).await;
         }
         Err(e) => {
             error!("Failed to delete {} {}: {:?}", kind_str, name, e);
@@ -173,10 +174,13 @@ pub async fn handle_deleted(
     };
 }
 
-pub async fn check_for_drift(dog: Dog, kubernetes_api: Api<Dog>) -> Result<bool, kube::Error> {
+pub async fn check_for_drift(
+    config: Configuration,
+    dog: Dog,
+    kubernetes_api: Api<Dog>,
+) -> Result<bool, kube::Error> {
     let kind = Dog::kind(&());
     let kind_str = kind.to_string();
-    let config = Configuration::new();
     let dog_clone = dog.clone();
     let dto = convert_to_dto(dog_clone);
     if dto.uuid.is_none() {

@@ -69,7 +69,7 @@ pub async fn handle_added(
     let dto = convert_to_dto(model);
     if dto.uuid.is_some() {
         info!("{} {} already exists", kind_str, name);
-        check_for_drift(cat.clone(), kubernetes_api.clone())
+        check_for_drift(config.clone(), cat.clone(), kubernetes_api.clone())
             .await
             .unwrap();
         return;
@@ -144,7 +144,7 @@ pub async fn handle_deleted(
     config: &Configuration,
     kind_str: String,
     cat: &mut Cat,
-    _kubernetes_api: Api<Cat>,
+    kubernetes_api: Api<Cat>,
 ) {
     let name = cat.metadata.name.clone().unwrap();
 
@@ -158,6 +158,7 @@ pub async fn handle_deleted(
         Ok(_) => {
             info!("{} {} deleted", kind_str, name);
             add_event(kind_str, cat, "Normal", "cat", "Cat deleted").await;
+            remove_finalizer(cat, kubernetes_api.clone()).await;
         }
         Err(e) => {
             error!("Failed to delete {} {}: {:?}", kind_str, name, e);
@@ -173,10 +174,13 @@ pub async fn handle_deleted(
     };
 }
 
-pub async fn check_for_drift(cat: Cat, kubernetes_api: Api<Cat>) -> Result<bool, kube::Error> {
+pub async fn check_for_drift(
+    config: Configuration,
+    cat: Cat,
+    kubernetes_api: Api<Cat>,
+) -> Result<bool, kube::Error> {
     let kind = Cat::kind(&());
     let kind_str = kind.to_string();
-    let config = Configuration::new();
     let cat_clone = cat.clone();
     let dto = convert_to_dto(cat_clone);
     if dto.uuid.is_none() {
@@ -188,7 +192,6 @@ pub async fn check_for_drift(cat: Cat, kubernetes_api: Api<Cat>) -> Result<bool,
         return Ok(false);
     }
     let uuid_clone = dto.uuid.clone().unwrap();
-    info!("{}", uuid_clone);
     match get_cat_by_id(&config, &uuid_clone).await {
         Ok(current_cat) => {
             if dto != current_cat {
