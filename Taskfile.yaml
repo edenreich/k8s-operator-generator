@@ -11,6 +11,11 @@ tasks:
     cmds:
       - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.4.0 generate -i /local/openapi.yaml -g rust -o /local/client
 
+  oas-generate-docs:
+    desc: Generate the OpenAPI documentation
+    cmds:
+      - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.4.0 generate -i /local/openapi.yaml -g markdown -o /local/docs
+
   build:
     desc: Build the k8s operator
     cmds:
