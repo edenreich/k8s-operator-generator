@@ -7,8 +7,9 @@ info:
   x-kubernetes-operator-version: 'v1'
   x-kubernetes-operator-resource-ref: 'uuid'
   x-kubernetes-operator-include-tags:
-    - dogs
     - cats
+    # - dogs
+    # - horses
 servers:
   - url: http://localhost:8080
     description: Development server
@@ -29,7 +30,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Cat'
               examples:
-                Cat:
+                Cats:
                   $ref: '#/components/examples/Cats'
     post:
       tags:
@@ -187,7 +188,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Dog'
               examples:
-                Dog:
+                Dogs:
                   $ref: '#/components/examples/Dog'
         '404':
           description: Not found
@@ -253,7 +254,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Horse'
               examples:
-                Horse:
+                Horses:
                   $ref: '#/components/examples/Horses'
     post:
       tags:

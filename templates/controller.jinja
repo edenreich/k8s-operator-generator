@@ -1,240 +1,203 @@
-use crate::{
-    add_event,
-    add_finalizer,
-    change_status,
-    remove_finalizer,
-    types::{{ arg_name }}::{{ type_name }},
-    types::{{ arg_name }}::{{ type_name }}Spec,
-};
-use kube::{
-    Resource,
-    api::{
-        Api,
-        WatchEvent,
-    }
+use std::sync::Arc;
+use kube::api::{
+    Api,
+    WatchEvent,
+    PostParams,
 };
 use log::{
     error,
     info,
     warn,
 };
-use openapi::apis::configuration::Configuration;
-use openapi::apis::{{ tag_name }}_api::get_{{ arg_name }}_by_id;
-use openapi::apis::{{ tag_name }}_api::create_{{ arg_name }};
-use openapi::apis::{{ tag_name }}_api::delete_{{ arg_name }}_by_id;
-use openapi::apis::{{ tag_name }}_api::update_{{ arg_name }}_by_id;
-use openapi::models::{{ type_name }} as {{ type_name }}Dto;
-use std::sync::Arc;
 
-fn convert_kube_type_to_dto({{ arg_name }}: {{ type_name }}) -> {{ type_name }}Dto {
-    let {{ reference_id }} = match {{ arg_name }}.status {
-        Some(status) => status.{{ reference_id }},
+use openapi::{
+    apis::{
+        configuration::Configuration,
+        {{ tag }}_api::{
+        {%- for controller in controllers %}
+            {{ controller.operation_id }},
+        {%- endfor %}
+        },
+    },
+    models::{{ kind_struct }} as {{ kind_struct }}Dto,
+};
+
+use crate::types::{{ arg_name }}::{
+    {{ kind_struct }},
+    {{ kind_struct }}Spec,
+};
+use crate::{
+    add_event,
+    add_finalizer,
+    change_status,
+    remove_finalizer,
+};
+
+fn convert_kube_type_to_dto({{ arg_name }}: {{ kind_struct }}) -> {{ kind_struct }}Dto {
+    let uuid = match {{ arg_name }}.status {
+        Some(status) => status.uuid,
         None => None,
     };
-    {{ type_name }}Dto {
-        {{ reference_id }}: {{ reference_id }},
-         {%- for field in fields %}
-         {{ field.pub_name }}: {{ arg_name }}.spec.{{ field.pub_name }},
-         {%- endfor %}
+    {{ kind_struct }}Dto {
+        uuid: uuid,
+        {%- for field in dto_fields %}
+            {{ field.pub_name }}: {{ arg_name }}.spec.{{ field.pub_name }},
+        {%- endfor %}
     }
 }
 
-fn convert_dto_to_kube_type({{ arg_name }}: {{ type_name }}Dto) -> {{ type_name }}Spec {
-    {{ type_name }}Spec {
-         {%- for field in fields %}
-         {{ field.pub_name }}: {{ arg_name }}.{{ field.pub_name }},
-         {%- endfor %}
+fn convert_dto_to_kube_type({{ arg_name }}: {{ kind_struct }}Dto) -> {{ kind_struct }}Spec {
+    {{ kind_struct }}Spec {
+    {%- for field in dto_fields %}
+        {{ field.pub_name }}: {{ arg_name }}.{{ field.pub_name }},
+    {%- endfor %}
     }
 }
 
-pub async fn handle(
-    config: Arc<Configuration>,
-    event: WatchEvent<{{ type_name }}>,
-    kubernetes_api: Api<{{ type_name }}>,
-) {
-    let kind = {{ type_name }}::kind(&());
-    let kind_str = kind.to_string();
+pub async fn handle(config: Arc<Configuration>, event: WatchEvent<{{ kind_struct }}>, kubernetes_api: Api<{{ kind_struct }}>) {
     match event {
         WatchEvent::Added(mut {{ arg_name }}) => {
-        handle_added(&config, kind_str, &mut {{ arg_name }}, kubernetes_api).await
+            {% if has_create_action %}
+            // If the resource has no status, meaning it's a new resource, so we need to create it
+            if {{ arg_name }}.status.is_none() {
+            {%- for controller in controllers %}
+                {%- if controller.http_method == "post" %}
+                handle_{{ controller.operation_id }}(&config, &mut {{ arg_name }}, kubernetes_api).await;
+                {%- endif %}
+            {%- endfor %}
+                return;
+            }
+            {% else %}
+            warn!("OpenAPI Spec doesn't have a create operation");
+            {% endif %}
+
+            {% if has_delete_action %}
+            // If the resource was marked for deletion, we need to delete it
+            if {{ arg_name }}.metadata.deletion_timestamp.is_some() {
+                handle_delete_{{ arg_name }}_by_id(&config, &mut {{ arg_name }}, kubernetes_api).await;
+                return;
+            }
+            {% else %}
+            warn!("OpenAPI Spec doesn't have a delete operation");
+            {% endif %}
+            
+            // If the resource does exist, we check for drift and update the remote resource if necessary
+            check_for_drift(&config, &mut {{ arg_name }}).await;
+
         }
         WatchEvent::Modified(mut {{ arg_name }}) => {
-            handle_modified(&config, kind_str, &mut {{ arg_name }}, kubernetes_api).await
+        {% if has_update_action %}
+            {%- for controller in controllers %}
+                {%- if controller.http_method == "put" %}
+            handle_{{ controller.operation_id }}(&config, &mut {{ arg_name }}, kubernetes_api).await;
+                {%- endif %}
+            {%- endfor %}
+        {% else %}
+            warn!("OpenAPI Spec doesn't have a update operation");
+        {% endif %}
         }
         WatchEvent::Bookmark(bookmark) => {
-            info!("{{ type_name }} Bookmark: {:?}", bookmark.metadata.resource_version);
+            info!("{{ kind_struct }} Bookmark: {:?}", bookmark.metadata.resource_version);
             return;
         }
         _ => {
-            info!("{{ type_name }} Unknown event {:?}", event);
+            info!("{{ kind_struct }} {:?}", event);
             return;
         }
     };
 }
 
-pub async fn handle_added(
-    config: &Configuration,
-    kind_str: String,
-    {{ arg_name }}: &mut {{ type_name }},
-    kubernetes_api: Api<{{ type_name }}>,
-) {
-    if {{ arg_name }}.metadata.deletion_timestamp.is_some() {
-        handle_deleted(config, kind_str, {{ arg_name }}, kubernetes_api).await;
+{% for controller in controllers %}
+    {% if controller.http_method == "get" %}
+        {% continue %}
+    {% endif %}
+pub async fn handle_{{ controller.operation_id }}(config: &Configuration, {{ arg_name }}: &mut {{ kind_struct }}, kubernetes_api: Api<{{ kind_struct }}>) {
+    let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
+    {%- if controller.operation_id.ends_with("by_id") %}
+    if dto.{{ resource_remote_ref }}.is_none() {
+        warn!("{{ kind_struct }} has no status, cannot {{ controller.http_method }} by id");
         return;
     }
-    if {{ arg_name }}.status.is_none() {
-        info!("{} {} status is None", kind_str, {{ arg_name }}.metadata.name.clone().unwrap());
-        {{ arg_name }}.status = Some(Default::default());
-    }
-    let model = {{ arg_name }}.clone();
-    let name = {{ arg_name }}.metadata.name.clone().unwrap();
-    let dto = convert_kube_type_to_dto(model);
-    if dto.{{ reference_id }}.is_some() {
-        info!("{} {} already exists", kind_str, name);
-        check_for_drift(config.clone(), {{ arg_name }}.clone(), kubernetes_api.clone()).await.unwrap();
-        return;
-    }
-    add_finalizer({{ arg_name }}, kubernetes_api.clone()).await;
-    match create_{{ arg_name }}(config, dto).await {
-        Ok(resp) => {
-            let msg = format!("{} {} created", kind_str.clone(), name);
-            info!("{}", msg);
-            change_status({{ arg_name }}, kubernetes_api.clone(), "{{ reference_id }}", resp.{{ reference_id }}.unwrap()).await;
-            add_event(kind_str, {{ arg_name }}, "Normal", "{{ arg_name }}", &msg).await;
+    let {{ resource_remote_ref }} = dto.{{ resource_remote_ref }}.as_ref().unwrap().clone();
+    {%- endif %}
+    {%- if controller.http_method == "get" %}
+        {%- if controller.operation_id.ends_with("_by_id") %}
+    match {{ controller.operation_id }}(&config, &{{ resource_remote_ref }}).await {
+        {%- else %}
+    match {{ controller.operation_id }}(&config).await {
+        {%- endif %}
+    {%- else if controller.http_method == "put" %}
+        {%- if controller.operation_id.ends_with("_by_id") %}
+    match {{ controller.operation_id }}(&config, &{{ resource_remote_ref }}, dto.clone()).await {
+        {%- else %}
+    match {{ controller.operation_id }}(&config, &dto).await {
+        {%- endif %}
+    {%- else if controller.http_method == "delete" %}
+    match {{ controller.operation_id }}(&config, &{{ resource_remote_ref }}).await {
+    {%- else if controller.http_method == "post" %}
+    match {{ controller.operation_id }}(&config, dto.clone()).await {
+    {%- endif %}
+    {%- if controller.http_method == "post" %}
+        Ok(remote_{{ arg_name }}) => {
+    {%- else %}
+        Ok(_) => {
+    {%- endif %}
+            {% if controller.http_method == "delete" %}
+            remove_finalizer({{ arg_name }}, kubernetes_api.clone()).await;
+            {% else if controller.http_method == "post" %}
+            add_finalizer({{ arg_name }}, kubernetes_api.clone()).await;
+            change_status({{ arg_name }}, kubernetes_api.clone(), "{{ resource_remote_ref }}", remote_{{ arg_name }}.{{ resource_remote_ref }}.unwrap()).await;
+            {% else %}
+            match kubernetes_api.replace(
+                {{ arg_name }}.metadata.name.as_deref().unwrap_or_default(),
+                &PostParams::default(),
+                &{{ arg_name }}
+            ).await {
+                Ok(_) => {
+                    info!("{{ controller.action_summary }} went successfully");
+                }
+                Err(e) => {
+                    error!("Failed to {{ controller.action_summary }}: {:?}", e);
+                }
+            }
+            {% endif %}
         }
         Err(e) => {
-            error!("Failed to create {} {}: {:?}", kind_str, name, e);
-            remove_finalizer({{ arg_name }}, kubernetes_api.clone()).await;
+            error!("Failed to {{ controller.action_summary }}: {:?}", e);
         }
-    };
+    }
 }
-            
-pub async fn handle_modified(
+{% endfor %}
+
+pub async fn check_for_drift(
     config: &Configuration,
-    kind_str: String,
-    {{ arg_name }}: &mut {{ type_name }},
-    kubernetes_api: Api<{{ type_name }}>,
+    {{ arg_name }}: &mut {{ kind_struct }},
 ) {
-    if {{ arg_name }}.metadata.deletion_timestamp.is_some() {
-        handle_deleted(config, kind_str, {{ arg_name }}, kubernetes_api).await;
+    let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
+    if dto.{{ resource_remote_ref }}.is_none() {
+        warn!("{{ kind_struct }} has no status, cannot get by id or check for drift. Skipping...");
         return;
     }
-    if {{ arg_name }}.status.is_none() {
-        {{ arg_name }}.status = Some(Default::default());
-    }
-    let model = {{ arg_name }}.clone();
-    let name = {{ arg_name }}.metadata.name.clone().unwrap();
-    let dto = convert_kube_type_to_dto(model);
-    if dto.uuid.is_none() {
-        info!("{} {} does not exist", kind_str, name);
-        return;
-    }
-    let uuid_clone = dto.uuid.clone().unwrap();
-    match get_{{ arg_name }}_by_id(config, &uuid_clone).await {
-        Ok(current_{{ arg_name }}) => {
-            if dto != current_{{ arg_name }} {
-                warn!(
-                    "Drift detected for {} {}. Desired: {:?}, Current: {:?}",
-                    kind_str, name, dto, current_{{ arg_name }}
-                );
-                match update_{{ arg_name }}_by_id(config, &uuid_clone, dto).await {
+    
+    let {{ resource_remote_ref }} = dto.{{ resource_remote_ref }}.as_ref().unwrap().clone();
+    match get_{{ arg_name }}_by_id(&config, &dto.{{ resource_remote_ref }}.unwrap()).await {
+        Ok(dto) => {
+            let remote_{{ arg_name }} = convert_dto_to_kube_type(dto);
+            if remote_{{ arg_name }} != {{ arg_name }}.spec {
+                let current_{{ arg_name }}_dto = convert_kube_type_to_dto({{ arg_name }}.clone());
+                warn!("{{ kind_struct }} has drifted remotely, sending an update to remote...");
+                match update_{{ arg_name }}_by_id(&config, &{{ resource_remote_ref }}, current_{{ arg_name }}_dto).await {
                     Ok(_) => {
-                        let msg = format!("{} {} updated", kind_str.clone(), name);
-                        info!("{}", msg);
-                        add_event(kind_str.clone(), {{ arg_name }}, "Normal", &kind_str.clone(), &msg).await;
+                        info!("{{ kind_struct }} updated successfully");
                     }
                     Err(e) => {
-                        let msg =
-                            format!("Failed to update {} {}: {:?}", kind_str.clone(), name, e);
-                        error!("{}", msg);
-                        add_event(kind_str.clone(), {{ arg_name }}, "Error", &kind_str.clone(), &msg).await;
+                        error!("Failed to update {{ kind_struct }}: {:?}", e);
                     }
-                };
-            }
-        }
-        Err(e) => {
-            error!(
-                "Failed to get current state of {} {}: {:?}",
-                kind_str, name, e
-            );
-        }
-    };
-}
-
-pub async fn handle_deleted(
-    config: &Configuration,
-    kind_str: String,
-    {{ arg_name }}: &mut {{ type_name }},
-    kubernetes_api: Api<{{ type_name }}>,
-) {
-    let name = {{ arg_name }}.metadata.name.clone().unwrap();
-
-    let {{ reference_id }} = match {{ arg_name }}.status.clone() {
-        Some(status) => status.{{ reference_id }},
-        None => None,
-    }.unwrap();
-
-    match delete_{{ arg_name }}_by_id(config, &{{ reference_id }}).await {
-        Ok(_) => {
-            let msg = format!("{} {} deleted", kind_str, name);
-            info!("{}", msg);
-            add_event(kind_str, {{ arg_name }}, "Normal", "{{ arg_name }}", &msg).await;
-            remove_finalizer({{ arg_name }}, kubernetes_api.clone()).await;
-        }
-        Err(e) => {
-            error!("Failed to delete {} {}: {:?}", kind_str, name, e);
-            add_event(
-                kind_str,
-                {{ arg_name }},
-                "Error",
-                "{{ arg_name }}",
-                "Failed to delete {} {} remotely",
-            )
-            .await;
-        }
-    };
-}
-
-pub async fn check_for_drift(config: Configuration, {{ arg_name }}: {{ type_name }}, kubernetes_api: Api<{{ type_name }}>) -> Result<bool, kube::Error> {
-    let kind = {{ type_name }}::kind(&());
-    let kind_str = kind.to_string();
-    let {{ arg_name }}_clone = {{ arg_name }}.clone();
-    let dto = convert_kube_type_to_dto({{ arg_name }}_clone);
-    if dto.uuid.is_none() {
-        info!(
-            "{} {} does not exist",
-            kind_str,
-            {{ arg_name }}.metadata.name.clone().unwrap()
-        );
-        return Ok(false);
-    }
-    let uuid_clone = dto.uuid.clone().unwrap();
-    match get_{{ arg_name }}_by_id(&config, &uuid_clone).await {
-        Ok(remote_{{ arg_name }}) => {
-            if dto != remote_{{ arg_name }} {
-                warn!(
-                    "Drift detected for {} {}. Desired: {:?}, Current: {:?}",
-                    kind_str,
-                    {{ arg_name }}.metadata.name.clone().unwrap(),
-                    dto,
-                    remote_{{ arg_name }}
-                );
-                let remote_{{ arg_name }}_spec = convert_dto_to_kube_type(remote_{{ arg_name }}.clone());
-
-                if {{ arg_name }}.spec != remote_{{ arg_name }}_spec {
-                    handle_modified(&config, kind_str, &mut {{ arg_name }}.clone(), kubernetes_api).await;
                 }
-                return Ok(true);
             }
         }
         Err(e) => {
-            error!(
-                "Failed to get current state of {} {}: {:?}",
-                kind_str,
-                {{ arg_name }}.metadata.name.clone().unwrap(),
-                e
-            );
+            error!("Failed to get {{ kind_struct }}: {:?}", e);
         }
-    };
-    Ok(false)
+    }
 }

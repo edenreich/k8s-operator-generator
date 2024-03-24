@@ -1,0 +1,19 @@
+
+---
+apiVersion: example.com/v1
+kind: Dogs
+metadata:
+  name: example
+spec:
+  age: 3
+  breed: Bulldog
+  name: Fido
+---
+apiVersion: example.com/v1
+kind: Dogs
+metadata:
+  name: example
+spec:
+  age: 5
+  breed: German Shepherd
+  name: Rex

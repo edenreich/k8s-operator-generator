@@ -1,7 +1,9 @@
+{%- for resource in resources %}
 ---
-apiVersion: {{ api_group }}/{{ api_version }}
-kind: {{ kind }}
+apiVersion: {{ resource.api_group }}/{{ resource.api_version }}
+kind: {{ resource.kind }}
 metadata:
-  name: {{ metadata.name }}
+  name: {{ resource.metadata.name }}
 spec:
-{{ spec }}
+{{ resource.spec }}
+{%- endfor -%}

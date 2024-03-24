@@ -21,21 +21,22 @@ tasks:
     cmds:
       - cargo build --bins
 
-  generate-types:
+  generate-code:
     desc: Generate the Rust types and controllers from the OpenAPI specification
     cmds:
-      - cargo build
+      - cargo run --bin codegen
 
   generate-crds:
     desc: Generate the k8s CRD's out of the rust structs
     cmds:
-      - cargo run --bin generate-crds > manifests/crds/all.yaml
+      - cargo run --bin crdgen > manifests/crds/all.yaml
 
   generate:
     desc: Generate the k8s CRD's out of the rust structs
     deps:
-      - generate-types
+      - generate-code
       - oas-generate-rust-client
+      - oas-generate-docs
       - generate-crds
 
   run:

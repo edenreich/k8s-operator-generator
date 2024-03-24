@@ -1,0 +1,19 @@
+
+---
+apiVersion: example.com/v1
+kind: Cats
+metadata:
+  name: example
+spec:
+  age: 3
+  breed: Persian
+  name: Fluffy
+---
+apiVersion: example.com/v1
+kind: Cats
+metadata:
+  name: example
+spec:
+  age: 2
+  breed: Siamese
+  name: Whiskers
