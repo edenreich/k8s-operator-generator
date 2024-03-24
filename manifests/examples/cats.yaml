@@ -3,7 +3,7 @@
 apiVersion: example.com/v1
 kind: Cat
 metadata:
-  name: example
+  name: example-persian
 spec:
   age: 3
   breed: Persian
@@ -12,7 +12,7 @@ spec:
 apiVersion: example.com/v1
 kind: Cat
 metadata:
-  name: example
+  name: example-persian
 spec:
   age: 2
   breed: Siamese

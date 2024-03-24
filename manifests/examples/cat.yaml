@@ -3,7 +3,7 @@
 apiVersion: example.com/v1
 kind: Cat
 metadata:
-  name: example
+  name: example-fluffy
 spec:
   age: 3
   breed: Persian

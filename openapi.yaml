@@ -358,48 +358,66 @@ components:
         name: 'Fluffy'
         breed: 'Persian'
         age: 3
+        x-kubernetes-operator-example-metadata:
+          name: 'Fluffy'
     Cats:
       value:
         - uuid: '76523f74-484c-4018-b9bf-1c03b134512a'
           name: 'Fluffy'
           breed: 'Persian'
           age: 3
+          x-kubernetes-operator-example-metadata:
+            name: 'Persian'
         - uuid: 'f8d3e6e6-1620-4ff0-8fe0-6f31b4a87266'
           name: 'Whiskers'
           breed: 'Siamese'
           age: 2
+          x-kubernetes-operator-example-metadata:
+            name: 'Whiskers'
     Dog:
       value:
         uuid: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
         name: 'Fido'
         breed: 'Bulldog'
         age: 3
+        x-kubernetes-operator-example-metadata:
+          name: 'Fido'
     Dogs:
       value:
         - uuid: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
           name: 'Fido'
           breed: 'Bulldog'
           age: 3
+          x-kubernetes-operator-example-metadata:
+            name: 'Fido'
         - uuid: 'a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d'
           name: 'Rex'
           breed: 'German Shepherd'
           age: 5
+          x-kubernetes-operator-example-metadata:
+            name: 'Rex'
     Horse:
       value:
         uuid: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
         name: 'Star'
         breed: 'Arabian'
         age: 5
+        x-kubernetes-operator-example-metadata:
+          name: 'Star'
     Horses:
       value:
         - uuid: '4e817fcd-6c9f-4a15-9bc2-eddac59a10d1'
           name: 'Star'
           breed: 'Arabian'
           age: 5
+          x-kubernetes-operator-example-metadata:
+            name: 'Star'
         - uuid: 'b1c2d3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e'
           name: 'Thunder'
           breed: 'Thoroughbred'
           age: 7
+          x-kubernetes-operator-example-metadata:
+            name: 'Thunder'
   schemas:
     Cat:
       type: object

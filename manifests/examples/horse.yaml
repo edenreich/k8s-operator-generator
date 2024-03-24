@@ -3,7 +3,7 @@
 apiVersion: example.com/v1
 kind: Horse
 metadata:
-  name: example
+  name: example-star
 spec:
   age: 5
   breed: Arabian

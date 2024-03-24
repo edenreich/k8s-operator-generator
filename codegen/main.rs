@@ -1,5 +1,6 @@
 use askama::Template;
 use inflector::Inflector;
+use log::{error, warn};
 use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind, Type};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -20,6 +21,8 @@ const LIB_FILEPATH: &str = "src/lib.rs";
 const CRDGEN_FILEPATH: &str = "crdgen/main.rs";
 
 fn main() {
+    env_logger::init();
+
     let openapi = read_and_parse_openapi_spec(OPENAPI_FILE);
     let (
         kubernetes_operator_group,
@@ -274,7 +277,7 @@ fn generate_controllers(
             format!("{}/{}.rs", CONTROLLERS_DIR, tag.to_lowercase()).as_str(),
         ) {
             Ok(_) => (),
-            Err(e) => eprintln!(
+            Err(e) => error!(
                 "Failed to add controller to .openapi-generator-ignore file: {:?}",
                 e
             ),
@@ -328,7 +331,7 @@ fn generate_controller(
     let fields = match get_fields_for_type(&schemas, &type_name, &resource_remote_ref) {
         Ok(fields) => fields,
         Err(e) => {
-            eprintln!("Failed to get fields for type: {:?}", e);
+            error!("Failed to get fields for type: {:?}", e);
             return;
         }
     };
@@ -425,7 +428,7 @@ fn generate_types(schemas: HashMap<String, Schema>, operator_resource_ref: &str)
         );
         match add_type_to_modfile(&name) {
             Ok(_) => (),
-            Err(e) => eprintln!("Failed to add type to mod file: {:?}", e),
+            Err(e) => error!("Failed to add type to mod file: {:?}", e),
         }
     }
 }
@@ -444,7 +447,7 @@ fn generate_type(
     let fields = match get_fields_for_type(&schemas, name, operator_resource_ref) {
         Ok(fields) => fields,
         Err(e) => {
-            eprintln!("Failed to get fields for type: {:?}", e);
+            error!("Failed to get fields for type: {:?}", e);
             return;
         }
     };
@@ -558,7 +561,7 @@ fn upsert_line_to_file(file_path: &str, line: &str) -> Result<(), Error> {
             .append(true)
             .open(&file_path)?;
         if let Err(e) = writeln!(file, "{}", line) {
-            eprintln!("Couldn't write to file: {}", e);
+            error!("Couldn't write to file: {}", e);
         }
     }
     Ok(())
@@ -575,7 +578,7 @@ fn format_file(file_path: String) {
         .expect("Failed to execute command");
 
     if !output.status.success() {
-        eprintln!(
+        error!(
             "rustfmt failed with output:\n{}",
             String::from_utf8_lossy(&output.stderr)
         );
@@ -749,10 +752,36 @@ fn generate_manifest_from_example(
 ) {
     let mut resources = Vec::new();
 
+    let metadata: Option<Metadata> = match &example.value {
+        Some(Value::Object(map)) => map
+            .get("x-kubernetes-operator-example-metadata")
+            .cloned()
+            .and_then(|v| serde_json::from_value(v).ok()),
+        Some(Value::Array(arr)) => {
+            if let Some(Value::Object(map)) = arr.first() {
+                map.get("x-kubernetes-operator-example-metadata")
+                    .cloned()
+                    .and_then(|v| serde_json::from_value(v).ok())
+            } else {
+                None
+            }
+        }
+        _ => None,
+    };
+
+    let metadata_name = match &metadata {
+        Some(meta) => meta.name.clone(),
+        None => {
+            warn!("Warning: x-kubernetes-operator-example-metadata is not set for example {}. Using the regular example name.", name);
+            name.to_lowercase()
+        }
+    };
+
     match &example.value {
         Some(Value::Object(map)) => {
             resources.push(generate_resource_from_map(
-                name,
+                &name,
+                &metadata_name,
                 map,
                 operator_group,
                 operator_version,
@@ -763,7 +792,8 @@ fn generate_manifest_from_example(
             for value in arr {
                 if let Value::Object(map) = value {
                     resources.push(generate_resource_from_map(
-                        name,
+                        &name,
+                        &metadata_name,
                         map,
                         operator_group,
                         operator_version,
@@ -781,6 +811,7 @@ fn generate_manifest_from_example(
 }
 
 fn generate_resource_from_map(
+    kind: &str,
     name: &str,
     map: &serde_json::Map<String, Value>,
     operator_group: &str,
@@ -788,7 +819,13 @@ fn generate_resource_from_map(
     operator_resource_ref: &str,
 ) -> Resource {
     let mut map = map.clone();
+
+    // Filter out resource remote reference from the examples
     map.remove(operator_resource_ref);
+
+    // Filter out fields starting with 'x-'
+    map.retain(|key, _| !key.starts_with("x-"));
+
     let json_value = Value::Object(map);
     let yaml_value = json!(json_value);
     let mut yaml_string = serde_yaml::to_string(&yaml_value).unwrap_or_else(|_| String::from("{}"));
@@ -801,9 +838,9 @@ fn generate_resource_from_map(
     Resource {
         api_group: operator_group.to_string(),
         api_version: operator_version.to_string(),
-        kind: uppercase_first_letter(name).to_singular(),
+        kind: uppercase_first_letter(kind).to_singular(),
         metadata: Metadata {
-            name: "example".to_string(),
+            name: format!("example-{}", name.to_lowercase()),
         },
         spec: yaml_string,
     }
@@ -820,7 +857,7 @@ fn write_manifest(name: &str, resources: Vec<Resource>) {
             );
         }
         Err(e) => {
-            eprintln!("Failed to render template: {}", e);
+            error!("Failed to render template: {}", e);
         }
     }
 }
