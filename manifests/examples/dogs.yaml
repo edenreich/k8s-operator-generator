@@ -1,7 +1,7 @@
 
 ---
 apiVersion: example.com/v1
-kind: Dogs
+kind: Dog
 metadata:
   name: example
 spec:
@@ -10,7 +10,7 @@ spec:
   name: Fido
 ---
 apiVersion: example.com/v1
-kind: Dogs
+kind: Dog
 metadata:
   name: example
 spec:

@@ -1,7 +1,7 @@
 
 ---
 apiVersion: example.com/v1
-kind: Horses
+kind: Horse
 metadata:
   name: example
 spec:
@@ -10,7 +10,7 @@ spec:
   name: Star
 ---
 apiVersion: example.com/v1
-kind: Horses
+kind: Horse
 metadata:
   name: example
 spec:

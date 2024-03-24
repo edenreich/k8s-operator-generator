@@ -801,7 +801,7 @@ fn generate_resource_from_map(
     Resource {
         api_group: operator_group.to_string(),
         api_version: operator_version.to_string(),
-        kind: uppercase_first_letter(name),
+        kind: uppercase_first_letter(name).to_singular(),
         metadata: Metadata {
             name: "example".to_string(),
         },
