@@ -79,12 +79,11 @@ spec:
                 x-kubernetes-list-type: map
               observedGeneration:
                 format: int64
+                nullable: true
                 type: integer
               uuid:
                 nullable: true
                 type: string
-            required:
-            - observedGeneration
             type: object
         required:
         - spec
@@ -175,12 +174,11 @@ spec:
                 x-kubernetes-list-type: map
               observedGeneration:
                 format: int64
+                nullable: true
                 type: integer
               uuid:
                 nullable: true
                 type: string
-            required:
-            - observedGeneration
             type: object
         required:
         - spec
@@ -271,12 +269,11 @@ spec:
                 x-kubernetes-list-type: map
               observedGeneration:
                 format: int64
+                nullable: true
                 type: integer
               uuid:
                 nullable: true
                 type: string
-            required:
-            - observedGeneration
             type: object
         required:
         - spec
