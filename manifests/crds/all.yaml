@@ -13,7 +13,19 @@ spec:
     singular: cat
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
+  - additionalPrinterColumns:
+    - description: The current status of the resource
+      jsonPath: .status.conditions[0].status
+      name: Status
+      type: string
+    - description: The reference ID of the resource
+      jsonPath: .status.uuid
+      name: Reference ID
+      type: string
+    - description: The creation time of the resource
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     name: v1
     schema:
       openAPIV3Schema:
@@ -36,9 +48,43 @@ spec:
           status:
             nullable: true
             properties:
+              conditions:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    observedGeneration:
+                      default: 0
+                      format: int64
+                      type: integer
+                    reason:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              observedGeneration:
+                format: int64
+                type: integer
               uuid:
                 nullable: true
                 type: string
+            required:
+            - observedGeneration
             type: object
         required:
         - spec
@@ -63,7 +109,19 @@ spec:
     singular: dog
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
+  - additionalPrinterColumns:
+    - description: The current status of the resource
+      jsonPath: .status.conditions[0].status
+      name: Status
+      type: string
+    - description: The reference ID of the resource
+      jsonPath: .status.uuid
+      name: Reference ID
+      type: string
+    - description: The creation time of the resource
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     name: v1
     schema:
       openAPIV3Schema:
@@ -86,9 +144,43 @@ spec:
           status:
             nullable: true
             properties:
+              conditions:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    observedGeneration:
+                      default: 0
+                      format: int64
+                      type: integer
+                    reason:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              observedGeneration:
+                format: int64
+                type: integer
               uuid:
                 nullable: true
                 type: string
+            required:
+            - observedGeneration
             type: object
         required:
         - spec
@@ -113,7 +205,19 @@ spec:
     singular: horse
   scope: Namespaced
   versions:
-  - additionalPrinterColumns: []
+  - additionalPrinterColumns:
+    - description: The current status of the resource
+      jsonPath: .status.conditions[0].status
+      name: Status
+      type: string
+    - description: The reference ID of the resource
+      jsonPath: .status.uuid
+      name: Reference ID
+      type: string
+    - description: The creation time of the resource
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     name: v1
     schema:
       openAPIV3Schema:
@@ -136,9 +240,43 @@ spec:
           status:
             nullable: true
             properties:
+              conditions:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      type: string
+                    observedGeneration:
+                      default: 0
+                      format: int64
+                      type: integer
+                    reason:
+                      type: string
+                    status:
+                      type: string
+                    type:
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              observedGeneration:
+                format: int64
+                type: integer
               uuid:
                 nullable: true
                 type: string
+            required:
+            - observedGeneration
             type: object
         required:
         - spec

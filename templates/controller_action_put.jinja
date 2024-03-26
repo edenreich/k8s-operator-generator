@@ -1,0 +1,32 @@
+{% for controller in controllers %}
+    {% if controller.http_method == "put" %}
+pub async fn handle_{{ controller.operation_id }}(
+    config: &Configuration,
+    {{ arg_name }}: &mut {{ kind_struct }},
+    kubernetes_api: Api<{{ kind_struct }}>,
+) {
+    let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
+    let {{ resource_remote_ref }} = match dto.{{ resource_remote_ref }}.clone() {
+        Some({{ resource_remote_ref }}) => {{ resource_remote_ref }},
+        None => {
+            warn!("{{ kind_struct }} has no status, cannot update by id. Skipping...");
+            return;
+        }
+    };
+
+    if let Err(e) = {{ controller.operation_id }}(&config, &{{ resource_remote_ref }}, dto).await {
+        error!("Failed to update a {{ arg_name }} by id: {:?}", e);
+        return;
+    }
+
+    let {{ arg_name }}_name = {{ arg_name }}.metadata.name.as_deref().unwrap_or_default();
+    match kubernetes_api
+        .replace({{ arg_name }}_name, &PostParams::default(), &{{ arg_name }})
+        .await
+    {
+        Ok(_) => info!("{{ controller.action_summary }} went successfully"),
+        Err(e) => error!("Failed to {{ controller.action_summary }}: {:?}", e),
+    }
+}
+    {% endif %}
+{% endfor %}

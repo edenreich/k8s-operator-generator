@@ -1,11 +1,14 @@
 use futures_util::stream::StreamExt;
 use k8s_openapi::api::core::v1::{Event, EventSource, ObjectReference};
-use k8s_openapi::apimachinery::pkg::apis::meta::v1::Time;
+use k8s_openapi::apimachinery::pkg::apis::meta::v1::{
+    Time,
+    Condition,
+};
 use k8s_openapi::chrono;
 use kube::api::{Api, ObjectMeta, Patch, PatchParams, PostParams, WatchEvent, WatchParams};
 use kube::core::CustomResourceExt;
 use kube::{Resource, ResourceExt};
-use log::{debug, error, info};
+use log::{debug, info, warn, error};
 use openapi::apis::configuration::Configuration;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -155,43 +158,69 @@ where
     };
 }
 
-pub async fn change_status<T>(resource: &mut T, kubernetes_api: Api<T>, field: &str, value: String)
-where
-    T: Clone
-        + Serialize
-        + DeserializeOwned
-        + Resource
-        + CustomResourceExt
-        + core::fmt::Debug
-        + 'static,
-{
-    let name = resource.meta().name.clone().unwrap();
-    let mut resource_json: serde_json::Value =
-        serde_json::to_value(&resource).expect("Failed to serialize resource");
-    resource_json["status"][field] = serde_json::json!(value);
-    let new_resource: T =
-        serde_json::from_value(resource_json).expect("Failed to deserialize resource");
-    let resource_bytes = serde_json::to_vec(&new_resource).expect("Failed to serialize resource");
+pub async fn create_condition(
+    status: &str,
+    type_: &str,
+    reason: &str,
+    message: &str,
+    observed_generation: Option<i64>,
+) -> Condition {
+    Condition {
+        last_transition_time: Time(chrono::Utc::now()),
+        message: message.to_string(),
+        reason: reason.to_string(),
+        status: status.to_string(),
+        type_: type_.to_string(),
+        observed_generation: observed_generation,
+    }
+}
 
-    let mut retries = 0;
-    loop {
+pub async fn update_status<T>(kubernetes_api: Api<T>, status: T)
+where
+    T: kube::Resource<DynamicType = ()>
+        + serde::Serialize
+        + Clone
+        + for<'de> serde::Deserialize<'de>,
+{
+    let resource_name = status.meta().name.clone().unwrap_or_else(|| String::new());
+
+    if resource_name.is_empty() {
+        warn!("Resource name is empty, cannot update status");
+        return;
+    }
+
+    let status_replace_bytes = match serde_json::to_vec(&status) {
+        Ok(v) => v,
+        Err(e) => {
+            warn!("Failed to serialize status: {:?}", e);
+            return;
+        }
+    };
+
+    let post_params = PostParams::default();
+    // let mut retries = 0;
+    // while retries < 5 {
         match kubernetes_api
-            .replace_status(&name, &PostParams::default(), resource_bytes.clone())
+            .replace_status(&resource_name, &post_params, status_replace_bytes.clone())
             .await
         {
             Ok(_) => {
-                info!("Status updated successfully for {}", name);
-                break;
+                println!("Status updated successfully for {}", resource_name);
+                // break;
             }
-            Err(kube::Error::Api(ae)) if ae.code == 409 && retries < 5 => {
-                info!("Conflict updating status for {}, retrying...", name);
-                retries += 1;
-                continue;
+            Err(kube::Error::Api(ae)) if ae.code == 409 => {
+                println!(
+                    "Conflict updating status for {}, retrying...",
+                    resource_name
+                );
+                // retries += 1;
+                sleep(Duration::from_secs(1)).await;
+                // continue;
             }
             Err(e) => {
-                info!("Failed to update status for {}: {:?}", name, e);
-                break;
+                println!("Failed to update status for {}: {:?}", resource_name, e);
+                // break;
             }
         }
-    }
+    // }
 }

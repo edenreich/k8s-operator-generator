@@ -3,7 +3,7 @@ use inflector::Inflector;
 use log::{error, warn};
 use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind, Type};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use std::{
     collections::{HashMap, HashSet},
     fs::{DirBuilder, File, OpenOptions},
@@ -299,6 +299,33 @@ struct ControllerTemplate<'a> {
     has_delete_action: bool,
 }
 
+#[derive(Template)]
+#[template(path = "controller_action_delete.jinja")]
+struct ControllerActionDeleteTemplate<'a> {
+    arg_name: String,
+    kind_struct: String,
+    controllers: Vec<&'a ControllerAttributes>,
+    resource_remote_ref: String,
+}
+
+#[derive(Template)]
+#[template(path = "controller_action_put.jinja")]
+struct ControllerActionPutTemplate<'a> {
+    arg_name: String,
+    kind_struct: String,
+    controllers: Vec<&'a ControllerAttributes>,
+    resource_remote_ref: String,
+}
+
+#[derive(Template)]
+#[template(path = "controller_action_post.jinja")]
+struct ControllerActionPostTemplate<'a> {
+    arg_name: String,
+    kind_struct: String,
+    controllers: Vec<&'a ControllerAttributes>,
+    resource_remote_ref: String,
+}
+
 struct Field {
     pub_name: String,
     field_type: String,
@@ -336,19 +363,50 @@ fn generate_controller(
         }
     };
 
-    let content: String = ControllerTemplate {
+    let mut content: String = ControllerTemplate {
         tag: tag.to_lowercase(),
         arg_name: tag.to_lowercase().to_singular(),
-        kind_struct: type_name,
+        kind_struct: type_name.clone(),
         controllers: controller_attributes.iter().collect(),
         dto_fields: fields,
-        resource_remote_ref,
+        resource_remote_ref: resource_remote_ref.clone(),
         has_create_action,
         has_update_action,
         has_delete_action,
     }
     .render()
     .unwrap();
+
+    let content_action_delete: String = ControllerActionDeleteTemplate {
+        arg_name: tag.to_lowercase().to_singular(),
+        kind_struct: type_name.clone(),
+        controllers: controller_attributes.iter().collect(),
+        resource_remote_ref: resource_remote_ref.clone(),
+    }
+    .render()
+    .unwrap();
+
+    let content_action_put: String = ControllerActionPutTemplate {
+        arg_name: tag.to_lowercase().to_singular(),
+        kind_struct: type_name.clone(),
+        controllers: controller_attributes.iter().collect(),
+        resource_remote_ref: resource_remote_ref.clone(),
+    }
+    .render()
+    .unwrap();
+
+    let content_action_post: String = ControllerActionPostTemplate {
+        arg_name: tag.to_lowercase().to_singular(),
+        kind_struct: type_name,
+        controllers: controller_attributes.iter().collect(),
+        resource_remote_ref: resource_remote_ref.clone(),
+    }
+    .render()
+    .unwrap();
+
+    content.push_str(&content_action_delete);
+    content.push_str(&content_action_put);
+    content.push_str(&content_action_post);
 
     let file_path: String = format!("{}/{}.rs", CONTROLLERS_DIR, tag.to_lowercase());
     write_to_file(file_path.to_string(), content);
@@ -752,33 +810,9 @@ fn generate_manifest_from_example(
 ) {
     let mut resources = Vec::new();
 
-    let metadata: Option<Metadata> = match &example.value {
-        Some(Value::Object(map)) => map
-            .get("x-kubernetes-operator-example-metadata")
-            .cloned()
-            .and_then(|v| serde_json::from_value(v).ok()),
-        Some(Value::Array(arr)) => {
-            if let Some(Value::Object(map)) = arr.first() {
-                map.get("x-kubernetes-operator-example-metadata")
-                    .cloned()
-                    .and_then(|v| serde_json::from_value(v).ok())
-            } else {
-                None
-            }
-        }
-        _ => None,
-    };
-
-    let metadata_name = match &metadata {
-        Some(meta) => meta.name.clone(),
-        None => {
-            warn!("Warning: x-kubernetes-operator-example-metadata is not set for example {}. Using the regular example name.", name);
-            name.to_lowercase()
-        }
-    };
-
     match &example.value {
         Some(Value::Object(map)) => {
+            let metadata_name = get_metadata_name(&name, map);
             resources.push(generate_resource_from_map(
                 &name,
                 &metadata_name,
@@ -791,6 +825,7 @@ fn generate_manifest_from_example(
         Some(Value::Array(arr)) => {
             for value in arr {
                 if let Value::Object(map) = value {
+                    let metadata_name = get_metadata_name(&name, map);
                     resources.push(generate_resource_from_map(
                         &name,
                         &metadata_name,
@@ -808,6 +843,17 @@ fn generate_manifest_from_example(
     if !resources.is_empty() {
         write_manifest(name, resources);
     }
+}
+
+fn get_metadata_name(name: &str, map: &Map<String, Value>) -> String {
+    map.get("x-kubernetes-operator-example-metadata")
+        .cloned()
+        .and_then(|v| serde_json::from_value::<Metadata>(v).ok())
+        .and_then(|meta| Some(meta.name.clone()))
+        .unwrap_or_else(|| {
+            warn!("Warning: x-kubernetes-operator-example-metadata is not set for example {}. Using the regular example name.", name);
+            name.to_lowercase()
+        })
 }
 
 fn generate_resource_from_map(

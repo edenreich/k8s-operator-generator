@@ -3,6 +3,7 @@ use kube::api::{
     Api,
     WatchEvent,
     PostParams,
+    Resource,
 };
 use log::{
     error,
@@ -25,12 +26,14 @@ use openapi::{
 use crate::types::{{ arg_name }}::{
     {{ kind_struct }},
     {{ kind_struct }}Spec,
+    {{ kind_struct }}Status,
 };
 use crate::{
     add_event,
     add_finalizer,
-    change_status,
+    update_status,
     remove_finalizer,
+    create_condition,
 };
 
 fn convert_kube_type_to_dto({{ arg_name }}: {{ kind_struct }}) -> {{ kind_struct }}Dto {
@@ -57,36 +60,86 @@ fn convert_dto_to_kube_type({{ arg_name }}: {{ kind_struct }}Dto) -> {{ kind_str
 pub async fn handle(config: Arc<Configuration>, event: WatchEvent<{{ kind_struct }}>, kubernetes_api: Api<{{ kind_struct }}>) {
     match event {
         WatchEvent::Added(mut {{ arg_name }}) => {
-            {% if has_create_action %}
-            // If the resource has no status, meaning it's a new resource, so we need to create it
+            // Add default stauts if it's missing
             if {{ arg_name }}.status.is_none() {
-            {%- for controller in controllers %}
-                {%- if controller.http_method == "post" %}
-                handle_{{ controller.operation_id }}(&config, &mut {{ arg_name }}, kubernetes_api).await;
-                {%- endif %}
-            {%- endfor %}
-                return;
-            }
-            {% else %}
-            warn!("OpenAPI Spec doesn't have a create operation");
-            {% endif %}
+                {{ arg_name }}.status = Some({{ kind_struct }}Status::default());
+            };
 
             {% if has_delete_action %}
             // If the resource was marked for deletion, we need to delete it
             if {{ arg_name }}.metadata.deletion_timestamp.is_some() {
+                let condition = create_condition(
+                    "Deleting",
+                    "ProgressingDeletion",
+                    "Deleting the resource",
+                    "Resource is being deleted",
+                    {{ arg_name }}.meta().generation,
+                )
+                .await;
+                let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
+                if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
+                    status.conditions.push(condition);
+                    status.observed_generation = {{ arg_name }}.meta().generation;
+                }
+                update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await;
                 handle_delete_{{ arg_name }}_by_id(&config, &mut {{ arg_name }}, kubernetes_api).await;
                 return;
             }
             {% else %}
             warn!("OpenAPI Spec doesn't have a delete operation");
             {% endif %}
-            
-            // If the resource does exist, we check for drift and update the remote resource if necessary
-            check_for_drift(&config, &mut {{ arg_name }}).await;
 
+            {% if has_create_action %}
+            // If the resource has no remote reference, meaning it's a new resource, so we need to create it
+            // Otherwise, we need to check for drift
+            match cat.clone().status.unwrap().uuid {
+                Some(_) => {
+                    check_for_drift(&config, kubernetes_api.clone(), &mut cat).await;
+                    return;
+                }
+                None => {
+            {%- for controller in controllers %}
+                {%- if controller.http_method == "post" %}
+                let condition = create_condition(
+                    "Creating",
+                    "ProgressingCreating",
+                    "Creating the resource",
+                    "Resource is being created",
+                    {{ arg_name }}.meta().generation,
+                )
+                .await;
+                let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
+                if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
+                    status.conditions.push(condition);
+                    status.observed_generation = {{ arg_name }}.meta().generation;
+                }
+                update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await;
+                handle_{{ controller.operation_id }}(&config, &mut {{ arg_name }}, kubernetes_api).await;
+                {%- endif %}
+            {%- endfor %}
+                    return;
+                }
+            }
+            {% else %}
+            warn!("OpenAPI Spec doesn't have a create operation");
+            {% endif %}
         }
         WatchEvent::Modified(mut {{ arg_name }}) => {
         {% if has_update_action %}
+                let condition = create_condition(
+                    "Updating",
+                    "ProgressingUpdating",
+                    "Updating the resource",
+                    "Resource is being updated",
+                    {{ arg_name }}.meta().generation,
+                )
+                .await;
+                let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
+                if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
+                    status.conditions.push(condition);
+                    status.observed_generation = {{ arg_name }}.meta().generation;
+                }
+                update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await;
             {%- for controller in controllers %}
                 {%- if controller.http_method == "put" %}
             handle_{{ controller.operation_id }}(&config, &mut {{ arg_name }}, kubernetes_api).await;
@@ -107,80 +160,20 @@ pub async fn handle(config: Arc<Configuration>, event: WatchEvent<{{ kind_struct
     };
 }
 
-{% for controller in controllers %}
-    {% if controller.http_method == "get" %}
-        {% continue %}
-    {% endif %}
-pub async fn handle_{{ controller.operation_id }}(config: &Configuration, {{ arg_name }}: &mut {{ kind_struct }}, kubernetes_api: Api<{{ kind_struct }}>) {
-    let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
-    {%- if controller.operation_id.ends_with("by_id") %}
-    if dto.{{ resource_remote_ref }}.is_none() {
-        warn!("{{ kind_struct }} has no status, cannot {{ controller.http_method }} by id");
-        return;
-    }
-    let {{ resource_remote_ref }} = dto.{{ resource_remote_ref }}.as_ref().unwrap().clone();
-    {%- endif %}
-    {%- if controller.http_method == "get" %}
-        {%- if controller.operation_id.ends_with("_by_id") %}
-    match {{ controller.operation_id }}(&config, &{{ resource_remote_ref }}).await {
-        {%- else %}
-    match {{ controller.operation_id }}(&config).await {
-        {%- endif %}
-    {%- else if controller.http_method == "put" %}
-        {%- if controller.operation_id.ends_with("_by_id") %}
-    match {{ controller.operation_id }}(&config, &{{ resource_remote_ref }}, dto.clone()).await {
-        {%- else %}
-    match {{ controller.operation_id }}(&config, &dto).await {
-        {%- endif %}
-    {%- else if controller.http_method == "delete" %}
-    match {{ controller.operation_id }}(&config, &{{ resource_remote_ref }}).await {
-    {%- else if controller.http_method == "post" %}
-    match {{ controller.operation_id }}(&config, dto.clone()).await {
-    {%- endif %}
-    {%- if controller.http_method == "post" %}
-        Ok(remote_{{ arg_name }}) => {
-    {%- else %}
-        Ok(_) => {
-    {%- endif %}
-            {% if controller.http_method == "delete" %}
-            remove_finalizer({{ arg_name }}, kubernetes_api.clone()).await;
-            {% else if controller.http_method == "post" %}
-            add_finalizer({{ arg_name }}, kubernetes_api.clone()).await;
-            change_status({{ arg_name }}, kubernetes_api.clone(), "{{ resource_remote_ref }}", remote_{{ arg_name }}.{{ resource_remote_ref }}.unwrap()).await;
-            {% else %}
-            match kubernetes_api.replace(
-                {{ arg_name }}.metadata.name.as_deref().unwrap_or_default(),
-                &PostParams::default(),
-                &{{ arg_name }}
-            ).await {
-                Ok(_) => {
-                    info!("{{ controller.action_summary }} went successfully");
-                }
-                Err(e) => {
-                    error!("Failed to {{ controller.action_summary }}: {:?}", e);
-                }
-            }
-            {% endif %}
-        }
-        Err(e) => {
-            error!("Failed to {{ controller.action_summary }}: {:?}", e);
-        }
-    }
-}
-{% endfor %}
-
 pub async fn check_for_drift(
     config: &Configuration,
-    {{ arg_name }}: &mut {{ kind_struct }},
+    kubernetes_api: Api<{{ kind_struct }}>,
+    {{ arg_name }}: &mut {{ kind_struct }}
 ) {
     let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
+    let {{ resource_remote_ref }} = dto.{{ resource_remote_ref }}.clone().unwrap_or_default();
+
     if dto.{{ resource_remote_ref }}.is_none() {
         warn!("{{ kind_struct }} has no status, cannot get by id or check for drift. Skipping...");
         return;
     }
-    
-    let {{ resource_remote_ref }} = dto.{{ resource_remote_ref }}.as_ref().unwrap().clone();
-    match get_{{ arg_name }}_by_id(&config, &dto.{{ resource_remote_ref }}.unwrap()).await {
+
+    match get_{{ arg_name }}_by_id(&config, &{{ resource_remote_ref }}).await {
         Ok(dto) => {
             let remote_{{ arg_name }} = convert_dto_to_kube_type(dto);
             if remote_{{ arg_name }} != {{ arg_name }}.spec {
@@ -189,6 +182,20 @@ pub async fn check_for_drift(
                 match update_{{ arg_name }}_by_id(&config, &{{ resource_remote_ref }}, current_{{ arg_name }}_dto).await {
                     Ok(_) => {
                         info!("{{ kind_struct }} updated successfully");
+                        let condition = create_condition(
+                            "Updated",
+                            "AvailableUpdated",
+                            "Updated the resource",
+                            "Resource has been updated",
+                            {{ arg_name }}.meta().generation,
+                        )
+                        .await;
+                        let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
+                        if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
+                            status.conditions.push(condition);
+                            status.observed_generation = {{ arg_name }}.meta().generation;
+                        }
+                        update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await;
                     }
                     Err(e) => {
                         error!("Failed to update {{ kind_struct }}: {:?}", e);
