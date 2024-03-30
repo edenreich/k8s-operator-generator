@@ -1,10 +1,13 @@
 use futures_util::stream::StreamExt;
 use k8s_openapi::api::core::v1::{Event, EventSource, ObjectReference};
+use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, Time};
 use k8s_openapi::chrono;
-use kube::api::{Api, ObjectMeta, Patch, PatchParams, PostParams, WatchEvent, WatchParams};
+use kube::api::{
+    Api, ListParams, ObjectMeta, Patch, PatchParams, PostParams, WatchEvent, WatchParams,
+};
 use kube::core::CustomResourceExt;
-use kube::{Resource, ResourceExt};
+use kube::{Client, Resource, ResourceExt};
 use log::{debug, error, info, warn};
 use openapi::apis::configuration::Configuration;
 use serde::de::DeserializeOwned;
@@ -220,4 +223,12 @@ where
         }
     }
     // }
+}
+
+pub async fn crds_exist(client: Client, group: &str) -> anyhow::Result<bool> {
+    let crds: Api<CustomResourceDefinition> = Api::all(client);
+    let lp = ListParams::default();
+    let crd_list = crds.list(&lp).await?;
+
+    Ok(crd_list.items.iter().any(|crd| crd.spec.group == group))
 }

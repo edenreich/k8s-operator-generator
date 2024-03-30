@@ -1,22 +1,13 @@
 use env_logger::Env;
-use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
-use k8s_operator::watch_resource;
+use k8s_operator::{crds_exist, watch_resource};
 use kube::{
-    api::{Api, ListParams, WatchParams},
+    api::{Api, WatchParams},
     Client,
 };
 use log::{error, info};
 use openapi::apis::configuration::Configuration;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
-
-async fn check_any_crd_from_group(client: Client, group: &str) -> anyhow::Result<bool> {
-    let crds: Api<CustomResourceDefinition> = Api::all(client);
-    let lp = ListParams::default();
-    let crd_list = crds.list(&lp).await?;
-
-    Ok(crd_list.items.iter().any(|crd| crd.spec.group == group))
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -29,7 +20,7 @@ async fn main() -> anyhow::Result<()> {
 
     let watch_params = WatchParams::default().timeout(10);
 
-    if !check_any_crd_from_group(client.clone(), "example.com").await? {
+    if !crds_exist(client.clone(), "example.com").await? {
         error!("No CRD's found from the group. Please install the CRD's first. Exiting...");
         return Ok(());
     }
