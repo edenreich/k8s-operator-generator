@@ -64,9 +64,9 @@ pub async fn handle(config: Arc<Configuration>, event: WatchEvent<Dog>, kubernet
 
             // If the resource has no remote reference, meaning it's a new resource, so we need to create it
             // Otherwise, we need to check for drift
-            match cat.clone().status.unwrap().uuid {
+            match dog.clone().status.unwrap().uuid {
                 Some(_) => {
-                    check_for_drift(&config, kubernetes_api.clone(), &mut cat).await;
+                    check_for_drift(&config, kubernetes_api.clone(), &mut dog).await;
                     return;
                 }
                 None => {

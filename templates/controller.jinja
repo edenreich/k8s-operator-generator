@@ -92,9 +92,9 @@ pub async fn handle(config: Arc<Configuration>, event: WatchEvent<{{ kind_struct
             {% if has_create_action %}
             // If the resource has no remote reference, meaning it's a new resource, so we need to create it
             // Otherwise, we need to check for drift
-            match cat.clone().status.unwrap().uuid {
+            match {{ arg_name }}.clone().status.unwrap().uuid {
                 Some(_) => {
-                    check_for_drift(&config, kubernetes_api.clone(), &mut cat).await;
+                    check_for_drift(&config, kubernetes_api.clone(), &mut {{ arg_name }}).await;
                     return;
                 }
                 None => {
