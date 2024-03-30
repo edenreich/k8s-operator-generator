@@ -1,1 +1,3 @@
 src/controllers/cats.rs
+src/controllers/dogs.rs
+src/controllers/horses.rs

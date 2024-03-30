@@ -8,8 +8,8 @@ info:
   x-kubernetes-operator-resource-ref: 'uuid'
   x-kubernetes-operator-include-tags:
     - cats
-    # - dogs
-    # - horses
+    - dogs
+    - horses
 servers:
   - url: http://localhost:8080
     description: Development server
