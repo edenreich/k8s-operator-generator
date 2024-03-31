@@ -19,6 +19,7 @@ const RBAC_DIR: &str = "manifests/rbac";
 const EXAMPLES_DIR: &str = "manifests/examples";
 const LIB_FILEPATH: &str = "src/lib.rs";
 const CRDGEN_FILEPATH: &str = "crdgen/main.rs";
+const MAIN_FILEPATH: &str = "src/main.rs";
 
 fn main() {
     env_logger::init();
@@ -40,6 +41,8 @@ fn main() {
     create_directory_if_not_exists(EXAMPLES_DIR);
     create_directory_if_not_exists(TYPES_DIR);
     create_directory_if_not_exists(CONTROLLERS_DIR);
+    create_file_if_not_exists(TYPES_DIR, "mod.rs");
+    create_file_if_not_exists(CONTROLLERS_DIR, "mod.rs");
 
     generate_lib();
     generate_all_files(
@@ -104,6 +107,13 @@ fn create_directory_if_not_exists(dir: &str) {
         .expect(&format!("Unable to create {} directory", dir));
 }
 
+fn create_file_if_not_exists(dir: &str, file: &str) {
+    let file_path = format!("{}/{}", dir, file);
+    if !std::path::Path::new(&file_path).exists() {
+        File::create(&file_path).expect(&format!("Unable to create file {}", file_path));
+    }
+}
+
 fn generate_all_files(
     paths: openapiv3::Paths,
     kubernetes_operator_group: String,
@@ -129,11 +139,18 @@ fn generate_all_files(
     }
     generate_types(schemas.clone(), &kubernetes_operator_resource_ref);
 
-    generate_controllers(
+    let controllers = generate_controllers(
         schemas.clone(),
         paths.clone(),
         kubernetes_operator_include_tags,
         kubernetes_operator_resource_ref.clone(),
+    );
+
+    generate_main_file(
+        &kubernetes_operator_group,
+        &kubernetes_operator_version,
+        controllers,
+        schemas.clone(),
     );
 
     generate_rbac_files(schema_names.clone(), &kubernetes_operator_group);
@@ -153,6 +170,37 @@ fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) 
     generate_role_binding_file_content();
     generate_cluster_role_binding_file_content();
     generate_operator_deployment_file();
+}
+
+#[derive(Template)]
+#[template(path = "main.jinja")]
+struct MainTemplate {
+    api_group: String,
+    api_version: String,
+    controllers: Vec<String>,
+    schemas: Vec<String>,
+}
+
+fn generate_main_file(
+    api_group: &str,
+    api_version: &str,
+    controllers: Vec<String>,
+    schemas: HashMap<String, Schema>,
+) {
+    if get_ignored_files().contains(&MAIN_FILEPATH.to_string()) {
+        return;
+    }
+
+    let content: String = MainTemplate {
+        api_group: api_group.into(),
+        api_version: api_version.into(),
+        controllers: controllers,
+        schemas: schemas.keys().cloned().collect(),
+    }
+    .render()
+    .unwrap();
+    write_to_file(MAIN_FILEPATH.to_string(), content);
+    format_file(MAIN_FILEPATH.to_string());
 }
 
 struct ControllerAttributes {
@@ -226,45 +274,49 @@ fn generate_controllers(
     paths: openapiv3::Paths,
     include_tags: Vec<String>,
     kubernetes_operator_resource_ref: String,
-) {
+) -> Vec<String> {
     let mut controllers: HashMap<String, Vec<ControllerAttributes>> = HashMap::new();
 
     for (_path, path_item) in paths {
-        match path_item {
-            ReferenceOr::Reference { reference: _ } => {}
-            ReferenceOr::Item(item) => {
-                let operations = vec![
-                    ("get", &item.get),
-                    ("post", &item.post),
-                    ("delete", &item.delete),
-                    ("put", &item.put),
-                ];
+        let item = if let ReferenceOr::Item(item) = path_item {
+            item
+        } else {
+            continue;
+        };
 
-                for (method, operation) in operations {
-                    if let Some(operation) = operation {
-                        if operation
-                            .tags
-                            .iter()
-                            .any(|tag: &String| include_tags.contains(tag))
-                        {
-                            if let Some((tag, controller)) = get_controller_attributes_for_operation(
-                                operation,
-                                method,
-                                &include_tags,
-                            ) {
-                                controllers
-                                    .entry(tag.clone())
-                                    .or_insert_with(Vec::new)
-                                    .push(controller);
-                            }
-                        }
-                    }
-                }
+        let operations = vec![
+            ("get", &item.get),
+            ("post", &item.post),
+            ("delete", &item.delete),
+            ("put", &item.put),
+        ];
+
+        for (method, operation) in operations {
+            let operation = match operation {
+                Some(operation) => operation,
+                None => continue,
+            };
+
+            if operation
+                .tags
+                .iter()
+                .all(|tag: &String| !include_tags.contains(tag))
+            {
+                continue;
+            }
+
+            if let Some((tag, controller)) =
+                get_controller_attributes_for_operation(operation, method, &include_tags)
+            {
+                controllers
+                    .entry(tag.clone())
+                    .or_insert_with(Vec::new)
+                    .push(controller);
             }
         }
     }
 
-    for (tag, controller_attributes) in controllers {
+    for (tag, controller_attributes) in &controllers {
         generate_controller(
             schemas.clone(),
             tag.clone(),
@@ -272,17 +324,18 @@ fn generate_controllers(
             kubernetes_operator_resource_ref.clone(),
         );
 
-        match upsert_line_to_file(
+        if let Err(e) = upsert_line_to_file(
             ".openapi-generator-ignore",
             format!("{}/{}.rs", CONTROLLERS_DIR, tag.to_lowercase()).as_str(),
         ) {
-            Ok(_) => (),
-            Err(e) => error!(
+            error!(
                 "Failed to add controller to .openapi-generator-ignore file: {:?}",
                 e
-            ),
+            );
         }
     }
+
+    controllers.keys().cloned().collect()
 }
 
 #[derive(Template)]
@@ -334,7 +387,7 @@ struct Field {
 fn generate_controller(
     schemas: HashMap<String, Schema>,
     tag: String,
-    controller_attributes: Vec<ControllerAttributes>,
+    controller_attributes: &Vec<ControllerAttributes>,
     resource_remote_ref: String,
 ) {
     if get_ignored_files().contains(&format!("{}/{}.rs", CONTROLLERS_DIR, tag.to_lowercase())) {

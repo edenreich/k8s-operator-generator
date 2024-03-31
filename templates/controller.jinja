@@ -1,3 +1,4 @@
+use anyhow::{Context, Error, Result};
 use std::sync::Arc;
 use kube::api::{
     Api,
@@ -57,7 +58,11 @@ fn convert_dto_to_kube_type({{ arg_name }}: {{ kind_struct }}Dto) -> {{ kind_str
     }
 }
 
-pub async fn handle(config: Arc<Configuration>, event: WatchEvent<{{ kind_struct }}>, kubernetes_api: Api<{{ kind_struct }}>) {
+pub async fn handle(
+    config: Arc<Configuration>,
+    event: WatchEvent<{{ kind_struct }}>,
+    kubernetes_api: Api<{{ kind_struct }}>) -> anyhow::Result<()>
+{
     match event {
         WatchEvent::Added(mut {{ arg_name }}) => {
             // Add default stauts if it's missing
@@ -74,16 +79,14 @@ pub async fn handle(config: Arc<Configuration>, event: WatchEvent<{{ kind_struct
                     "Deleting the resource",
                     "Resource is being deleted",
                     {{ arg_name }}.meta().generation,
-                )
-                .await;
+                );
                 let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
                 if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
                     status.conditions.push(condition);
                     status.observed_generation = {{ arg_name }}.meta().generation;
                 }
-                update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await;
-                handle_delete_{{ arg_name }}_by_id(&config, &mut {{ arg_name }}, kubernetes_api).await;
-                return;
+                update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await?;
+                return handle_delete_{{ arg_name }}_by_id(&config, &mut {{ arg_name }}, kubernetes_api).await;
             }
             {% else %}
             warn!("OpenAPI Spec doesn't have a delete operation");
@@ -94,8 +97,7 @@ pub async fn handle(config: Arc<Configuration>, event: WatchEvent<{{ kind_struct
             // Otherwise, we need to check for drift
             match {{ arg_name }}.clone().status.unwrap().uuid {
                 Some(_) => {
-                    check_for_drift(&config, kubernetes_api.clone(), &mut {{ arg_name }}).await;
-                    return;
+                    return check_for_drift(&config, kubernetes_api.clone(), &mut {{ arg_name }}).await;
                 }
                 None => {
             {%- for controller in controllers %}
@@ -106,18 +108,16 @@ pub async fn handle(config: Arc<Configuration>, event: WatchEvent<{{ kind_struct
                     "Creating the resource",
                     "Resource is being created",
                     {{ arg_name }}.meta().generation,
-                )
-                .await;
+                );
                 let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
                 if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
                     status.conditions.push(condition);
                     status.observed_generation = {{ arg_name }}.meta().generation;
                 }
-                update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await;
-                handle_{{ controller.operation_id }}(&config, &mut {{ arg_name }}, kubernetes_api).await;
+                update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await?;
+                return handle_{{ controller.operation_id }}(&config, &mut {{ arg_name }}, kubernetes_api).await;
                 {%- endif %}
             {%- endfor %}
-                    return;
                 }
             }
             {% else %}
@@ -132,17 +132,16 @@ pub async fn handle(config: Arc<Configuration>, event: WatchEvent<{{ kind_struct
                     "Updating the resource",
                     "Resource is being updated",
                     {{ arg_name }}.meta().generation,
-                )
-                .await;
+                );
                 let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
                 if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
                     status.conditions.push(condition);
                     status.observed_generation = {{ arg_name }}.meta().generation;
                 }
-                update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await;
+                update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await?;
             {%- for controller in controllers %}
                 {%- if controller.http_method == "put" %}
-            handle_{{ controller.operation_id }}(&config, &mut {{ arg_name }}, kubernetes_api).await;
+                return handle_{{ controller.operation_id }}(&config, &mut {{ arg_name }}, kubernetes_api).await;
                 {%- endif %}
             {%- endfor %}
         {% else %}
@@ -151,11 +150,11 @@ pub async fn handle(config: Arc<Configuration>, event: WatchEvent<{{ kind_struct
         }
         WatchEvent::Bookmark(bookmark) => {
             info!("{{ kind_struct }} Bookmark: {:?}", bookmark.metadata.resource_version);
-            return;
+            return Ok(());
         }
         _ => {
             info!("{{ kind_struct }} {:?}", event);
-            return;
+            return Ok(());
         }
     };
 }
@@ -163,14 +162,14 @@ pub async fn handle(config: Arc<Configuration>, event: WatchEvent<{{ kind_struct
 pub async fn check_for_drift(
     config: &Configuration,
     kubernetes_api: Api<{{ kind_struct }}>,
-    {{ arg_name }}: &mut {{ kind_struct }}
-) {
+    {{ arg_name }}: &mut {{ kind_struct }},
+) -> Result<()> {
     let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
     let {{ resource_remote_ref }} = dto.{{ resource_remote_ref }}.clone().unwrap_or_default();
 
     if dto.{{ resource_remote_ref }}.is_none() {
         warn!("{{ kind_struct }} has no status, cannot get by id or check for drift. Skipping...");
-        return;
+        return Ok(());
     }
 
     match get_{{ arg_name }}_by_id(&config, &{{ resource_remote_ref }}).await {
@@ -188,23 +187,26 @@ pub async fn check_for_drift(
                             "Updated the resource",
                             "Resource has been updated",
                             {{ arg_name }}.meta().generation,
-                        )
-                        .await;
+                        );
                         let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
                         if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
                             status.conditions.push(condition);
                             status.observed_generation = {{ arg_name }}.meta().generation;
                         }
-                        update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await;
+                        return update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await;
                     }
                     Err(e) => {
                         error!("Failed to update {{ kind_struct }}: {:?}", e);
+                        return Err(anyhow::anyhow!("Failed to update {{ arg_name }}: {:?}", e));
                     }
                 }
             }
         }
         Err(e) => {
             error!("Failed to get {{ kind_struct }}: {:?}", e);
+            return Err(anyhow::anyhow!("Failed to get {{ arg_name }}: {:?}", e));
         }
     }
+
+    Ok(())
 }

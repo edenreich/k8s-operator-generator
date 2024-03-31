@@ -1,6 +1,7 @@
+use anyhow::{Context, Result};
+use core::fmt::Debug;
 use futures_util::stream::StreamExt;
 use k8s_openapi::api::core::v1::{Event, EventSource, ObjectReference};
-use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, Time};
 use k8s_openapi::chrono;
 use kube::api::{
@@ -42,7 +43,7 @@ where
     }
 }
 
-pub async fn add_finalizer<T>(resource: &mut T, kubernetes_api: Api<T>)
+pub async fn add_finalizer<T>(resource: &mut T, kubernetes_api: Api<T>) -> Result<()>
 where
     T: Clone
         + Serialize
@@ -56,7 +57,7 @@ where
     let finalizers = resource.meta_mut().finalizers.get_or_insert_with(Vec::new);
     if finalizers.contains(&finalizer) {
         debug!("Finalizer already exists");
-        return;
+        return Ok(());
     }
     finalizers.push(finalizer);
     let resource_name = resource.meta_mut().name.clone().unwrap();
@@ -66,51 +67,56 @@ where
         field_manager: resource.meta_mut().name.clone(),
         ..Default::default()
     };
-    match kubernetes_api
+
+    kubernetes_api
         .patch(&resource_name, &patch_params, &patch)
         .await
-    {
-        Ok(_) => debug!("Finalizer added successfully"),
-        Err(e) => debug!("Failed to add finalizer: {:?}", e),
-    };
+        .context("Failed to add finalizer")?;
+
+    Ok(())
 }
 
-pub async fn remove_finalizer<T>(resource: &mut T, kubernetes_api: Api<T>)
+pub async fn remove_finalizer<T>(resource: &mut T, kubernetes_api: Api<T>) -> Result<()>
 where
-    T: Clone
-        + Serialize
-        + DeserializeOwned
-        + Resource
-        + CustomResourceExt
-        + core::fmt::Debug
-        + 'static,
+    T: Clone + Serialize + DeserializeOwned + Resource + CustomResourceExt + Debug + 'static,
 {
     let finalizer = String::from(format!("finalizers.{}", "example.com"));
-    if let Some(finalizers) = &mut resource.meta_mut().finalizers {
-        if finalizers.contains(&finalizer) {
-            finalizers.retain(|f| f != &finalizer);
-            let patch = json ! ({ "metadata" : { "finalizers" : finalizers } });
-            let patch = Patch::Merge(&patch);
-            let patch_params = PatchParams {
-                field_manager: resource.meta_mut().name.clone(),
-                ..Default::default()
-            };
-            match kubernetes_api
-                .patch(
-                    &resource.clone().meta_mut().name.clone().unwrap(),
-                    &patch_params,
-                    &patch,
-                )
-                .await
-            {
-                Ok(_) => debug!("Finalizer removed successfully"),
-                Err(e) => debug!("Failed to remove finalizer: {:?}", e),
-            };
-        }
+    let finalizers = match &mut resource.meta_mut().finalizers {
+        Some(finalizers) => finalizers,
+        None => return Ok(()),
+    };
+
+    if !finalizers.contains(&finalizer) {
+        return Ok(());
     }
+
+    finalizers.retain(|f| f != &finalizer);
+    let patch = json ! ({ "metadata" : { "finalizers" : finalizers } });
+    let patch = Patch::Merge(&patch);
+    let patch_params = PatchParams {
+        field_manager: resource.meta_mut().name.clone(),
+        ..Default::default()
+    };
+
+    kubernetes_api
+        .patch(
+            &resource.clone().meta_mut().name.clone().unwrap(),
+            &patch_params,
+            &patch,
+        )
+        .await
+        .context("Failed to remove finalizer")?;
+
+    Ok(())
 }
 
-pub async fn add_event<T>(kind: String, resource: &mut T, reason: &str, from: &str, message: &str)
+pub async fn add_event<T>(
+    kind: String,
+    resource: &mut T,
+    reason: &str,
+    from: &str,
+    message: &str,
+) -> Result<()>
 where
     T: CustomResourceExt
         + Clone
@@ -120,7 +126,9 @@ where
         + core::fmt::Debug
         + 'static,
 {
-    let kube_client = kube::Client::try_default().await.unwrap();
+    let kube_client = kube::Client::try_default()
+        .await
+        .context("Failed to create default client")?;
     let namespace = resource.namespace().clone().unwrap_or_default();
     let kubernetes_api: Api<Event> = Api::namespaced(kube_client.clone(), &namespace);
     let resource_ref = ObjectReference {
@@ -153,12 +161,15 @@ where
         .create(&PostParams::default(), &new_event)
         .await
     {
-        Ok(_) => debug!("Event added successfully"),
-        Err(e) => debug!("Failed to add event: {:?}", e),
-    };
+        Ok(_) => {
+            debug!("Event added successfully");
+            Ok(())
+        }
+        Err(e) => Err(anyhow::anyhow!("Failed to add event: {:?}", e)),
+    }
 }
 
-pub async fn create_condition(
+pub fn create_condition(
     status: &str,
     type_: &str,
     reason: &str,
@@ -175,60 +186,44 @@ pub async fn create_condition(
     }
 }
 
-pub async fn update_status<T>(kubernetes_api: Api<T>, status: T)
+pub async fn update_status<T>(kubernetes_api: Api<T>, status: T) -> Result<()>
 where
-    T: kube::Resource<DynamicType = ()>
-        + serde::Serialize
-        + Clone
-        + for<'de> serde::Deserialize<'de>,
+    T: Resource<DynamicType = ()> + Serialize + Clone + DeserializeOwned,
 {
-    let resource_name = status.meta().name.clone().unwrap_or_else(|| String::new());
+    let resource_name = status
+        .meta()
+        .name
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("Resource name is missing"))?;
 
-    if resource_name.is_empty() {
-        warn!("Resource name is empty, cannot update status");
-        return;
-    }
-
-    let status_replace_bytes = match serde_json::to_vec(&status) {
-        Ok(v) => v,
-        Err(e) => {
-            warn!("Failed to serialize status: {:?}", e);
-            return;
-        }
-    };
+    let status_replace_bytes =
+        serde_json::to_vec(&status).with_context(|| "Failed to serialize status")?;
 
     let post_params = PostParams::default();
-    // let mut retries = 0;
-    // while retries < 5 {
+
     match kubernetes_api
         .replace_status(&resource_name, &post_params, status_replace_bytes.clone())
         .await
     {
         Ok(_) => {
             println!("Status updated successfully for {}", resource_name);
-            // break;
+            Ok(())
         }
         Err(kube::Error::Api(ae)) if ae.code == 409 => {
             println!(
                 "Conflict updating status for {}, retrying...",
                 resource_name
             );
-            // retries += 1;
             sleep(Duration::from_secs(1)).await;
-            // continue;
+            Err(anyhow::anyhow!(
+                "Conflict updating status for {}",
+                resource_name
+            ))
         }
-        Err(e) => {
-            println!("Failed to update status for {}: {:?}", resource_name, e);
-            // break;
-        }
+        Err(e) => Err(anyhow::anyhow!(
+            "Failed to update status for {}: {:?}",
+            resource_name,
+            e
+        )),
     }
-    // }
-}
-
-pub async fn crds_exist(client: Client, group: &str) -> anyhow::Result<bool> {
-    let crds: Api<CustomResourceDefinition> = Api::all(client);
-    let lp = ListParams::default();
-    let crd_list = crds.list(&lp).await?;
-
-    Ok(crd_list.items.iter().any(|crd| crd.spec.group == group))
 }

@@ -4,35 +4,33 @@ pub async fn handle_{{ controller.operation_id }}(
     config: &Configuration,
     {{ arg_name }}: &mut {{ kind_struct }},
     kubernetes_api: Api<{{ kind_struct }}>,
-) {
+) -> Result<()> {
     let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
     let {{ resource_remote_ref }} = dto.{{ resource_remote_ref }}.clone().unwrap_or_default();
 
     if {{ resource_remote_ref }}.is_empty() {
         warn!("{{ kind_struct }} has no {{ resource_remote_ref }}, cannot {{ controller.action_summary }}. Skipping...");
-        return;
+        return Ok(());
     }
 
-    if let Err(e) = {{ controller.operation_id }}(&config, &{{ resource_remote_ref }}).await {
-        error!("Failed to {{ controller.action_summary }}: {:?}", e);
-        return;
-    }
+    {{ controller.operation_id }}(&config, &{{ resource_remote_ref }})
+        .await
+        .context("Failed to {{ controller.action_summary }}")?;
 
-    remove_finalizer({{ arg_name }}, kubernetes_api.clone()).await;
+    remove_finalizer({{ arg_name }}, kubernetes_api.clone()).await?;
     let condition = create_condition(
         "Deleted",
         "UnavailableDeleted",
         "Deleted the resource",
         "Resource has has deleted",
         {{ arg_name }}.meta().generation,
-    )
-    .await;
+    );
     let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
     if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
         status.conditions.push(condition);
         status.observed_generation = {{ arg_name }}.meta().generation;
     }
-    update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await;
+    return update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await;
 }
     {% endif %}
 {% endfor %}
