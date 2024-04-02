@@ -5,7 +5,7 @@ use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind, Type};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fs::{DirBuilder, File, OpenOptions},
     io::{BufRead, BufReader, Error, Write},
     process::Command,
@@ -13,13 +13,12 @@ use std::{
 };
 
 const OPENAPI_FILE: &str = "openapi.yaml";
-const CONTROLLERS_DIR: &str = "src/controllers";
-const TYPES_DIR: &str = "src/types";
+const CONTROLLERS_DIR: &str = "crates/k8s-operator/src/controllers";
+const TYPES_DIR: &str = "crates/k8s-operator/src/types";
 const RBAC_DIR: &str = "manifests/rbac";
 const EXAMPLES_DIR: &str = "manifests/examples";
-const LIB_FILEPATH: &str = "src/lib.rs";
-const CRDGEN_FILEPATH: &str = "crdgen/main.rs";
-const MAIN_FILEPATH: &str = "src/main.rs";
+const CRATE_K8S_OPERATOR: &str = "crates/k8s-operator";
+const CRATE_K8S_CRDGEN: &str = "crates/k8s-crdgen";
 
 fn main() {
     env_logger::init();
@@ -53,6 +52,8 @@ fn main() {
         kubernetes_operator_include_tags,
         components,
     );
+
+    generate_k8s_operator_cargo_toml();
 }
 
 fn read_and_parse_openapi_spec(file_path: &str) -> OpenAPI {
@@ -150,7 +151,7 @@ fn generate_all_files(
         &kubernetes_operator_group,
         &kubernetes_operator_version,
         controllers,
-        schemas.clone(),
+        schema_names.clone(),
     );
 
     generate_rbac_files(schema_names.clone(), &kubernetes_operator_group);
@@ -161,6 +162,15 @@ fn generate_all_files(
         &kubernetes_operator_version,
         &kubernetes_operator_resource_ref.clone(),
     );
+}
+
+#[derive(Template)]
+#[template(path = "k8s_operator_cargo.toml.jinja")]
+struct K8sOperatorCargoTomlTemplate {}
+
+fn generate_k8s_operator_cargo_toml() {
+    let content = K8sOperatorCargoTomlTemplate {}.render().unwrap();
+    write_to_file(format!("{}/Cargo.toml", CRATE_K8S_OPERATOR), content);
 }
 
 fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) {
@@ -178,29 +188,41 @@ struct MainTemplate {
     api_group: String,
     api_version: String,
     controllers: Vec<String>,
-    schemas: Vec<String>,
+    schemas: BTreeMap<String, String>,
 }
 
 fn generate_main_file(
     api_group: &str,
     api_version: &str,
-    controllers: Vec<String>,
-    schemas: HashMap<String, Schema>,
+    mut controllers: Vec<String>,
+    schemas: Vec<String>,
 ) {
-    if get_ignored_files().contains(&MAIN_FILEPATH.to_string()) {
+    if get_ignored_files().contains(&format!("{}/src/main.rs", CRATE_K8S_OPERATOR)) {
         return;
     }
+
+    let schemas_names: BTreeMap<String, String> = schemas
+        .into_iter()
+        .map(|schema| {
+            (
+                schema.to_singular().to_lowercase(),
+                schema.to_singular().to_class_case(),
+            )
+        })
+        .collect::<BTreeMap<String, String>>();
+
+    controllers.sort();
 
     let content: String = MainTemplate {
         api_group: api_group.into(),
         api_version: api_version.into(),
         controllers: controllers,
-        schemas: schemas.keys().cloned().collect(),
+        schemas: schemas_names,
     }
     .render()
     .unwrap();
-    write_to_file(MAIN_FILEPATH.to_string(), content);
-    format_file(MAIN_FILEPATH.to_string());
+    write_to_file(format!("{}/src/main.rs", CRATE_K8S_OPERATOR), content);
+    format_file(format!("{}/src/main.rs", CRATE_K8S_OPERATOR));
 }
 
 struct ControllerAttributes {
@@ -588,14 +610,15 @@ fn generate_type(
 struct LibTemplate {}
 
 fn generate_lib() {
-    if get_ignored_files().contains(&LIB_FILEPATH.to_string()) {
+    let file_path = format!("{}/src/lib.rs", CRATE_K8S_OPERATOR);
+    if get_ignored_files().contains(&file_path) {
         return;
     }
 
     let content: String = LibTemplate {}.render().unwrap();
-    let file_path = LIB_FILEPATH;
-    write_to_file(file_path.to_string(), content);
-    format_file(file_path.to_string());
+
+    write_to_file(file_path.clone(), content);
+    format_file(file_path);
 }
 
 fn add_type_to_modfile(type_name: &str) -> Result<(), Error> {
@@ -623,22 +646,29 @@ fn add_controller_to_modfile(controller_name: &str) -> Result<(), Error> {
 #[derive(Template)]
 #[template(path = "crdgen.jinja")]
 struct CrdGenTemplate {
-    resources: Vec<String>,
+    resources: BTreeMap<String, String>,
 }
 
 fn generate_crdgen_file(resources: Vec<String>) {
-    if get_ignored_files().contains(&CRDGEN_FILEPATH.to_string()) {
+    let filepath = format!("{}/src/main.rs", CRATE_K8S_CRDGEN);
+    if get_ignored_files().contains(&filepath) {
         return;
     }
 
-    let resources = resources
+    let resources: BTreeMap<String, String> = resources
         .into_iter()
-        .map(|resource| resource.to_singular())
+        .map(|resource| {
+            (
+                resource.clone().to_singular(),
+                resource.to_singular().to_class_case(),
+            )
+        })
         .collect();
+
     let template = CrdGenTemplate { resources };
     let content = template.render().unwrap();
-    write_to_file(CRDGEN_FILEPATH.to_string(), content);
-    format_file(CRDGEN_FILEPATH.to_string());
+    write_to_file(filepath.clone(), content);
+    format_file(filepath);
 }
 
 fn get_ignored_files() -> Vec<String> {
@@ -737,7 +767,7 @@ struct ClusterRoleTemplateIdentifiers {
 }
 
 #[derive(Template)]
-#[template(path = "manifest_rbac_role.jinja")]
+#[template(path = "manifest_rbac_cluster_role.jinja")]
 struct ClusterRoleTemplate {
     identifiers: ClusterRoleTemplateIdentifiers,
 }

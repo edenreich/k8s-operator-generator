@@ -1,0 +1,18 @@
+[package]
+name = "k8s_codegen"
+version = "0.1.0"
+edition = "2021"
+description = "Generate the Kubernetes operator rust code from the OpenAPI spec"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+openapiv3 = "2.0.0"
+serde_json = "1.0.96"
+serde = { version = "1.0.160", features = ["derive"] }
+serde_derive = "1.0.160"
+serde_yaml = "0.9.21"
+Inflector = "0.11.4"
+askama = "0.12.1"
+log = "0.4.17"
+env_logger = "0.11.3"

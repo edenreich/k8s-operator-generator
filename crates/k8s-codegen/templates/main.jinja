@@ -14,6 +14,7 @@ use core::fmt::Debug;
 use std::sync::Arc;
 use tokio::time::{sleep, Duration, timeout};
 use kube::CustomResourceExt;
+use warp::Filter;
 
 async fn watch_resource<T, F>(
     config: Arc<Configuration>,
@@ -62,19 +63,71 @@ async fn process_events<'a, T, F>(
         .await;
 }
 
+async fn deploy_crd(
+    kube_client: Api<CustomResourceDefinition>,
+    crd: CustomResourceDefinition,
+) -> Result<()> {
+    let crd_name = crd
+        .metadata
+        .name
+        .clone()
+        .unwrap_or_else(|| String::from("Unnamed CRD"));
+    info!("Deploying CRD: {}", crd_name);
+
+    let result = kube_client.create(&PostParams::default(), &crd).await;
+
+    match result {
+        core::result::Result::Ok(_) => info!("Successfully created CRD: {}", crd_name),
+        Err(kube::Error::Api(ae)) if ae.code == 409 => {
+            if kube_client
+                .replace(&crd_name, &PostParams::default(), &crd)
+                .await
+                .is_ok()
+            {
+                info!("Successfully updated CRD: {}", crd_name);
+            } else {
+                warn!("Failed to update CRD, already exists: {}", crd_name);
+            }
+        }
+        Err(_) => error!("Failed to create CRD: {}", crd_name),
+    }
+
+    Ok(())
+}
+
+async fn wait_for_crd(kube_client: Api<CustomResourceDefinition>, crd_name: &str) -> Result<()> {
+    info!(
+        "Waiting for the api-server to accept the CRD of {}...",
+        crd_name
+    );
+
+    let establish = await_condition(
+        kube_client.clone(),
+        crd_name,
+        conditions::is_crd_established(),
+    );
+    let _ = timeout(std::time::Duration::from_secs(10), establish).await?;
+    info!("CRD of {} is established.", crd_name);
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
+
     info!("Starting operator...");
 
+    let access_token = std::env::var("ACCESS_TOKEN").context("ACCESS_TOKEN is not set")?;
     let client = Client::try_default().await?;
     let config = Arc::new(Configuration {
         base_path: "http://localhost:8080".to_string(),
+        client: reqwest::Client::new(),
+        user_agent: Some("k8s-operator".to_string()),
+        bearer_access_token: Some(access_token),
         ..Default::default()
     });
 
     let kube_client: Api<CustomResourceDefinition> = Api::all(client);
-
 
     if std::env::var("INSTALL_CRDS")
         .unwrap_or_default()
@@ -84,49 +137,42 @@ async fn main() -> anyhow::Result<()> {
         info!("INSTALL_CRDS is set to true. Deploying CRDs...");
 
         let crds = vec![
-            {% for schema in schemas %}
-            k8s_operator::types::{{ schema|lower }}::{{ schema|capitalize }}::crd(),
+            {% for (module, schema_name) in schemas %}
+            k8s_operator::types::{{ module }}::{{ schema_name }}::crd(),
             {% endfor %}
         ];
 
         for crd in crds {
-            let crd_name = crd
-                .metadata
-                .name
-                .clone()
-                .unwrap_or_else(|| String::from("Unnamed CRD"));
-            info!("Deploying CRD: {}", crd_name);
-
-            let result = kube_client.create(&PostParams::default(), &crd).await;
-
-            match result {
-                Ok(_) => info!("Successfully created CRD: {}", crd_name),
-                Err(kube::Error::Api(ae)) if ae.code == 409 => {
-                    if kube_client
-                        .replace(&crd_name, &PostParams::default(), &crd)
-                        .await
-                        .is_ok()
-                    {
-                        info!("Successfully updated CRD: {}", crd_name);
-                    } else {
-                        warn!("Failed to update CRD, already exists: {}", crd_name);
-                    }
-                }
-                Err(_) => error!("Failed to create CRD: {}", crd_name),
-            }
+            deploy_crd(kube_client.clone(), crd).await?;
         }
     }
 
-    {% for controller in controllers %}
-    info!("Waiting for the api-server to accept the CRD of {{ controller }}.{{ api_group }}...");
-    let establish = await_condition(kube_client.clone(), "{{ controller }}.{{ api_group }}", conditions::is_crd_established());
-    let _ = timeout(std::time::Duration::from_secs(10), establish).await?;
-    info!("CRD of {{ controller }}.{{ api_group }} is established.");
-    {% endfor %}
+    let controllers = vec![
+        {%- for controller in controllers.iter() %}
+        format!("{{ controller }}.{{ api_group }}"),
+        {%- endfor %}
+    ];
+    for controller in controllers {
+        if let Err(e) = wait_for_crd(kube_client.clone(), &controller).await {
+            error!("Error waiting for CRD {}: {}", &controller, e);
+        }
+    }
 
-    {% for controller in controllers %}
+    {% for controller in controllers.iter() %}
     // add controllers for {{ controller}}.{{ api_group }}/{{ api_version }} here
     {% endfor %}
+
+    tokio::spawn(async {
+        let liveness_route =
+            warp::path!("healthz").map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));
+
+        let readiness_route =
+            warp::path!("readyz").map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));
+
+        let health_routes = liveness_route.or(readiness_route);
+
+        warp::serve(health_routes).run(([0, 0, 0, 0], 8000)).await;
+    });
 
     tokio::signal::ctrl_c()
         .await

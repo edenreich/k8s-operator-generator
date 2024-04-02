@@ -9,27 +9,37 @@ tasks:
   oas-generate-rust-client:
     desc: Generate the OpenAPI Rust client
     cmds:
-      - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.4.0 generate -i /local/openapi.yaml -g rust -o /local/client
+      - |
+        docker run --rm \
+          -w /local \
+          -v ${PWD}/crates/client-sdk:/local/client-sdk \
+          -v ${PWD}/openapi.yaml:/tmp/openapi.yaml \
+          openapitools/openapi-generator-cli:v7.4.0 \
+          generate -i /tmp/openapi.yaml -g rust -o client-sdk
+      - rm crates/client-sdk/{.travis.yml,git_push.sh}
 
   oas-generate-docs:
     desc: Generate the OpenAPI documentation
     cmds:
-      - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.4.0 generate -i /local/openapi.yaml -g markdown -o /local/docs
+      - |
+        docker run --rm -v ${PWD}:/local \
+          openapitools/openapi-generator-cli:v7.4.0 \
+          generate -i /local/openapi.yaml -g markdown -o /local/docs
 
   build:
-    desc: Build the k8s operator
+    desc: Build everything
     cmds:
-      - cargo build --bins
+      - cargo build
 
   generate-code:
     desc: Generate the Rust types and controllers from the OpenAPI specification
     cmds:
-      - cargo run --bin codegen
+      - cargo run --package k8s_codegen
 
   generate-crds:
     desc: Generate the k8s CRD's out of the rust structs
     cmds:
-      - cargo run --bin crdgen > manifests/crds/all.yaml
+      - cargo run --package k8s_crdgen > manifests/crds/all.yaml
 
   generate:
     desc: Generate the k8s CRD's out of the rust structs
@@ -42,7 +52,7 @@ tasks:
   run:
     desc: Run the k8s operator
     cmds:
-      - RUST_LOG=info INSTALL_CRDS=true cargo run --bin operator
+      - RUST_LOG=info INSTALL_CRDS=true cargo run --package k8s_operator
 
   run-fake-server:
     desc: Run the fake server
@@ -52,7 +62,20 @@ tasks:
   package:
     desc: Package the k8s operator
     cmds:
-      - docker build -t operator:latest .
+      - docker build -t localhost:5005/operator:latest .
+      - docker push localhost:5005/operator:latest
+
+  deploy-operator:
+    desc: Deploy the k8s operator
+    cmds:
+      - kubectl config use-context k3d-k3s-default
+      - kubectl apply -f manifests/rbac/
+      - kubectl apply -f manifests/operator/deployment.yaml
+
+  test:
+    desc: Run the tests
+    cmds:
+      - cargo test --package k8s_operator_e2e -- --test-threads=1
 
   cluster-create:
     desc: Create a k8s cluster
