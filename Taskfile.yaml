@@ -52,7 +52,7 @@ tasks:
   run:
     desc: Run the k8s operator
     cmds:
-      - RUST_LOG=info INSTALL_CRDS=true cargo run --package k8s_operator
+      - RUST_LOG=info INSTALL_CRDS=true ACCESS_TOKEN="" cargo run --package k8s_operator
 
   run-fake-server:
     desc: Run the fake server

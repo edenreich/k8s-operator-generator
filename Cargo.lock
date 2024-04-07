@@ -1033,6 +1033,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "env_logger",
+ "futures",
  "futures-util",
  "k8s-openapi",
  "kube",
@@ -1047,6 +1048,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "serde_yaml",
+ "thiserror",
  "tokio",
  "warp",
 ]

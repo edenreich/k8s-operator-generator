@@ -1,67 +1,19 @@
-use anyhow::{Context, Result};
-use core::fmt::Debug;
-use futures_util::stream::BoxStream;
-use futures_util::StreamExt;
+use anyhow::{Context, Error, Result};
+use futures::join;
+use futures_util::{Future, StreamExt};
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
-use kube::api::{Api, PostParams, WatchEvent, WatchParams};
-use kube::Client;
+use kube::api::{Api, ListParams, PostParams, WatchEvent};
 use kube::CustomResourceExt;
-use kube::ResourceExt;
-use kube_runtime::conditions;
+use kube::{Client, Resource};
 use kube_runtime::wait::await_condition;
+use kube_runtime::watcher::{Config, Event};
+use kube_runtime::{conditions, watcher};
 use log::{debug, error, info, warn};
 use openapi::apis::configuration::Configuration;
 use serde::de::DeserializeOwned;
 use std::sync::Arc;
-use tokio::time::{sleep, timeout, Duration};
+use tokio::time::timeout;
 use warp::Filter;
-
-async fn watch_resource<T, F>(
-    config: Arc<Configuration>,
-    api: Api<T>,
-    handle: F,
-) -> anyhow::Result<()>
-where
-    T: ResourceExt + Clone + Debug + Send + DeserializeOwned + 'static,
-    F: Fn(Arc<Configuration>, WatchEvent<T>, Api<T>) -> anyhow::Result<()> + Send + Sync + 'static,
-{
-    loop {
-        let watcher_stream = api.watch(&WatchParams::default(), "0").await?;
-        let events = watcher_stream.boxed();
-        process_events(events, config.clone(), api.clone(), &handle).await;
-        sleep(Duration::from_secs(5)).await;
-    }
-}
-
-async fn process_events<'a, T, F>(
-    events: BoxStream<'a, Result<WatchEvent<T>, kube::Error>>,
-    config: Arc<Configuration>,
-    api: Api<T>,
-    handle: &'a F,
-) where
-    T: ResourceExt + Clone + Debug + Send + DeserializeOwned + 'static,
-    F: Fn(Arc<Configuration>, WatchEvent<T>, Api<T>) -> anyhow::Result<()> + Send + Sync + 'static,
-{
-    events
-        .for_each(|event| {
-            let config = config.clone();
-            let api = api.clone();
-            let handle = handle.clone();
-            async move {
-                match event {
-                    Ok(event) => {
-                        if let Err(e) = handle(config, event, api) {
-                            error!("Error handling event: {:?}", e);
-                        }
-                    }
-                    Err(e) => {
-                        error!("Error watching events: {:?}", e);
-                    }
-                }
-            }
-        })
-        .await;
-}
 
 async fn deploy_crd(
     kube_client: Api<CustomResourceDefinition>,
@@ -119,15 +71,15 @@ async fn main() -> anyhow::Result<()> {
 
     let access_token = std::env::var("ACCESS_TOKEN").context("ACCESS_TOKEN is not set")?;
     let client = Client::try_default().await?;
-    let config = Arc::new(Configuration {
+    let config = Configuration {
         base_path: "http://localhost:8080".to_string(),
         client: reqwest::Client::new(),
         user_agent: Some("k8s-operator".to_string()),
         bearer_access_token: Some(access_token),
         ..Default::default()
-    });
+    };
 
-    let kube_client: Api<CustomResourceDefinition> = Api::all(client);
+    let kube_client: Api<CustomResourceDefinition> = Api::all(client.clone());
 
     if std::env::var("INSTALL_CRDS")
         .unwrap_or_default()
@@ -159,6 +111,11 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // add controllers for cats.example.com/v1 here
+    let _ = k8s_operator::controllers::cats::handle(
+        Api::namespaced(client.clone(), "default"),
+        config.clone(),
+    )
+    .await;
 
     // add controllers for dogs.example.com/v1 here
 
@@ -179,7 +136,7 @@ async fn main() -> anyhow::Result<()> {
     tokio::signal::ctrl_c()
         .await
         .context("Failed to listen for Ctrl+C")?;
-    println!("Termination signal received. Shutting down.");
+    info!("Termination signal received. Shutting down.");
 
     Ok(())
 }
