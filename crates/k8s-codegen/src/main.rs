@@ -1,6 +1,6 @@
 use askama::Template;
 use inflector::Inflector;
-use log::{error, warn};
+use log::{error, info, warn};
 use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind, Type};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -8,9 +8,40 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fs::{DirBuilder, File, OpenOptions},
     io::{BufRead, BufReader, Error, Write},
-    process::Command,
+    process::Command as ProcessCommand,
     vec,
 };
+
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+#[command(
+    name = "Kubernetes Operator Codegen",
+    version = "1.0",
+    author = "Eden Reich <eden.reich@gmail.com>",
+    arg_required_else_help = true
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Init {},
+    Generate {
+        #[arg(short, long)]
+        all: bool,
+        #[arg(short, long)]
+        lib: bool,
+        #[arg(short, long)]
+        manifests: bool,
+        #[arg(short, long)]
+        controllers: bool,
+        #[arg(short, long)]
+        types: bool,
+    },
+}
 
 const OPENAPI_FILE: &str = "openapi.yaml";
 const CONTROLLERS_DIR: &str = "crates/k8s-operator/src/controllers";
@@ -21,6 +52,10 @@ const CRATE_K8S_OPERATOR: &str = "crates/k8s-operator";
 const CRATE_K8S_CRDGEN: &str = "crates/k8s-crdgen";
 
 fn main() {
+    if !std::env::var("RUST_LOG").is_ok() {
+        std::env::set_var("RUST_LOG", "info");
+    }
+
     env_logger::init();
 
     let openapi = read_and_parse_openapi_spec(OPENAPI_FILE);
@@ -36,24 +71,104 @@ fn main() {
         .expect("No components in OpenAPI spec");
     let paths: openapiv3::Paths = openapi.paths.clone();
 
-    create_directory_if_not_exists(RBAC_DIR);
-    create_directory_if_not_exists(EXAMPLES_DIR);
-    create_directory_if_not_exists(TYPES_DIR);
-    create_directory_if_not_exists(CONTROLLERS_DIR);
-    create_file_if_not_exists(TYPES_DIR, "mod.rs");
-    create_file_if_not_exists(CONTROLLERS_DIR, "mod.rs");
+    let schemas: HashMap<String, Schema> = components
+        .schemas
+        .iter()
+        .filter_map(|(name, schema)| {
+            match schema {
+                openapiv3::ReferenceOr::Item(schema) => Some((name.clone(), schema.clone())),
+                openapiv3::ReferenceOr::Reference { .. } => None, // Ignore references for now
+            }
+        })
+        .collect();
 
-    generate_lib();
-    generate_all_files(
-        paths,
-        kubernetes_operator_group,
-        kubernetes_operator_version,
-        kubernetes_operator_resource_ref,
-        kubernetes_operator_include_tags,
-        components,
-    );
+    let mut schema_names = vec![];
+    for (schema_name, _) in components.schemas.iter() {
+        schema_names.push(schema_name.to_lowercase().to_plural());
+    }
 
-    generate_k8s_operator_cargo_toml();
+    let cli = Cli::parse();
+
+    match &cli.command {
+        Some(Commands::Init {}) => {
+            info!("Initialzing k8s_operator crate...");
+            create_directory_if_not_exists(CRATE_K8S_OPERATOR);
+            generate_k8s_operator_cargo_toml();
+            info!("Initialzing k8s_codegen crate...");
+            create_directory_if_not_exists(CRATE_K8S_CRDGEN);
+        }
+        Some(Commands::Generate {
+            all,
+            lib,
+            manifests,
+            controllers,
+            types,
+        }) => {
+            if *all || (!*lib && !*manifests && !*controllers && !*types) {
+                info!("Generating all...");
+                generate_lib();
+                generate_types(schemas.clone(), &kubernetes_operator_resource_ref);
+                generate_controllers(
+                    schemas.clone(),
+                    paths.clone(),
+                    kubernetes_operator_include_tags,
+                    kubernetes_operator_resource_ref.clone(),
+                );
+                generate_rbac_files(schema_names.clone(), &kubernetes_operator_group);
+                generate_crdgen_file(schema_names.clone());
+                generate_examples(
+                    components.examples.into_iter().collect(),
+                    &kubernetes_operator_group,
+                    &kubernetes_operator_version,
+                    &kubernetes_operator_resource_ref.clone(),
+                );
+                return;
+            }
+            if *lib {
+                info!("Generating lib...");
+                generate_lib();
+            }
+            if *manifests {
+                info!("Generating manifests...");
+                create_directory_if_not_exists(RBAC_DIR);
+                create_directory_if_not_exists(EXAMPLES_DIR);
+                generate_rbac_files(schema_names.clone(), &kubernetes_operator_group);
+                generate_crdgen_file(schema_names.clone());
+                generate_examples(
+                    components.examples.into_iter().collect(),
+                    &kubernetes_operator_group,
+                    &kubernetes_operator_version,
+                    &kubernetes_operator_resource_ref.clone(),
+                );
+            }
+            if *controllers {
+                info!("Generating controllers...");
+                create_directory_if_not_exists(CONTROLLERS_DIR);
+                create_file_if_not_exists(CONTROLLERS_DIR, "mod.rs");
+                let controllers = generate_controllers(
+                    schemas.clone(),
+                    paths.clone(),
+                    kubernetes_operator_include_tags,
+                    kubernetes_operator_resource_ref.clone(),
+                );
+                generate_main_file(
+                    &kubernetes_operator_group,
+                    &kubernetes_operator_version,
+                    controllers,
+                    schema_names.clone(),
+                );
+            }
+            if *types {
+                info!("Generating the types...");
+                create_directory_if_not_exists(TYPES_DIR);
+                create_file_if_not_exists(TYPES_DIR, "mod.rs");
+                generate_types(schemas.clone(), &kubernetes_operator_resource_ref);
+            }
+        }
+        None => {
+            info!("No command provided");
+        }
+    }
 }
 
 fn read_and_parse_openapi_spec(file_path: &str) -> OpenAPI {
@@ -113,55 +228,6 @@ fn create_file_if_not_exists(dir: &str, file: &str) {
     if !std::path::Path::new(&file_path).exists() {
         File::create(&file_path).expect(&format!("Unable to create file {}", file_path));
     }
-}
-
-fn generate_all_files(
-    paths: openapiv3::Paths,
-    kubernetes_operator_group: String,
-    kubernetes_operator_version: String,
-    kubernetes_operator_resource_ref: String,
-    kubernetes_operator_include_tags: Vec<String>,
-    components: openapiv3::Components,
-) {
-    let schemas: HashMap<String, Schema> = components
-        .schemas
-        .iter()
-        .filter_map(|(name, schema)| {
-            match schema {
-                openapiv3::ReferenceOr::Item(schema) => Some((name.clone(), schema.clone())),
-                openapiv3::ReferenceOr::Reference { .. } => None, // Ignore references for now
-            }
-        })
-        .collect();
-
-    let mut schema_names = vec![];
-    for (schema_name, _) in components.schemas.iter() {
-        schema_names.push(schema_name.to_lowercase().to_plural());
-    }
-    generate_types(schemas.clone(), &kubernetes_operator_resource_ref);
-
-    let controllers = generate_controllers(
-        schemas.clone(),
-        paths.clone(),
-        kubernetes_operator_include_tags,
-        kubernetes_operator_resource_ref.clone(),
-    );
-
-    generate_main_file(
-        &kubernetes_operator_group,
-        &kubernetes_operator_version,
-        controllers,
-        schema_names.clone(),
-    );
-
-    generate_rbac_files(schema_names.clone(), &kubernetes_operator_group);
-    generate_crdgen_file(schema_names.clone());
-    generate_examples(
-        components.examples.into_iter().collect(),
-        &kubernetes_operator_group,
-        &kubernetes_operator_version,
-        &kubernetes_operator_resource_ref.clone(),
-    );
 }
 
 #[derive(Template)]
@@ -713,7 +779,7 @@ fn format_file(file_path: String) {
         return;
     }
 
-    let output = Command::new("rustfmt")
+    let output = ProcessCommand::new("rustfmt")
         .arg(file_path)
         .output()
         .expect("Failed to execute command");
