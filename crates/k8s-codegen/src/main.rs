@@ -96,6 +96,7 @@ fn main() {
             generate_k8s_operator_cargo_toml();
             info!("Initialzing k8s_codegen crate...");
             create_directory_if_not_exists(CRATE_K8S_CRDGEN);
+            generate_k8s_crdgen_cargo_toml();
         }
         Some(Commands::Generate {
             all,
@@ -237,6 +238,15 @@ struct K8sOperatorCargoTomlTemplate {}
 fn generate_k8s_operator_cargo_toml() {
     let content = K8sOperatorCargoTomlTemplate {}.render().unwrap();
     write_to_file(format!("{}/Cargo.toml", CRATE_K8S_OPERATOR), content);
+}
+
+#[derive(Template)]
+#[template(path = "k8s_crdgen_cargo.toml.jinja")]
+struct K8sCrdgenCargoTomlTemplate {}
+
+fn generate_k8s_crdgen_cargo_toml() {
+    let content = K8sCrdgenCargoTomlTemplate {}.render().unwrap();
+    write_to_file(format!("{}/Cargo.toml", CRATE_K8S_CRDGEN), content);
 }
 
 fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) {
