@@ -259,7 +259,7 @@ fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) 
 }
 
 #[derive(Template)]
-#[template(path = "main.jinja")]
+#[template(path = "k8s_operator_main.jinja")]
 struct MainTemplate {
     api_group: String,
     api_version: String,
@@ -437,7 +437,7 @@ fn generate_controllers(
 }
 
 #[derive(Template)]
-#[template(path = "controller.jinja")]
+#[template(path = "k8s_operator_controller.jinja")]
 struct ControllerTemplate<'a> {
     tag: String,
     arg_name: String,
@@ -451,7 +451,7 @@ struct ControllerTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "controller_action_delete.jinja")]
+#[template(path = "k8s_operator_controller_action_delete.jinja")]
 struct ControllerActionDeleteTemplate<'a> {
     arg_name: String,
     kind_struct: String,
@@ -460,7 +460,7 @@ struct ControllerActionDeleteTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "controller_action_put.jinja")]
+#[template(path = "k8s_operator_controller_action_put.jinja")]
 struct ControllerActionPutTemplate<'a> {
     arg_name: String,
     kind_struct: String,
@@ -469,7 +469,7 @@ struct ControllerActionPutTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "controller_action_post.jinja")]
+#[template(path = "k8s_operator_controller_action_post.jinja")]
 struct ControllerActionPostTemplate<'a> {
     arg_name: String,
     kind_struct: String,
@@ -566,7 +566,7 @@ fn generate_controller(
 }
 
 #[derive(Template)]
-#[template(path = "type.jinja")]
+#[template(path = "k8s_operator_type.jinja")]
 struct TypeTemplate {
     tag_name: String,
     type_name: String,
@@ -682,7 +682,7 @@ fn generate_type(
     format_file(file_path.to_string());
 }
 #[derive(Template)]
-#[template(path = "lib.jinja")]
+#[template(path = "k8s_operator_lib.jinja")]
 struct LibTemplate {}
 
 fn generate_lib() {
@@ -720,7 +720,7 @@ fn add_controller_to_modfile(controller_name: &str) -> Result<(), Error> {
 }
 
 #[derive(Template)]
-#[template(path = "crdgen.jinja")]
+#[template(path = "k8s_crdgen_main.jinja")]
 struct CrdGenTemplate {
     resources: BTreeMap<String, String>,
 }
