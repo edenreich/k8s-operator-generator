@@ -1,19 +1,13 @@
 use anyhow::{Context, Result};
-use futures_util::stream::BoxStream;
-use futures_util::StreamExt;
 use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
-use kube::api::{Api, WatchEvent, WatchParams, PostParams};
-use kube::Client;
-use kube::ResourceExt;
-use kube_runtime::conditions;
-use kube_runtime::wait::await_condition;
-use log::{debug, info, warn, error};
+use kube::{
+    api::{Api, PostParams},
+    runtime::wait::{await_condition, conditions},
+    Client as KubeClient, CustomResourceExt,
+};
+use log::{error, info, warn};
 use openapi::apis::configuration::Configuration;
-use serde::de::DeserializeOwned;
-use core::fmt::Debug;
-use std::sync::Arc;
-use tokio::time::{sleep, Duration, timeout};
-use kube::CustomResourceExt;
+use tokio::time::timeout;
 use warp::Filter;
 
 async fn watch_resource<T, F>(
