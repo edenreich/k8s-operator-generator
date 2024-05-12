@@ -4,12 +4,10 @@ use futures_util::stream::StreamExt;
 use k8s_openapi::api::core::v1::{Event, EventSource, ObjectReference};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, Time};
 use k8s_openapi::chrono;
-use kube::api::{
-    Api, ListParams, ObjectMeta, Patch, PatchParams, PostParams, WatchEvent, WatchParams,
-};
+use kube::api::{Api, ObjectMeta, Patch, PatchParams, PostParams, WatchEvent, WatchParams};
 use kube::core::CustomResourceExt;
-use kube::{Client, Resource, ResourceExt};
-use log::{debug, error, info, warn};
+use kube::{Resource, ResourceExt};
+use log::{debug, error};
 use openapi::apis::configuration::Configuration;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
