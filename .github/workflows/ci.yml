@@ -32,6 +32,8 @@ jobs:
         run: task analyse
 
   build:
+    needs:
+      - analyse
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
