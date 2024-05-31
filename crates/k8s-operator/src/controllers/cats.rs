@@ -50,24 +50,24 @@ struct ExtraArgs {
 enum OperatorError {
     #[error(transparent)]
     AnyhowError(#[from] anyhow::Error),
-    #[error("Failed to process event: {0}")]
-    FailedToProcessEvent(#[source] kube::Error),
+    // #[error("Failed to process event: {0}")]
+    // FailedToProcessEvent(#[source] kube::Error),
     #[error("Failed to delete a cat: {0}")]
     FailedToDeleteCat(#[source] anyhow::Error),
-    #[error("Failed to update a cat: {0}")]
-    FailedToUpdateCat(#[source] anyhow::Error),
-    #[error("Failed to create a cat: {0}")]
-    FailedToCreateCat(#[source] anyhow::Error),
-    #[error("Failed to get a cat: {0}")]
-    FailedToGetCat(#[source] anyhow::Error),
-    #[error("Failed to update status: {0}")]
-    FailedToUpdateStatus(#[source] anyhow::Error),
-    #[error("Failed to remove finalizer: {0}")]
-    FailedToRemoveFinalizer(#[source] anyhow::Error),
-    #[error("Failed to add finalizer: {0}")]
-    FailedToAddFinalizer(#[source] anyhow::Error),
-    #[error("Failed to check for drift: {0}")]
-    FailedToCheckForDrift(#[source] anyhow::Error),
+    // #[error("Failed to update a cat: {0}")]
+    // FailedToUpdateCat(#[source] anyhow::Error),
+    // #[error("Failed to create a cat: {0}")]
+    // FailedToCreateCat(#[source] anyhow::Error),
+    // #[error("Failed to get a cat: {0}")]
+    // FailedToGetCat(#[source] anyhow::Error),
+    // #[error("Failed to update status: {0}")]
+    // FailedToUpdateStatus(#[source] anyhow::Error),
+    // #[error("Failed to remove finalizer: {0}")]
+    // FailedToRemoveFinalizer(#[source] anyhow::Error),
+    // #[error("Failed to add finalizer: {0}")]
+    // FailedToAddFinalizer(#[source] anyhow::Error),
+    // #[error("Failed to check for drift: {0}")]
+    // FailedToCheckForDrift(#[source] anyhow::Error),
 }
 
 pub async fn handle(kube_client: Api<Cat>, config: Configuration) -> Result<()> {
@@ -113,8 +113,7 @@ async fn reconcile(cat: Arc<Cat>, ctx: Arc<ExtraArgs>) -> Result<Action, Operato
 
     // If the resource was marked for deletion, we need to delete it
     if cat.meta().deletion_timestamp.is_some() {
-        if let Err(e) =
-            handle_delete_cat_by_id(config, &mut cat.clone(), kube_client.clone()).await
+        if let Err(e) = handle_delete_cat_by_id(config, &mut cat.clone(), kube_client.clone()).await
         {
             error!("Failed to delete cat: {:?}", e);
             return Err(OperatorError::FailedToDeleteCat(e));
