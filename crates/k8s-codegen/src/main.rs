@@ -406,10 +406,7 @@ fn generate_controllers(
             if let Some((tag, controller)) =
                 get_controller_attributes_for_operation(operation, method, &include_tags)
             {
-                controllers
-                    .entry(tag.clone())
-                    .or_default()
-                    .push(controller);
+                controllers.entry(tag.clone()).or_default().push(controller);
             }
         }
     }
@@ -485,7 +482,7 @@ struct Field {
 fn generate_controller(
     schemas: HashMap<String, Schema>,
     tag: String,
-    controller_attributes: &Vec<ControllerAttributes>,
+    controller_attributes: &[ControllerAttributes],
     resource_remote_ref: String,
 ) {
     if get_ignored_files().contains(&format!("{}/{}.rs", CONTROLLERS_DIR, tag.to_lowercase())) {
@@ -751,7 +748,7 @@ fn get_ignored_files() -> Vec<String> {
     let ignore_file =
         std::fs::File::open(".openapi-generator-ignore").expect("Unable to open file");
     let reader = BufReader::new(ignore_file);
-    reader.lines().filter_map(Result::ok).collect()
+    reader.lines().map_while(Result::ok).collect()
 }
 
 fn write_to_file(file_path: String, file_content: String) {
@@ -773,10 +770,7 @@ fn upsert_line_to_file(file_path: &str, line: &str) -> Result<(), Error> {
     let exists = reader.lines().any(|l| l.unwrap() == line);
 
     if !exists {
-        let mut file = OpenOptions::new()
-            
-            .append(true)
-            .open(file_path)?;
+        let mut file = OpenOptions::new().append(true).open(file_path)?;
         if let Err(e) = writeln!(file, "{}", line) {
             error!("Couldn't write to file: {}", e);
         }
