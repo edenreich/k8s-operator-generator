@@ -1,4 +1,4 @@
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use kube::api::{Api, PostParams, Resource, WatchEvent};
 use log::{error, info, warn};
 use std::sync::Arc;
@@ -6,13 +6,13 @@ use std::sync::Arc;
 use openapi::{
     apis::{
         configuration::Configuration,
-        dogs_api::{create_dog, delete_dog_by_id, get_dog_by_id, get_dogs, update_dog_by_id},
+        dogs_api::{create_dog, delete_dog_by_id, get_dog_by_id, update_dog_by_id},
     },
     models::Dog as DogDto,
 };
 
 use crate::types::dog::{Dog, DogSpec, DogStatus};
-use crate::{add_event, add_finalizer, create_condition, remove_finalizer, update_status};
+use crate::{add_finalizer, create_condition, remove_finalizer, update_status};
 
 fn convert_kube_type_to_dto(dog: Dog) -> DogDto {
     let uuid = match dog.status {
@@ -20,7 +20,7 @@ fn convert_kube_type_to_dto(dog: Dog) -> DogDto {
         None => None,
     };
     DogDto {
-        uuid: uuid,
+        uuid,
         name: dog.spec.name,
         breed: dog.spec.breed,
         age: dog.spec.age,
@@ -69,7 +69,7 @@ pub async fn handle(
             // Otherwise, we need to check for drift
             match dog.clone().status.unwrap().uuid {
                 Some(_) => {
-                    return check_for_drift(&config, kubernetes_api.clone(), &mut dog).await;
+                    check_for_drift(&config, kubernetes_api.clone(), &mut dog).await
                 }
                 None => {
                     let condition = create_condition(
@@ -85,7 +85,7 @@ pub async fn handle(
                         status.observed_generation = dog.meta().generation;
                     }
                     update_status(kubernetes_api.clone(), dog_clone).await?;
-                    return handle_create_dog(&config, &mut dog, kubernetes_api).await;
+                    handle_create_dog(&config, &mut dog, kubernetes_api).await
                 }
             }
         }
@@ -103,17 +103,17 @@ pub async fn handle(
                 status.observed_generation = dog.meta().generation;
             }
             update_status(kubernetes_api.clone(), dog_clone).await?;
-            return handle_update_dog_by_id(&config, &mut dog, kubernetes_api).await;
+            handle_update_dog_by_id(&config, &mut dog, kubernetes_api).await
         }
         WatchEvent::Bookmark(bookmark) => {
             info!("Dog Bookmark: {:?}", bookmark.metadata.resource_version);
-            return Ok(());
+            Ok(())
         }
         _ => {
             info!("Dog {:?}", event);
-            return Ok(());
+            Ok(())
         }
-    };
+    }
 }
 
 pub async fn check_for_drift(
@@ -129,13 +129,13 @@ pub async fn check_for_drift(
         return Ok(());
     }
 
-    match get_dog_by_id(&config, &uuid).await {
+    match get_dog_by_id(config, &uuid).await {
         Ok(dto) => {
             let remote_dog = convert_dto_to_kube_type(dto);
             if remote_dog != dog.spec {
                 let current_dog_dto = convert_kube_type_to_dto(dog.clone());
                 warn!("Dog has drifted remotely, sending an update to remote...");
-                match update_dog_by_id(&config, &uuid, current_dog_dto).await {
+                match update_dog_by_id(config, &uuid, current_dog_dto).await {
                     Ok(_) => {
                         info!("Dog updated successfully");
                         let condition = create_condition(
@@ -181,7 +181,7 @@ pub async fn handle_delete_dog_by_id(
         return Ok(());
     }
 
-    delete_dog_by_id(&config, &uuid)
+    delete_dog_by_id(config, &uuid)
         .await
         .context("Failed to delete a dog by id")?;
 
@@ -198,7 +198,7 @@ pub async fn handle_delete_dog_by_id(
         status.conditions.push(condition);
         status.observed_generation = dog.meta().generation;
     }
-    return update_status(kubernetes_api.clone(), dog_clone).await;
+    update_status(kubernetes_api.clone(), dog_clone).await
 }
 
 pub async fn handle_update_dog_by_id(
@@ -215,13 +215,13 @@ pub async fn handle_update_dog_by_id(
         }
     };
 
-    update_dog_by_id(&config, &uuid, dto)
+    update_dog_by_id(config, &uuid, dto)
         .await
         .context("Failed to update a dog by id")?;
 
     let dog_name = dog.metadata.name.as_deref().unwrap_or_default();
     kubernetes_api
-        .replace(dog_name, &PostParams::default(), &dog)
+        .replace(dog_name, &PostParams::default(), dog)
         .await
         .context("Failed to update a dog by id")?;
 
@@ -236,7 +236,7 @@ pub async fn handle_create_dog(
 ) -> Result<(), anyhow::Error> {
     let dto = convert_kube_type_to_dto(dog.clone());
 
-    match create_dog(&config, dto.clone()).await {
+    match create_dog(config, dto.clone()).await {
         Ok(remote_dog) => match remote_dog.uuid {
             Some(uuid) => {
                 add_finalizer(dog, kubernetes_api.clone()).await?;
@@ -253,7 +253,7 @@ pub async fn handle_create_dog(
                     status.uuid = Some(uuid);
                     status.observed_generation = dog.meta().generation;
                 }
-                return update_status(kubernetes_api.clone(), dog_clone).await;
+                update_status(kubernetes_api.clone(), dog_clone).await
             }
             None => {
                 warn!("Remote dog has no uuid, cannot update status");

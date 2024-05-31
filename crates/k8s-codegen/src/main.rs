@@ -52,7 +52,7 @@ const CRATE_K8S_OPERATOR: &str = "crates/k8s-operator";
 const CRATE_K8S_CRDGEN: &str = "crates/k8s-crdgen";
 
 fn main() {
-    if !std::env::var("RUST_LOG").is_ok() {
+    if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "info");
     }
 
@@ -198,9 +198,9 @@ fn extract_extension(openapi: &OpenAPI, key: &str) -> String {
         .info
         .extensions
         .get(key)
-        .expect(&format!("No {} in OpenAPI spec", key))
+        .unwrap_or_else(|| panic!("No {} in OpenAPI spec", key))
         .as_str()
-        .expect(&format!("{} is not a string", key))
+        .unwrap_or_else(|| panic!("{} is not a string", key))
         .to_string()
 }
 
@@ -209,9 +209,9 @@ fn extract_extension_array(openapi: &OpenAPI, key: &str) -> Vec<String> {
         .info
         .extensions
         .get(key)
-        .expect(&format!("No {} in OpenAPI spec", key))
+        .unwrap_or_else(|| panic!("No {} in OpenAPI spec", key))
         .as_array()
-        .expect(&format!("{} is not an array", key))
+        .unwrap_or_else(|| panic!("{} is not an array", key))
         .iter()
         .map(|v| v.as_str().unwrap().to_string())
         .collect()
@@ -221,13 +221,13 @@ fn create_directory_if_not_exists(dir: &str) {
     DirBuilder::new()
         .recursive(true)
         .create(dir)
-        .expect(&format!("Unable to create {} directory", dir));
+        .unwrap_or_else(|_| panic!("Unable to create {} directory", dir));
 }
 
 fn create_file_if_not_exists(dir: &str, file: &str) {
     let file_path = format!("{}/{}", dir, file);
     if !std::path::Path::new(&file_path).exists() {
-        File::create(&file_path).expect(&format!("Unable to create file {}", file_path));
+        File::create(&file_path).unwrap_or_else(|_| panic!("Unable to create file {}", file_path));
     }
 }
 
@@ -292,7 +292,7 @@ fn generate_main_file(
     let content: String = MainTemplate {
         api_group: api_group.into(),
         api_version: api_version.into(),
-        controllers: controllers,
+        controllers,
         schemas: schemas_names,
     }
     .render()
@@ -408,7 +408,7 @@ fn generate_controllers(
             {
                 controllers
                     .entry(tag.clone())
-                    .or_insert_with(Vec::new)
+                    .or_default()
                     .push(controller);
             }
         }
@@ -630,12 +630,12 @@ fn generate_types(schemas: HashMap<String, Schema>, operator_resource_ref: &str)
     for name in schemas.keys() {
         generate_type(
             schemas.clone(),
-            &name,
+            name,
             "example.com",
             "v1",
             operator_resource_ref,
         );
-        match add_type_to_modfile(&name) {
+        match add_type_to_modfile(name) {
             Ok(_) => (),
             Err(e) => error!("Failed to add type to mod file: {:?}", e),
         }
@@ -767,16 +767,16 @@ fn upsert_line_to_file(file_path: &str, line: &str) -> Result<(), Error> {
         return Ok(());
     }
 
-    let file = File::open(&file_path)?;
+    let file = File::open(file_path)?;
     let reader = BufReader::new(file);
 
     let exists = reader.lines().any(|l| l.unwrap() == line);
 
     if !exists {
         let mut file = OpenOptions::new()
-            .write(true)
+            
             .append(true)
-            .open(&file_path)?;
+            .open(file_path)?;
         if let Err(e) = writeln!(file, "{}", line) {
             error!("Couldn't write to file: {}", e);
         }
@@ -829,7 +829,7 @@ fn generate_role_file(resources: Vec<String>, api_group: &str) {
     let content = RoleTemplate {
         identifiers: RoleTemplateIdentifiers {
             api_group: api_group.to_string(),
-            resources: resources,
+            resources,
         },
     }
     .render()
@@ -856,7 +856,7 @@ fn generate_cluster_role_file(resources: Vec<String>, api_group: &str) {
     let content = ClusterRoleTemplate {
         identifiers: ClusterRoleTemplateIdentifiers {
             api_group: api_group.to_string(),
-            resources: resources,
+            resources,
         },
     }
     .render()
@@ -951,7 +951,7 @@ fn generate_examples(
         .collect();
     for (name, example) in &examples_map {
         generate_manifest_from_example(
-            &name,
+            name,
             example,
             operator_group,
             operator_version,
@@ -971,9 +971,9 @@ fn generate_manifest_from_example(
 
     match &example.value {
         Some(Value::Object(map)) => {
-            let metadata_name = get_metadata_name(&name, map);
+            let metadata_name = get_metadata_name(name, map);
             resources.push(generate_resource_from_map(
-                &name,
+                name,
                 &metadata_name,
                 map,
                 operator_group,
@@ -984,9 +984,9 @@ fn generate_manifest_from_example(
         Some(Value::Array(arr)) => {
             for value in arr {
                 if let Value::Object(map) = value {
-                    let metadata_name = get_metadata_name(&name, map);
+                    let metadata_name = get_metadata_name(name, map);
                     resources.push(generate_resource_from_map(
-                        &name,
+                        name,
                         &metadata_name,
                         map,
                         operator_group,
@@ -1007,8 +1007,7 @@ fn generate_manifest_from_example(
 fn get_metadata_name(name: &str, map: &Map<String, Value>) -> String {
     map.get("x-kubernetes-operator-example-metadata")
         .cloned()
-        .and_then(|v| serde_json::from_value::<Metadata>(v).ok())
-        .and_then(|meta| Some(meta.name.clone()))
+        .and_then(|v| serde_json::from_value::<Metadata>(v).ok()).map(|meta| meta.name.clone())
         .unwrap_or_else(|| {
             warn!("Warning: x-kubernetes-operator-example-metadata is not set for example {}. Using the regular example name.", name);
             name.to_lowercase()

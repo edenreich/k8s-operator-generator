@@ -26,7 +26,7 @@ fn convert_kube_type_to_dto(cat: Cat) -> CatDto {
         None => None,
     };
     CatDto {
-        uuid: uuid,
+        uuid,
         name: cat.spec.name,
         breed: cat.spec.breed,
         age: cat.spec.age,
@@ -76,7 +76,7 @@ pub async fn handle(kube_client: Api<Cat>, config: Configuration) -> Result<()> 
 
     let extra_args = Arc::new(ExtraArgs {
         kube_client: kube_client.clone(),
-        config: config,
+        config,
     });
 
     info!("Running the controller");
@@ -114,7 +114,7 @@ async fn reconcile(cat: Arc<Cat>, ctx: Arc<ExtraArgs>) -> Result<Action, Operato
     // If the resource was marked for deletion, we need to delete it
     if cat.meta().deletion_timestamp.is_some() {
         if let Err(e) =
-            handle_delete_cat_by_id(&config, &mut cat.clone(), kube_client.clone()).await
+            handle_delete_cat_by_id(config, &mut cat.clone(), kube_client.clone()).await
         {
             error!("Failed to delete cat: {:?}", e);
             return Err(OperatorError::FailedToDeleteCat(e));
@@ -126,7 +126,7 @@ async fn reconcile(cat: Arc<Cat>, ctx: Arc<ExtraArgs>) -> Result<Action, Operato
     // Otherwise, we need to check for drift
     match cat.clone().status.unwrap().uuid {
         Some(_) => {
-            check_for_drift(&config, kube_client.clone(), &mut cat.clone()).await?;
+            check_for_drift(config, kube_client.clone(), &mut cat.clone()).await?;
             Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
         }
         None => {
@@ -142,7 +142,7 @@ async fn reconcile(cat: Arc<Cat>, ctx: Arc<ExtraArgs>) -> Result<Action, Operato
                 status.observed_generation = cat.meta().generation;
             }
             update_status(kube_client.clone(), cat.clone()).await?;
-            handle_create_cat(&config, cat.clone(), kube_client).await?;
+            handle_create_cat(config, cat.clone(), kube_client).await?;
             Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
         }
     }
@@ -161,13 +161,13 @@ pub async fn check_for_drift(
         return Ok(());
     }
 
-    match get_cat_by_id(&config, &uuid).await {
+    match get_cat_by_id(config, &uuid).await {
         Ok(dto) => {
             let remote_cat = convert_dto_to_kube_type(dto);
             if remote_cat != cat.spec {
                 let current_cat_dto = convert_kube_type_to_dto(cat.clone());
                 warn!("Cat has drifted remotely, sending an update to remote...");
-                match update_cat_by_id(&config, &uuid, current_cat_dto).await {
+                match update_cat_by_id(config, &uuid, current_cat_dto).await {
                     Ok(_) => {
                         info!("Cat updated successfully");
                         let condition = create_condition(
@@ -213,7 +213,7 @@ pub async fn handle_delete_cat_by_id(
         return Ok(());
     }
 
-    delete_cat_by_id(&config, &uuid)
+    delete_cat_by_id(config, &uuid)
         .await
         .context("Failed to delete a cat by id")?;
 
@@ -230,7 +230,7 @@ pub async fn handle_delete_cat_by_id(
         status.conditions.push(condition);
         status.observed_generation = cat.meta().generation;
     }
-    return update_status(kubernetes_api.clone(), cat_clone).await;
+    update_status(kubernetes_api.clone(), cat_clone).await
 }
 
 pub async fn handle_update_cat_by_id(
@@ -247,13 +247,13 @@ pub async fn handle_update_cat_by_id(
         }
     };
 
-    update_cat_by_id(&config, &uuid, dto)
+    update_cat_by_id(config, &uuid, dto)
         .await
         .context("Failed to update a cat by id")?;
 
     let cat_name = cat.metadata.name.as_deref().unwrap_or_default();
     kubernetes_api
-        .replace(cat_name, &PostParams::default(), &cat)
+        .replace(cat_name, &PostParams::default(), cat)
         .await
         .context("Failed to update a cat by id")?;
 
@@ -268,7 +268,7 @@ pub async fn handle_create_cat(
 ) -> Result<(), anyhow::Error> {
     let dto = convert_kube_type_to_dto(cat.clone());
 
-    match create_cat(&config, dto.clone()).await {
+    match create_cat(config, dto.clone()).await {
         Ok(remote_cat) => match remote_cat.uuid {
             Some(uuid) => {
                 let mut cat = cat;
@@ -286,7 +286,7 @@ pub async fn handle_create_cat(
                     status.uuid = Some(uuid);
                     status.observed_generation = cat.meta().generation;
                 }
-                return update_status(kubernetes_api.clone(), cat_clone).await;
+                update_status(kubernetes_api.clone(), cat_clone).await
             }
             None => {
                 warn!("Remote cat has no uuid, cannot update status");

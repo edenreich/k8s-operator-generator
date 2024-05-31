@@ -1,4 +1,4 @@
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Result};
 use kube::api::{Api, PostParams, Resource, WatchEvent};
 use log::{error, info, warn};
 use std::sync::Arc;
@@ -7,14 +7,14 @@ use openapi::{
     apis::{
         configuration::Configuration,
         horses_api::{
-            create_horse, delete_horse_by_id, get_horse_by_id, get_horses, update_horse_by_id,
+            create_horse, delete_horse_by_id, get_horse_by_id, update_horse_by_id,
         },
     },
     models::Horse as HorseDto,
 };
 
 use crate::types::horse::{Horse, HorseSpec, HorseStatus};
-use crate::{add_event, add_finalizer, create_condition, remove_finalizer, update_status};
+use crate::{add_finalizer, create_condition, remove_finalizer, update_status};
 
 fn convert_kube_type_to_dto(horse: Horse) -> HorseDto {
     let uuid = match horse.status {
@@ -22,7 +22,7 @@ fn convert_kube_type_to_dto(horse: Horse) -> HorseDto {
         None => None,
     };
     HorseDto {
-        uuid: uuid,
+        uuid,
         name: horse.spec.name,
         breed: horse.spec.breed,
         age: horse.spec.age,
@@ -71,7 +71,7 @@ pub async fn handle(
             // Otherwise, we need to check for drift
             match horse.clone().status.unwrap().uuid {
                 Some(_) => {
-                    return check_for_drift(&config, kubernetes_api.clone(), &mut horse).await;
+                    check_for_drift(&config, kubernetes_api.clone(), &mut horse).await
                 }
                 None => {
                     let condition = create_condition(
@@ -87,7 +87,7 @@ pub async fn handle(
                         status.observed_generation = horse.meta().generation;
                     }
                     update_status(kubernetes_api.clone(), horse_clone).await?;
-                    return handle_create_horse(&config, &mut horse, kubernetes_api).await;
+                    handle_create_horse(&config, &mut horse, kubernetes_api).await
                 }
             }
         }
@@ -105,17 +105,17 @@ pub async fn handle(
                 status.observed_generation = horse.meta().generation;
             }
             update_status(kubernetes_api.clone(), horse_clone).await?;
-            return handle_update_horse_by_id(&config, &mut horse, kubernetes_api).await;
+            handle_update_horse_by_id(&config, &mut horse, kubernetes_api).await
         }
         WatchEvent::Bookmark(bookmark) => {
             info!("Horse Bookmark: {:?}", bookmark.metadata.resource_version);
-            return Ok(());
+            Ok(())
         }
         _ => {
             info!("Horse {:?}", event);
-            return Ok(());
+            Ok(())
         }
-    };
+    }
 }
 
 pub async fn check_for_drift(
@@ -131,13 +131,13 @@ pub async fn check_for_drift(
         return Ok(());
     }
 
-    match get_horse_by_id(&config, &uuid).await {
+    match get_horse_by_id(config, &uuid).await {
         Ok(dto) => {
             let remote_horse = convert_dto_to_kube_type(dto);
             if remote_horse != horse.spec {
                 let current_horse_dto = convert_kube_type_to_dto(horse.clone());
                 warn!("Horse has drifted remotely, sending an update to remote...");
-                match update_horse_by_id(&config, &uuid, current_horse_dto).await {
+                match update_horse_by_id(config, &uuid, current_horse_dto).await {
                     Ok(_) => {
                         info!("Horse updated successfully");
                         let condition = create_condition(
@@ -183,7 +183,7 @@ pub async fn handle_delete_horse_by_id(
         return Ok(());
     }
 
-    delete_horse_by_id(&config, &uuid)
+    delete_horse_by_id(config, &uuid)
         .await
         .context("Failed to delete a horse by id")?;
 
@@ -200,7 +200,7 @@ pub async fn handle_delete_horse_by_id(
         status.conditions.push(condition);
         status.observed_generation = horse.meta().generation;
     }
-    return update_status(kubernetes_api.clone(), horse_clone).await;
+    update_status(kubernetes_api.clone(), horse_clone).await
 }
 
 pub async fn handle_update_horse_by_id(
@@ -217,13 +217,13 @@ pub async fn handle_update_horse_by_id(
         }
     };
 
-    update_horse_by_id(&config, &uuid, dto)
+    update_horse_by_id(config, &uuid, dto)
         .await
         .context("Failed to update a horse by id")?;
 
     let horse_name = horse.metadata.name.as_deref().unwrap_or_default();
     kubernetes_api
-        .replace(horse_name, &PostParams::default(), &horse)
+        .replace(horse_name, &PostParams::default(), horse)
         .await
         .context("Failed to update a horse by id")?;
 
@@ -238,7 +238,7 @@ pub async fn handle_create_horse(
 ) -> Result<(), anyhow::Error> {
     let dto = convert_kube_type_to_dto(horse.clone());
 
-    match create_horse(&config, dto.clone()).await {
+    match create_horse(config, dto.clone()).await {
         Ok(remote_horse) => match remote_horse.uuid {
             Some(uuid) => {
                 add_finalizer(horse, kubernetes_api.clone()).await?;
@@ -255,7 +255,7 @@ pub async fn handle_create_horse(
                     status.uuid = Some(uuid);
                     status.observed_generation = horse.meta().generation;
                 }
-                return update_status(kubernetes_api.clone(), horse_clone).await;
+                update_status(kubernetes_api.clone(), horse_clone).await
             }
             None => {
                 warn!("Remote horse has no uuid, cannot update status");

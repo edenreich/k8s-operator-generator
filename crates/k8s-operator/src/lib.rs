@@ -51,7 +51,7 @@ where
         + core::fmt::Debug
         + 'static,
 {
-    let finalizer = String::from(format!("finalizers.{}", "example.com"));
+    let finalizer = format!("finalizers.{}", "example.com");
     let finalizers = resource.meta_mut().finalizers.get_or_insert_with(Vec::new);
     if finalizers.contains(&finalizer) {
         debug!("Finalizer already exists");
@@ -78,7 +78,7 @@ pub async fn remove_finalizer<T>(resource: &mut T, kubernetes_api: Api<T>) -> Re
 where
     T: Clone + Serialize + DeserializeOwned + Resource + CustomResourceExt + Debug + 'static,
 {
-    let finalizer = String::from(format!("finalizers.{}", "example.com"));
+    let finalizer = format!("finalizers.{}", "example.com");
     let finalizers = match &mut resource.meta_mut().finalizers {
         Some(finalizers) => finalizers,
         None => return Ok(()),
@@ -180,7 +180,7 @@ pub fn create_condition(
         reason: reason.to_string(),
         status: status.to_string(),
         type_: type_.to_string(),
-        observed_generation: observed_generation,
+        observed_generation,
     }
 }
 

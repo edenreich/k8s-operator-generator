@@ -18,10 +18,10 @@ mod test {
     }
 
     async fn setup_client() -> Client {
-        let client = Client::try_default()
+        
+        Client::try_default()
             .await
-            .expect("Failed to create client");
-        client
+            .expect("Failed to create client")
     }
 
     async fn deploy_operator() -> Result<(), Error> {

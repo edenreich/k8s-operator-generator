@@ -43,7 +43,7 @@ fn convert_kube_type_to_dto({{ arg_name }}: {{ kind_struct }}) -> {{ kind_struct
         None => None,
     };
     {{ kind_struct }}Dto {
-        uuid: uuid,
+        uuid,
         {%- for field in dto_fields %}
             {{ field.pub_name }}: {{ arg_name }}.spec.{{ field.pub_name }},
         {%- endfor %}

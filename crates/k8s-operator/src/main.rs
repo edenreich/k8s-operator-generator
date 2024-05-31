@@ -70,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Configuration {
         base_path: "http://localhost:8080".to_string(),
-        client: client,
+        client,
         user_agent: Some("k8s-operator".to_string()),
         bearer_access_token: Some(access_token),
         ..Default::default()
