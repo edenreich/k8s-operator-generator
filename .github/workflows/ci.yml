@@ -16,6 +16,21 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  analyse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Install Task
+        uses: arduino/setup-task@v1
+        with:
+          version: 3.x
+
+      - name: Analyse the code
+        run: task analyse
+
   build:
     runs-on: ubuntu-latest
     steps:

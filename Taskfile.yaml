@@ -26,6 +26,11 @@ tasks:
           openapitools/openapi-generator-cli:v7.4.0 \
           generate -i /local/openapi.yaml -g markdown -o /local/docs
 
+  analyse:
+    desc: Analyse the code
+    cmds:
+      - cargo clippy --all-targets --all-features -- -D warnings
+
   build:
     desc: Build everything
     cmds:
