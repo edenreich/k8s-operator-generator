@@ -12,13 +12,12 @@ mod test {
     use tokio::io::{AsyncBufReadExt, BufReader};
     use tokio::process::Command;
 
-    async fn setup_cluster() -> anyhow::Result<(), Error> {
-        let _ = Command::new("task").arg("cluster-create").status();
+    async fn setup_cluster() -> anyhow::Result<()> {
+        Command::new("task").arg("cluster-create").status().await?;
         Ok(())
     }
 
     async fn setup_client() -> Client {
-        
         Client::try_default()
             .await
             .expect("Failed to create client")
