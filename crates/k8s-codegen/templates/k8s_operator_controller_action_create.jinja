@@ -1,7 +1,7 @@
 {% for controller in controllers %}
     {% if controller.http_method == "post" %}
 pub async fn handle_create(
-    kube_client: Api<{{ kind_struct }}>,
+    kube_client: &Api<{{ kind_struct }}>,
     {{ arg_name }}: &mut {{ kind_struct }},
 ) -> Result<(), anyhow::Error> {
     let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
@@ -24,7 +24,7 @@ pub async fn handle_create(
                     status.uuid = Some(uuid);
                     status.observed_generation = {{ arg_name }}.meta().generation;
                 }
-                return update_status(kube_client.clone(), {{ arg_name }}_clone).await;
+                update_status(kube_client, {{ arg_name }}_clone).await
             }
             None => {
                 warn!("Remote {{ arg_name }} has no {{ resource_remote_ref }}, cannot update status");

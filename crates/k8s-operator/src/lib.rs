@@ -184,7 +184,7 @@ pub fn create_condition(
     }
 }
 
-pub async fn update_status<T>(kubernetes_api: Api<T>, status: T) -> Result<()>
+pub async fn update_status<T>(kubernetes_api: &Api<T>, status: T) -> Result<()>
 where
     T: Resource<DynamicType = ()> + Serialize + Clone + DeserializeOwned,
 {

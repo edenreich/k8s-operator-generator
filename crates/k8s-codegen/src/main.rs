@@ -110,11 +110,16 @@ fn main() {
                 info!("Generating all...");
                 generate_lib();
                 generate_types(schemas.clone(), &kubernetes_operator_resource_ref);
-                generate_controllers(
+                let controllers = generate_controllers(
                     schemas.clone(),
                     paths.clone(),
                     kubernetes_operator_include_tags,
                     kubernetes_operator_resource_ref.clone(),
+                );
+                generate_main_file(
+                    &kubernetes_operator_group,
+                    &kubernetes_operator_version,
+                    controllers,
                 );
                 generate_rbac_files(schema_names.clone(), &kubernetes_operator_group);
                 generate_crdgen_file(schema_names.clone());
@@ -159,7 +164,6 @@ fn main() {
                     &kubernetes_operator_group,
                     &kubernetes_operator_version,
                     controllers,
-                    schema_names.clone(),
                 );
             }
             if *types {
@@ -272,28 +276,12 @@ struct MainTemplate {
     api_group: String,
     api_version: String,
     controllers: Vec<String>,
-    schemas: BTreeMap<String, String>,
 }
 
-fn generate_main_file(
-    api_group: &str,
-    api_version: &str,
-    mut controllers: Vec<String>,
-    schemas: Vec<String>,
-) {
+fn generate_main_file(api_group: &str, api_version: &str, mut controllers: Vec<String>) {
     if get_ignored_files().contains(&format!("{}/src/main.rs", CRATE_K8S_OPERATOR)) {
         return;
     }
-
-    let schemas_names: BTreeMap<String, String> = schemas
-        .into_iter()
-        .map(|schema| {
-            (
-                schema.to_singular().to_lowercase(),
-                schema.to_singular().to_class_case(),
-            )
-        })
-        .collect::<BTreeMap<String, String>>();
 
     controllers.sort();
 
@@ -301,7 +289,6 @@ fn generate_main_file(
         api_group: api_group.into(),
         api_version: api_version.into(),
         controllers,
-        schemas: schemas_names,
     }
     .render()
     .unwrap();

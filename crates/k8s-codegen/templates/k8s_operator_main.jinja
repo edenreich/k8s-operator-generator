@@ -63,10 +63,6 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Starting operator...");
 
-    let client = reqwest::Client::new();
-
-    let access_token = std::env::var("ACCESS_TOKEN").context("ACCESS_TOKEN is not set")?;
-
     let kube_client = KubeClient::try_default().await?;
     let kube_client_api: Api<CustomResourceDefinition> = Api::all(kube_client.clone());
 
@@ -86,21 +82,25 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    let controllers = vec![
-        format!("cats.example.com"),
+    let controllers_crds = vec![
+        {% for controller in controllers %}
+        format!("{{ controller }}.{{ api_group}}"),
+        {% endfor %}
     ];
-    for controller in controllers {
-        if let Err(e) = wait_for_crd(kube_client_api.clone(), &controller).await {
-            error!("Error waiting for CRD {}: {}", &controller, e);
+    for controller_crd in controllers_crds {
+        if let Err(e) = wait_for_crd(kube_client_api.clone(), &controller_crd).await {
+            error!("Error waiting for CRD {}: {}", &controller_crd, e);
         }
     }
 
-    // add controllers for cats.example.com/v1 here
-    let _ = k8s_operator::controllers::cats::handle(Api::namespaced(kube_client, "default")).await;
-
-    // add controllers for dogs.example.com/v1 here
-
-    // add controllers for horses.example.com/v1 here
+    let controllers = vec![
+        {% for controller in controllers %}
+        k8s_operator::controllers::{{ controller }}::handle,
+        {% endfor %}
+    ];
+    for controller in controllers {
+        let _ = controller(Api::namespaced(kube_client.clone(), "default")).await;
+    }
 
     tokio::spawn(async {
         let liveness_route = warp::path!("healthz")

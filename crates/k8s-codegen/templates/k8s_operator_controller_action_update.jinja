@@ -1,26 +1,24 @@
 {% for controller in controllers %}
     {% if controller.http_method == "put" %}
-pub async fn handle_{{ controller.operation_id }}(
-    config: &Configuration,
+pub async fn handle_update(
+    kubernetes_api: &Api<{{ kind_struct }}>,
     {{ arg_name }}: &mut {{ kind_struct }},
-    kubernetes_api: Api<{{ kind_struct }}>,
+    {{ resource_remote_ref }}: &str,
 ) -> Result<()> {
     let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
-    let {{ resource_remote_ref }} = match dto.{{ resource_remote_ref }}.clone() {
-        Some({{ resource_remote_ref }}) => {{ resource_remote_ref }},
-        None => {
-            warn!("{{ kind_struct }} has no status, cannot update by id. Skipping...");
-            return Ok(());
-        }
-    };
+    let config = get_client_config().await?;
 
-    {{ controller.operation_id }}(&config, &{{ resource_remote_ref }}, dto)
+    if {{ resource_remote_ref }}.is_empty() {
+        return Err(anyhow::anyhow!("{{ resource_remote_ref }} is empty"));
+    }
+
+    {{ controller.operation_id }}(&config, {{ resource_remote_ref }}, dto)
         .await
         .context("Failed to {{ controller.action_summary }}")?;
 
     let {{ arg_name }}_name = {{ arg_name }}.metadata.name.as_deref().unwrap_or_default();
     kubernetes_api
-        .replace({{ arg_name }}_name, &PostParams::default(), &{{ arg_name }})
+        .replace({{ arg_name }}_name, &PostParams::default(), {{ arg_name }})
         .await
         .context("Failed to {{ controller.action_summary }}")?;
 

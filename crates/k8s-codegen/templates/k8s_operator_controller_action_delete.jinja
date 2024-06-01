@@ -1,25 +1,17 @@
 {% for controller in controllers %}
     {% if controller.http_method == "delete" %}
-async fn handle_{{ controller.http_method }}(
+async fn handle_delete(
     kube_client: &Api<{{ kind_struct }}>,
     {{ arg_name }}: &mut {{ kind_struct }},
+    {{ resource_remote_ref }}: &str,
 )-> Result<(), OperatorError> {
     let config = get_client_config().await?;
-    let {{ resource_remote_ref }} = match {{ arg_name }}.clone().status {
-        Some(status) => match status.clone().{{ resource_remote_ref}} {
-            Some({{ resource_remote_ref }}) => {{ resource_remote_ref }},
-            None => {
-                warn!("{{ kind_struct }} has no resource reference in status, cannot delete by id. Skipping...");
-                return Ok(());
-            }
-        },
-        None => {
-            warn!("{{ kind_struct }} has no status, cannot delete by id. Skipping...");
-            return Ok(());
-        }
-    };
+    if {{ resource_remote_ref }}.is_empty() {
+        warn!("{{ kind_struct }} has no status, cannot delete by id. Skipping...");
+        return Ok(());
+    }
 
-    if let Err(e) = {{ controller.operation_id }}(&config, &{{ resource_remote_ref }}).await {
+    if let Err(e) = {{ controller.operation_id }}(&config, {{ resource_remote_ref }}).await {
         error!("Failed to delete {{ arg_name }}: {:?}", e);
         return Err(OperatorError::FailedToDelete{{ kind_struct }}(e.into()));
     }

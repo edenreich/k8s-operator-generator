@@ -63,10 +63,6 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Starting operator...");
 
-    let client = reqwest::Client::new();
-
-    let access_token = std::env::var("ACCESS_TOKEN").context("ACCESS_TOKEN is not set")?;
-
     let kube_client = KubeClient::try_default().await?;
     let kube_client_api: Api<CustomResourceDefinition> = Api::all(kube_client.clone());
 
@@ -77,34 +73,24 @@ async fn main() -> anyhow::Result<()> {
     {
         info!("INSTALL_CRDS is set to true. Deploying CRDs...");
 
-        let crds = vec![
-            k8s_operator::types::cat::Cat::crd(),
-            k8s_operator::types::dog::Dog::crd(),
-            k8s_operator::types::horse::Horse::crd(),
-        ];
+        let crds = vec![k8s_operator::types::cat::Cat::crd()];
 
         for crd in crds {
             deploy_crd(kube_client_api.clone(), crd).await?;
         }
     }
 
-    let controllers = vec![
-        format!("cats.example.com"),
-        format!("dogs.example.com"),
-        format!("horses.example.com"),
-    ];
-    for controller in controllers {
-        if let Err(e) = wait_for_crd(kube_client_api.clone(), &controller).await {
-            error!("Error waiting for CRD {}: {}", &controller, e);
+    let controllers_crds = vec![format!("cats.example.com")];
+    for controller_crd in controllers_crds {
+        if let Err(e) = wait_for_crd(kube_client_api.clone(), &controller_crd).await {
+            error!("Error waiting for CRD {}: {}", &controller_crd, e);
         }
     }
 
-    // add controllers for cats.example.com/v1 here
-    let _ = k8s_operator::controllers::cats::handle(Api::namespaced(kube_client, "default")).await;
-
-    // add controllers for dogs.example.com/v1 here
-
-    // add controllers for horses.example.com/v1 here
+    let controllers = vec![k8s_operator::controllers::cats::handle];
+    for controller in controllers {
+        let _ = controller(Api::namespaced(kube_client.clone(), "default")).await;
+    }
 
     tokio::spawn(async {
         let liveness_route = warp::path!("healthz")

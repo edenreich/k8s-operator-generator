@@ -97,6 +97,10 @@ pub async fn handle(kube_client: Api<Cat>) -> Result<()> {
 async fn reconcile(cat: Arc<Cat>, ctx: Arc<ExtraArgs>) -> Result<Action, OperatorError> {
     let kube_client = ctx.kube_client.clone();
     let mut cat = cat.as_ref().clone();
+    let uuid = match cat.clone().status {
+        Some(status) => status.uuid.unwrap_or_default(),
+        None => "".to_string(),
+    };
 
     // Add default stauts if it's missing
     if cat.status.is_none() {
@@ -105,35 +109,35 @@ async fn reconcile(cat: Arc<Cat>, ctx: Arc<ExtraArgs>) -> Result<Action, Operato
 
     // If the resource was marked for deletion, we need to delete it
     if cat.meta().deletion_timestamp.is_some() {
-        handle_delete(&kube_client, &mut cat).await?;
+        handle_delete(&kube_client, &mut cat, &uuid).await?;
     }
 
-    // If the resource has no remote reference, meaning it's a new resource, so we need to create it
-    // Otherwise, we need to check for drift
-    match cat.clone().status.unwrap().uuid {
-        Some(_) => {
-            check_for_drift(kube_client.clone(), &mut cat.clone()).await?;
-            Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
+    // If uuid is empty, we need to create a new resource
+    if uuid.is_empty() {
+        let condition = create_condition(
+            "Creating",
+            "ProgressingCreating",
+            "Creating the resource",
+            "Resource is being created",
+            cat.meta().generation,
+        );
+        if let Some(status) = cat.clone().status.as_mut() {
+            status.conditions.push(condition);
+            status.observed_generation = cat.meta().generation;
         }
-        None => {
-            let condition = create_condition(
-                "Creating",
-                "ProgressingCreating",
-                "Creating the resource",
-                "Resource is being created",
-                cat.meta().generation,
-            );
-            if let Some(status) = cat.clone().status.as_mut() {
-                status.conditions.push(condition);
-                status.observed_generation = cat.meta().generation;
-            }
-            update_status(kube_client.clone(), cat.clone()).await?;
+        update_status(&kube_client, cat.clone()).await?;
 
-            handle_create(kube_client, &mut cat.clone()).await?;
-
-            Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
+        handle_create(&kube_client, &mut cat.clone()).await?;
+    } else {
+        // If the resource was updated in kubernetes, we need to update the remote resource
+        if cat.meta().generation != cat.status.as_ref().unwrap().observed_generation {
+            handle_update(&kube_client, &mut cat, &uuid).await?;
         }
     }
+
+    check_for_drift(&kube_client, &mut cat).await?;
+
+    Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
 }
 
 async fn get_client_config() -> Result<Configuration> {
@@ -154,12 +158,12 @@ async fn add_default_status(kube_client: &Api<Cat>, cat: &mut Cat) -> Result<(),
         observed_generation: Some(0),
     };
     cat.status = Some(status);
-    update_status(kube_client.clone(), cat.clone())
+    update_status(kube_client, cat.clone())
         .await
         .map_err(OperatorError::FailedToUpdateStatus)
 }
 
-pub async fn check_for_drift(kube_client: Api<Cat>, cat: &mut Cat) -> Result<()> {
+pub async fn check_for_drift(kube_client: &Api<Cat>, cat: &mut Cat) -> Result<()> {
     let dto = convert_kube_type_to_dto(cat.clone());
     let uuid = dto.uuid.clone().unwrap_or_default();
     let config = get_client_config().await?;
@@ -190,7 +194,7 @@ pub async fn check_for_drift(kube_client: Api<Cat>, cat: &mut Cat) -> Result<()>
                             status.conditions.push(condition);
                             status.observed_generation = cat.meta().generation;
                         }
-                        return update_status(kube_client.clone(), cat_clone).await;
+                        update_status(kube_client, cat_clone).await?
                     }
                     Err(e) => {
                         error!("Failed to update Cat: {:?}", e);
@@ -213,23 +217,18 @@ fn error_policy(_resource: Arc<Cat>, error: &OperatorError, _ctx: Arc<ExtraArgs>
     Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC))
 }
 
-async fn handle_delete(kube_client: &Api<Cat>, cat: &mut Cat) -> Result<(), OperatorError> {
+async fn handle_delete(
+    kube_client: &Api<Cat>,
+    cat: &mut Cat,
+    uuid: &str,
+) -> Result<(), OperatorError> {
     let config = get_client_config().await?;
-    let uuid = match cat.clone().status {
-        Some(status) => match status.clone().uuid {
-            Some(uuid) => uuid,
-            None => {
-                warn!("Cat has no resource reference in status, cannot delete by id. Skipping...");
-                return Ok(());
-            }
-        },
-        None => {
-            warn!("Cat has no status, cannot delete by id. Skipping...");
-            return Ok(());
-        }
-    };
+    if uuid.is_empty() {
+        warn!("Cat has no status, cannot delete by id. Skipping...");
+        return Ok(());
+    }
 
-    if let Err(e) = delete_cat_by_id(&config, &uuid).await {
+    if let Err(e) = delete_cat_by_id(&config, uuid).await {
         error!("Failed to delete cat: {:?}", e);
         return Err(OperatorError::FailedToDeleteCat(e.into()));
     }
@@ -239,27 +238,21 @@ async fn handle_delete(kube_client: &Api<Cat>, cat: &mut Cat) -> Result<(), Oper
     Ok(())
 }
 
-pub async fn handle_update_cat_by_id(
-    config: &Configuration,
-    cat: &mut Cat,
-    kubernetes_api: Api<Cat>,
-) -> Result<()> {
+pub async fn handle_update(kubernetes_api: &Api<Cat>, cat: &mut Cat, uuid: &str) -> Result<()> {
     let dto = convert_kube_type_to_dto(cat.clone());
-    let uuid = match dto.uuid.clone() {
-        Some(uuid) => uuid,
-        None => {
-            warn!("Cat has no status, cannot update by id. Skipping...");
-            return Ok(());
-        }
-    };
+    let config = get_client_config().await?;
 
-    update_cat_by_id(&config, &uuid, dto)
+    if uuid.is_empty() {
+        return Err(anyhow::anyhow!("uuid is empty"));
+    }
+
+    update_cat_by_id(&config, uuid, dto)
         .await
         .context("Failed to update a cat by id")?;
 
     let cat_name = cat.metadata.name.as_deref().unwrap_or_default();
     kubernetes_api
-        .replace(cat_name, &PostParams::default(), &cat)
+        .replace(cat_name, &PostParams::default(), cat)
         .await
         .context("Failed to update a cat by id")?;
 
@@ -267,7 +260,7 @@ pub async fn handle_update_cat_by_id(
     Ok(())
 }
 
-pub async fn handle_create(kube_client: Api<Cat>, cat: &mut Cat) -> Result<(), anyhow::Error> {
+pub async fn handle_create(kube_client: &Api<Cat>, cat: &mut Cat) -> Result<(), anyhow::Error> {
     let dto = convert_kube_type_to_dto(cat.clone());
     let config = get_client_config().await?;
 
@@ -288,7 +281,7 @@ pub async fn handle_create(kube_client: Api<Cat>, cat: &mut Cat) -> Result<(), a
                     status.uuid = Some(uuid);
                     status.observed_generation = cat.meta().generation;
                 }
-                return update_status(kube_client.clone(), cat_clone).await;
+                update_status(kube_client, cat_clone).await
             }
             None => {
                 warn!("Remote cat has no uuid, cannot update status");

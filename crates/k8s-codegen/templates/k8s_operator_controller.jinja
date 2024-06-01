@@ -37,12 +37,12 @@ const API_URL: &str = "{{ api_url }}";
 const API_USER_AGENT: &str = "k8s-operator";
 
 fn convert_kube_type_to_dto({{ arg_name }}: {{ kind_struct }}) -> {{ kind_struct }}Dto {
-    let uuid = match {{ arg_name }}.status {
-        Some(status) => status.uuid,
+    let {{ resource_remote_ref }} = match {{ arg_name }}.status {
+        Some(status) => status.{{ resource_remote_ref }},
         None => None,
     };
     {{ kind_struct }}Dto {
-        uuid,
+        {{ resource_remote_ref}},
         {%- for field in dto_fields %}
             {{ field.pub_name }}: {{ arg_name }}.spec.{{ field.pub_name }},
         {%- endfor %}
@@ -111,6 +111,10 @@ pub async fn handle(kube_client: Api<{{ kind_struct }}>) -> Result<()> {
 async fn reconcile({{ arg_name }}: Arc<{{ kind_struct }}>, ctx: Arc<ExtraArgs>) -> Result<Action, OperatorError> {
     let kube_client = ctx.kube_client.clone();
     let mut {{ arg_name }} = {{ arg_name }}.as_ref().clone();
+    let {{ resource_remote_ref }} = match {{ arg_name }}.clone().status {
+        Some(status) => status.{{ resource_remote_ref }}.unwrap_or_default(),
+        None => "".to_string(),
+    };
 
     // Add default stauts if it's missing
     if {{ arg_name }}.status.is_none() {
@@ -120,20 +124,14 @@ async fn reconcile({{ arg_name }}: Arc<{{ kind_struct }}>, ctx: Arc<ExtraArgs>) 
     {% if has_delete_action %}
     // If the resource was marked for deletion, we need to delete it
     if {{ arg_name }}.meta().deletion_timestamp.is_some() {
-        handle_delete(&kube_client, &mut {{ arg_name }}).await?;
+        handle_delete(&kube_client, &mut {{ arg_name }}, &{{ resource_remote_ref }}).await?;
     }
     {% else %}
     warn!("OpenAPI Spec doesn't have a delete operation implemented for {{ tag }} tag.");
     {% endif %}
 
-    // If the resource has no remote reference, meaning it's a new resource, so we need to create it
-    // Otherwise, we need to check for drift
-    match {{ arg_name }}.clone().status.unwrap().uuid {
-        Some(_) => {
-            check_for_drift(kube_client.clone(), &mut {{ arg_name }}.clone()).await?;
-            Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
-        }
-        None => {
+    // If {{ resource_remote_ref }} is empty, we need to create a new resource
+    if {{ resource_remote_ref }}.is_empty() {
             let condition = create_condition(
                 "Creating",
                 "ProgressingCreating",
@@ -145,15 +143,26 @@ async fn reconcile({{ arg_name }}: Arc<{{ kind_struct }}>, ctx: Arc<ExtraArgs>) 
                 status.conditions.push(condition);
                 status.observed_generation = {{ arg_name }}.meta().generation;
             }
-            update_status(kube_client.clone(), {{ arg_name }}.clone()).await?;
+            update_status(&kube_client, {{ arg_name }}.clone()).await?;
             {% if has_create_action %}
-            handle_create(kube_client, &mut {{ arg_name }}.clone()).await?;
+            handle_create(&kube_client, &mut {{ arg_name }}.clone()).await?;
             {% else %}
             warn!("OpenAPI Spec doesn't have a create operation implemented for {{ tag }} tag.");
             {% endif %}
-            Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
+    } else {
+        {% if has_update_action %}
+        // If the resource was updated in kubernetes, we need to update the remote resource
+        if {{ arg_name }}.meta().generation != {{ arg_name }}.status.as_ref().unwrap().observed_generation {
+            handle_update(&kube_client, &mut {{ arg_name }}, &{{ resource_remote_ref }}).await?;
         }
+        {% else %}
+        warn!("OpenAPI Spec doesn't have an update operation implemented for {{ tag }} tag.");
+        {% endif %}
     }
+
+    check_for_drift(&kube_client, &mut {{ arg_name }}).await?;
+
+    Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
 }
 
 async fn get_client_config() -> Result<Configuration> {
@@ -173,15 +182,15 @@ async fn add_default_status(
 ) -> Result<(), OperatorError> {
     let status = {{ kind_struct }}Status {
         conditions: vec![],
-        uuid: None,
+        {{ resource_remote_ref }}: None,
         observed_generation: Some(0),
     };
     {{ arg_name }}.status = Some(status);
-    update_status(kube_client.clone(), {{ arg_name }}.clone()).await.map_err(OperatorError::FailedToUpdateStatus)
+    update_status(kube_client, {{ arg_name }}.clone()).await.map_err(OperatorError::FailedToUpdateStatus)
 }
 
 pub async fn check_for_drift(
-    kube_client: Api<{{ kind_struct }}>,
+    kube_client: &Api<{{ kind_struct }}>,
     {{ arg_name }}: &mut {{ kind_struct }},
 ) -> Result<()> {
     let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
@@ -214,7 +223,7 @@ pub async fn check_for_drift(
                             status.conditions.push(condition);
                             status.observed_generation = {{ arg_name }}.meta().generation;
                         }
-                        return update_status(kube_client.clone(), {{ arg_name }}_clone).await;
+                        update_status(kube_client, {{ arg_name }}_clone).await?
                     }
                     Err(e) => {
                         error!("Failed to update {{ kind_struct }}: {:?}", e);
