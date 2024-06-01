@@ -23,10 +23,7 @@ const API_URL: &str = "http://localhost:8080";
 const API_USER_AGENT: &str = "k8s-operator";
 
 fn convert_uuid_to_string(uuid: Option<uuid::Uuid>) -> Option<String> {
-    match uuid {
-        Some(uuid) => Some(uuid.to_string()),
-        None => None,
-    }
+    uuid.map(|uuid| uuid.to_string())
 }
 
 fn convert_string_to_uuid(uuid: Option<String>) -> Option<uuid::Uuid> {
