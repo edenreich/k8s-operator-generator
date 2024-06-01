@@ -80,17 +80,24 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    let controllers_crds = vec![format!("cats.example.com")];
+    let controllers_crds = vec![format!("cats.example.com"), format!("dogs.example.com")];
     for controller_crd in controllers_crds {
         if let Err(e) = wait_for_crd(kube_client_api.clone(), &controller_crd).await {
             error!("Error waiting for CRD {}: {}", &controller_crd, e);
         }
     }
 
-    let controllers = vec![k8s_operator::controllers::cats::handle];
-    for controller in controllers {
-        let _ = controller(Api::namespaced(kube_client.clone(), "default")).await;
-    }
+    // Start the cats controller for the cats.example.com/v1 API group
+    let cats_client = Api::namespaced(kube_client.clone(), "default");
+    tokio::spawn(async {
+        let cats_controller = k8s_operator::controllers::cats::handle(cats_client).await;
+    });
+
+    // Start the dogs controller for the dogs.example.com/v1 API group
+    let dogs_client = Api::namespaced(kube_client.clone(), "default");
+    tokio::spawn(async {
+        let dogs_controller = k8s_operator::controllers::dogs::handle(dogs_client).await;
+    });
 
     tokio::spawn(async {
         let liveness_route = warp::path!("healthz")

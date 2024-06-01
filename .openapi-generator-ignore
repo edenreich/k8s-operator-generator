@@ -1,1 +1,2 @@
 crates/k8s-operator/src/controllers/cats.rs
+crates/k8s-operator/src/controllers/dogs.rs

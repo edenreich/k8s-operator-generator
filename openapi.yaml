@@ -9,7 +9,7 @@ info:
   x-kubernetes-operator-example-metadata-spec-field-ref: 'name'
   x-kubernetes-operator-include-tags:
     - cats
-    # - dogs
+    - dogs
     # - horses
 servers:
   - url: http://localhost:8080
