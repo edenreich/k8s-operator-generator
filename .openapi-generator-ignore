@@ -1,3 +1,1 @@
-crates/k8s-operator/src/controllers/dogs.rs
-crates/k8s-operator/src/controllers/horses.rs
 crates/k8s-operator/src/controllers/cats.rs

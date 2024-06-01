@@ -1149,6 +1149,7 @@ dependencies = [
  "serde_yaml",
  "thiserror",
  "tokio",
+ "uuid",
  "warp",
 ]
 

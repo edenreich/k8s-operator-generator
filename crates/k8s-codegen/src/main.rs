@@ -64,6 +64,7 @@ fn main() {
         kubernetes_operator_version,
         kubernetes_operator_resource_ref,
         kubernetes_operator_include_tags,
+        kubernetes_operator_metadata_spec_field_name,
     ) = extract_openapi_info(&openapi);
     let components = openapi
         .components
@@ -118,6 +119,7 @@ fn main() {
                 generate_rbac_files(schema_names.clone(), &kubernetes_operator_group);
                 generate_crdgen_file(schema_names.clone());
                 generate_examples(
+                    &kubernetes_operator_metadata_spec_field_name,
                     components.examples.into_iter().collect(),
                     &kubernetes_operator_group,
                     &kubernetes_operator_version,
@@ -136,6 +138,7 @@ fn main() {
                 generate_rbac_files(schema_names.clone(), &kubernetes_operator_group);
                 generate_crdgen_file(schema_names.clone());
                 generate_examples(
+                    &kubernetes_operator_metadata_spec_field_name,
                     components.examples.into_iter().collect(),
                     &kubernetes_operator_group,
                     &kubernetes_operator_version,
@@ -178,18 +181,23 @@ fn read_and_parse_openapi_spec(file_path: &str) -> OpenAPI {
     serde_yaml::from_reader(reader).expect("Unable to parse OpenAPI spec")
 }
 
-fn extract_openapi_info(openapi: &OpenAPI) -> (String, String, String, Vec<String>) {
+fn extract_openapi_info(openapi: &OpenAPI) -> (String, String, String, Vec<String>, String) {
     let kubernetes_operator_group = extract_extension(openapi, "x-kubernetes-operator-group");
     let kubernetes_operator_version = extract_extension(openapi, "x-kubernetes-operator-version");
     let kubernetes_operator_resource_ref =
         extract_extension(openapi, "x-kubernetes-operator-resource-ref");
     let kubernetes_operator_include_tags =
         extract_extension_array(openapi, "x-kubernetes-operator-include-tags");
+    let kubernetes_operator_metadata_spec_field_name = extract_extension(
+        openapi,
+        "x-kubernetes-operator-example-metadata-spec-field-ref",
+    );
     (
         kubernetes_operator_group,
         kubernetes_operator_version,
         kubernetes_operator_resource_ref,
         kubernetes_operator_include_tags,
+        kubernetes_operator_metadata_spec_field_name,
     )
 }
 
@@ -931,6 +939,7 @@ struct Metadata {
 }
 
 fn generate_examples(
+    kubernetes_operator_metadata_spec_field_name: &str,
     examples: std::collections::HashMap<String, ReferenceOr<openapiv3::Example>>,
     operator_group: &str,
     operator_version: &str,
@@ -945,6 +954,7 @@ fn generate_examples(
         .collect();
     for (name, example) in &examples_map {
         generate_manifest_from_example(
+            kubernetes_operator_metadata_spec_field_name,
             name,
             example,
             operator_group,
@@ -955,6 +965,7 @@ fn generate_examples(
 }
 
 fn generate_manifest_from_example(
+    kubernetes_operator_metadata_spec_field_name: &str,
     name: &str,
     example: &openapiv3::Example,
     operator_group: &str,
@@ -965,7 +976,8 @@ fn generate_manifest_from_example(
 
     match &example.value {
         Some(Value::Object(map)) => {
-            let metadata_name = get_metadata_name(name, map);
+            let metadata_name =
+                get_metadata_name(kubernetes_operator_metadata_spec_field_name, map);
             resources.push(generate_resource_from_map(
                 name,
                 &metadata_name,
@@ -978,7 +990,8 @@ fn generate_manifest_from_example(
         Some(Value::Array(arr)) => {
             for value in arr {
                 if let Value::Object(map) = value {
-                    let metadata_name = get_metadata_name(name, map);
+                    let metadata_name =
+                        get_metadata_name(kubernetes_operator_metadata_spec_field_name, map);
                     resources.push(generate_resource_from_map(
                         name,
                         &metadata_name,
@@ -998,14 +1011,22 @@ fn generate_manifest_from_example(
     }
 }
 
-fn get_metadata_name(name: &str, map: &Map<String, Value>) -> String {
-    map.get("x-kubernetes-operator-example-metadata")
-        .cloned()
-        .and_then(|v| serde_json::from_value::<Metadata>(v).ok()).map(|meta| meta.name.clone())
-        .unwrap_or_else(|| {
-            warn!("Warning: x-kubernetes-operator-example-metadata is not set for example {}. Using the regular example name.", name);
-            name.to_lowercase()
-        })
+fn get_metadata_name(
+    kubernetes_operator_metadata_spec_field_name: &str,
+    map: &Map<String, Value>,
+) -> String {
+    let name = map.get(kubernetes_operator_metadata_spec_field_name);
+
+    if let Some(Value::String(name)) = name {
+        return name.to_lowercase();
+    }
+
+    warn!(
+        "Warning: {} is not set for example. Using the regular example name.",
+        kubernetes_operator_metadata_spec_field_name
+    );
+
+    kubernetes_operator_metadata_spec_field_name.to_lowercase()
 }
 
 fn generate_resource_from_map(

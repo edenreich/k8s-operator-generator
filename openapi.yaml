@@ -6,10 +6,11 @@ info:
   x-kubernetes-operator-group: 'example.com'
   x-kubernetes-operator-version: 'v1'
   x-kubernetes-operator-resource-ref: 'uuid'
+  x-kubernetes-operator-example-metadata-spec-field-ref: 'name'
   x-kubernetes-operator-include-tags:
     - cats
-    - dogs
-    - horses
+    # - dogs
+    # - horses
 servers:
   - url: http://localhost:8080
     description: Development server
@@ -354,61 +355,51 @@ components:
   examples:
     Cat:
       value:
+        uuid: '123e4567-e89b-12d3-a456-426614174000'
         name: 'Fluffy'
         breed: 'Persian'
         age: 3
-        x-kubernetes-operator-example-metadata:
-          name: 'Fluffy'
     Cats:
       value:
-        - name: 'Fluffy'
+        - uuid: '123e4567-e89b-12d3-a456-426614174000'
+          name: 'Fluffy'
           breed: 'Persian'
           age: 3
-          x-kubernetes-operator-example-metadata:
-            name: 'Fluffy'
-        - name: 'Whiskers'
+        - uuid: '123e4567-e89b-12d3-a456-426614174001'
+          name: 'Whiskers'
           breed: 'Siamese'
           age: 2
-          x-kubernetes-operator-example-metadata:
-            name: 'Whiskers'
     Dog:
       value:
         name: 'Fido'
         breed: 'Bulldog'
         age: 3
-        x-kubernetes-operator-example-metadata:
-          name: 'Fido'
     Dogs:
       value:
-        - name: 'Fido'
+        - uuid: '123e4567-e89b-12d3-a456-426614174000'
+          name: 'Fido'
           breed: 'Bulldog'
           age: 3
-          x-kubernetes-operator-example-metadata:
-            name: 'Fido'
-        - name: 'Rex'
+        - uuid: '123e4567-e89b-12d3-a456-426614174001'
+          name: 'Rex'
           breed: 'German Shepherd'
           age: 5
-          x-kubernetes-operator-example-metadata:
-            name: 'Rex'
     Horse:
       value:
+        uuid: '123e4567-e89b-12d3-a456-426614174002'
         name: 'Star'
         breed: 'Arabian'
         age: 5
-        x-kubernetes-operator-example-metadata:
-          name: 'Star'
     Horses:
       value:
-        - name: 'Star'
+        - uuid: '255b9916-561b-4c8b-9626-53997b01d57d'
+          name: 'Star'
           breed: 'Arabian'
           age: 5
-          x-kubernetes-operator-example-metadata:
-            name: 'Star'
-        - name: 'Thunder'
+        - uuid: 'cf5cf93f-a11f-4b1c-8995-337a54c859c2'
+          name: 'Thunder'
           breed: 'Thoroughbred'
           age: 7
-          x-kubernetes-operator-example-metadata:
-            name: 'Thunder'
   schemas:
     Cat:
       type: object

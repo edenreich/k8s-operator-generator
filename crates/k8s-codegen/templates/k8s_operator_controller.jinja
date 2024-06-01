@@ -1,25 +1,16 @@
-use anyhow::{Context, Error, Result};
-use std::sync::Arc;
-use kube::api::{
-    Api,
-    WatchEvent,
-    PostParams,
-    Resource,
-};
-use log::{
-    error,
-    info,
-    warn,
-};
+use anyhow::{Context, Result};
+use futures::StreamExt;
+use kube::api::{Api, PostParams, Resource};
+use thiserror::Error;
+
+use kube_runtime::{controller::Action, watcher, Controller};
+use log::{error, info, warn};
+use std::{sync::Arc, time::Duration};
 
 use openapi::{
     apis::{
+        {{ tag }}_api::{create_{{ arg_name }}, delete_{{ arg_name }}_by_id, get_{{ arg_name }}_by_id, update_{{ arg_name }}_by_id},
         configuration::Configuration,
-        {{ tag }}_api::{
-        {%- for controller in controllers %}
-            {{ controller.operation_id }},
-        {%- endfor %}
-        },
     },
     models::{{ kind_struct }} as {{ kind_struct }}Dto,
 };
@@ -30,12 +21,13 @@ use crate::types::{{ arg_name }}::{
     {{ kind_struct }}Status,
 };
 use crate::{
-    add_event,
     add_finalizer,
-    update_status,
-    remove_finalizer,
     create_condition,
+    remove_finalizer,
+    update_status,
 };
+
+const REQUEUE_AFTER_IN_SEC: u64 = 30;
 
 fn convert_kube_type_to_dto({{ arg_name }}: {{ kind_struct }}) -> {{ kind_struct }}Dto {
     let uuid = match {{ arg_name }}.status {
@@ -58,105 +50,110 @@ fn convert_dto_to_kube_type({{ arg_name }}: {{ kind_struct }}Dto) -> {{ kind_str
     }
 }
 
-pub async fn handle(
-    config: Arc<Configuration>,
-    event: WatchEvent<{{ kind_struct }}>,
-    kubernetes_api: Api<{{ kind_struct }}>) -> anyhow::Result<()>
-{
-    match event {
-        WatchEvent::Added(mut {{ arg_name }}) => {
-            // Add default stauts if it's missing
-            if {{ arg_name }}.status.is_none() {
-                {{ arg_name }}.status = Some({{ kind_struct }}Status::default());
-            };
+struct ExtraArgs {
+    kube_client: Api<{{ kind_struct }}>,
+    config: Configuration,
+}
 
-            {% if has_delete_action %}
-            // If the resource was marked for deletion, we need to delete it
-            if {{ arg_name }}.metadata.deletion_timestamp.is_some() {
-                let condition = create_condition(
-                    "Deleting",
-                    "ProgressingDeletion",
-                    "Deleting the resource",
-                    "Resource is being deleted",
-                    {{ arg_name }}.meta().generation,
-                );
-                let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
-                if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
-                    status.conditions.push(condition);
-                    status.observed_generation = {{ arg_name }}.meta().generation;
-                }
-                update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await?;
-                return handle_delete_{{ arg_name }}_by_id(&config, &mut {{ arg_name }}, kubernetes_api).await;
-            }
-            {% else %}
-            warn!("OpenAPI Spec doesn't have a delete operation");
-            {% endif %}
+#[derive(Debug, Error)]
+enum OperatorError {
+    #[error(transparent)]
+    AnyhowError(#[from] anyhow::Error),
+    // #[error("Failed to process event: {0}")]
+    // FailedToProcessEvent(#[source] kube::Error),
+    #[error("Failed to delete a {{ arg_name }}: {0}")]
+    FailedToDelete{{ kind_struct }}(#[source] anyhow::Error),
+    // #[error("Failed to update a {{ arg_name }}: {0}")]
+    // FailedToUpdate{{ kind_struct }}(#[source] anyhow::Error),
+    // #[error("Failed to create a {{ arg_name }}: {0}")]
+    // FailedToCreate{{ kind_struct }}(#[source] anyhow::Error),
+    // #[error("Failed to get a {{ arg_name }}: {0}")]
+    // FailedToGet{{ kind_struct }}(#[source] anyhow::Error),
+    // #[error("Failed to update status: {0}")]
+    // FailedToUpdateStatus(#[source] anyhow::Error),
+    // #[error("Failed to remove finalizer: {0}")]
+    // FailedToRemoveFinalizer(#[source] anyhow::Error),
+    // #[error("Failed to add finalizer: {0}")]
+    // FailedToAddFinalizer(#[source] anyhow::Error),
+    // #[error("Failed to check for drift: {0}")]
+    // FailedToCheckForDrift(#[source] anyhow::Error),
+}
 
-            {% if has_create_action %}
-            // If the resource has no remote reference, meaning it's a new resource, so we need to create it
-            // Otherwise, we need to check for drift
-            match {{ arg_name }}.clone().status.unwrap().uuid {
-                Some(_) => {
-                    return check_for_drift(&config, kubernetes_api.clone(), &mut {{ arg_name }}).await;
-                }
-                None => {
-            {%- for controller in controllers %}
-                {%- if controller.http_method == "post" %}
-                let condition = create_condition(
-                    "Creating",
-                    "ProgressingCreating",
-                    "Creating the resource",
-                    "Resource is being created",
-                    {{ arg_name }}.meta().generation,
-                );
-                let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
-                if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
-                    status.conditions.push(condition);
-                    status.observed_generation = {{ arg_name }}.meta().generation;
-                }
-                update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await?;
-                return handle_{{ controller.operation_id }}(&config, &mut {{ arg_name }}, kubernetes_api).await;
-                {%- endif %}
-            {%- endfor %}
-                }
+pub async fn handle(kube_client: Api<{{ kind_struct }}>, config: Configuration) -> Result<()> {
+    info!("Starting the controller");
+    let controller = Controller::new(kube_client.clone(), watcher::Config::default());
+
+    let extra_args = Arc::new(ExtraArgs {
+        kube_client: kube_client.clone(),
+        config,
+    });
+
+    info!("Running the controller");
+    controller
+        .run(reconcile, error_policy, extra_args)
+        .for_each(|res| async {
+            match res {
+                Ok(action) => info!("Reconciliation was successful, action: {:?}", action),
+                Err(e) => error!("Error reconciling: {:?}", e),
             }
-            {% else %}
-            warn!("OpenAPI Spec doesn't have a create operation");
-            {% endif %}
+        })
+        .await;
+
+    info!("{{ kind_struct }} Controller has stopped");
+    Ok(())
+}
+
+async fn reconcile({{ arg_name }}: Arc<{{ kind_struct }}>, ctx: Arc<ExtraArgs>) -> Result<Action, OperatorError> {
+    let config = &ctx.config;
+    let kube_client = ctx.kube_client.clone();
+    let {{ arg_name }} = {{ arg_name }}.as_ref();
+
+    // Add default stauts if it's missing
+    if {{ arg_name }}.status.is_none() {
+        let status = {{ kind_struct }}Status {
+            conditions: vec![],
+            uuid: None,
+            observed_generation: Some(0),
+        };
+        let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
+        {{ arg_name }}_clone.status = Some(status);
+        update_status(kube_client.clone(), {{ arg_name }}_clone).await?;
+    }
+
+    // If the resource was marked for deletion, we need to delete it
+    if {{ arg_name }}.meta().deletion_timestamp.is_some() {
+        if let Err(e) = handle_delete_{{ arg_name }}_by_id(config, &mut {{ arg_name }}.clone(), kube_client.clone()).await
+        {
+            error!("Failed to delete {{ arg_name }}: {:?}", e);
+            return Err(OperatorError::FailedToDelete{{ kind_struct }}(e));
         }
-        WatchEvent::Modified(mut {{ arg_name }}) => {
-        {% if has_update_action %}
-                let condition = create_condition(
-                    "Updating",
-                    "ProgressingUpdating",
-                    "Updating the resource",
-                    "Resource is being updated",
-                    {{ arg_name }}.meta().generation,
-                );
-                let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
-                if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
-                    status.conditions.push(condition);
-                    status.observed_generation = {{ arg_name }}.meta().generation;
-                }
-                update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await?;
-            {%- for controller in controllers %}
-                {%- if controller.http_method == "put" %}
-                return handle_{{ controller.operation_id }}(&config, &mut {{ arg_name }}, kubernetes_api).await;
-                {%- endif %}
-            {%- endfor %}
-        {% else %}
-            warn!("OpenAPI Spec doesn't have a update operation");
-        {% endif %}
+        return Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)));
+    }
+
+    // If the resource has no remote reference, meaning it's a new resource, so we need to create it
+    // Otherwise, we need to check for drift
+    match {{ arg_name }}.clone().status.unwrap().uuid {
+        Some(_) => {
+            check_for_drift(config, kube_client.clone(), &mut {{ arg_name }}.clone()).await?;
+            Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
         }
-        WatchEvent::Bookmark(bookmark) => {
-            info!("{{ kind_struct }} Bookmark: {:?}", bookmark.metadata.resource_version);
-            return Ok(());
+        None => {
+            let condition = create_condition(
+                "Creating",
+                "ProgressingCreating",
+                "Creating the resource",
+                "Resource is being created",
+                {{ arg_name }}.meta().generation,
+            );
+            if let Some(status) = {{ arg_name }}.clone().status.as_mut() {
+                status.conditions.push(condition);
+                status.observed_generation = {{ arg_name }}.meta().generation;
+            }
+            update_status(kube_client.clone(), {{ arg_name }}.clone()).await?;
+            handle_create_{{ arg_name }}(config, {{ arg_name }}.clone(), kube_client).await?;
+            Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
         }
-        _ => {
-            info!("{{ kind_struct }} {:?}", event);
-            return Ok(());
-        }
-    };
+    }
 }
 
 pub async fn check_for_drift(
@@ -209,4 +206,9 @@ pub async fn check_for_drift(
     }
 
     Ok(())
+}
+
+fn error_policy(_resource: Arc<{{ kind_struct }}>, error: &OperatorError, _ctx: Arc<ExtraArgs>) -> Action {
+    error!("Error processing event: {:?}", error);
+    Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC))
 }

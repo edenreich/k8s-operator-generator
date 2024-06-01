@@ -111,6 +111,8 @@ async fn reconcile(cat: Arc<Cat>, ctx: Arc<ExtraArgs>) -> Result<Action, Operato
         update_status(kube_client.clone(), cat_clone).await?;
     }
 
+    let cat_status = cat.status.as_ref().unwrap();
+
     // If the resource was marked for deletion, we need to delete it
     if cat.meta().deletion_timestamp.is_some() {
         if let Err(e) = handle_delete_cat_by_id(config, &mut cat.clone(), kube_client.clone()).await
@@ -123,7 +125,7 @@ async fn reconcile(cat: Arc<Cat>, ctx: Arc<ExtraArgs>) -> Result<Action, Operato
 
     // If the resource has no remote reference, meaning it's a new resource, so we need to create it
     // Otherwise, we need to check for drift
-    match cat.clone().status.unwrap().uuid {
+    match cat_status.uuid {
         Some(_) => {
             check_for_drift(config, kube_client.clone(), &mut cat.clone()).await?;
             Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
@@ -262,41 +264,43 @@ pub async fn handle_update_cat_by_id(
 
 pub async fn handle_create_cat(
     config: &Configuration,
-    cat: Cat,
+    mut cat: Cat,
     kubernetes_api: Api<Cat>,
 ) -> Result<(), anyhow::Error> {
-    let dto = convert_kube_type_to_dto(cat.clone());
+    let dto: CatDto = convert_kube_type_to_dto(cat.clone());
 
-    match create_cat(config, dto.clone()).await {
-        Ok(remote_cat) => match remote_cat.uuid {
-            Some(uuid) => {
-                let mut cat = cat;
-                add_finalizer(&mut cat, kubernetes_api.clone()).await?;
-                let condition = create_condition(
-                    "Created",
-                    "AvailableCreated",
-                    "Created the resource",
-                    "Resource has been created",
-                    cat.meta().generation,
-                );
-                let mut cat_clone = cat.clone();
-                if let Some(status) = cat_clone.status.as_mut() {
-                    status.conditions.push(condition);
-                    status.uuid = Some(uuid);
-                    status.observed_generation = cat.meta().generation;
-                }
-                update_status(kubernetes_api.clone(), cat_clone).await
-            }
-            None => {
-                warn!("Remote cat has no uuid, cannot update status");
-                Ok(())
-            }
-        },
-        Err(e) => {
-            error!("Failed to create a new cat: {:?}", e);
-            Err(anyhow::anyhow!("Failed to create a new cat: {:?}", e))
-        }
+    let remote_cat = create_cat(config, dto.clone()).await.map_err(|e| {
+        error!("Failed to create a new cat: {:?}", e);
+        anyhow::anyhow!("Failed to create a new cat: {:?}", e)
+    })?;
+
+    let uuid = remote_cat.uuid;
+    if uuid.is_none() {
+        error!("Remote cat has no uuid, cannot update status");
+        return Err(anyhow::anyhow!(
+            "Remote cat has no uuid, cannot update status"
+        ));
     }
+
+    add_finalizer(&mut cat, kubernetes_api.clone()).await?;
+
+    let condition = create_condition(
+        "Created",
+        "AvailableCreated",
+        "Created the resource",
+        "Resource has been created",
+        cat.meta().generation,
+    );
+
+    let generation = cat.meta().generation;
+
+    if let Some(status) = cat.status.as_mut() {
+        status.conditions.push(condition);
+        status.uuid = uuid;
+        status.observed_generation = generation;
+    }
+
+    update_status(kubernetes_api.clone(), cat).await
 }
 
 fn error_policy(_resource: Arc<Cat>, error: &OperatorError, _ctx: Arc<ExtraArgs>) -> Action {
