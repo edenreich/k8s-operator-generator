@@ -97,7 +97,7 @@ async fn main() -> anyhow::Result<()> {
     // Start the {{ controller }} controller for the {{ controller }}.{{ api_group }}/{{ api_version }} API group
     let {{ controller }}_client = Api::namespaced(kube_client.clone(), "default");
     tokio::spawn(async {
-        let {{ controller }}_controller = k8s_operator::controllers::{{ controller }}::handle({{ controller }}_client).await;
+        let _{{ controller }}_controller = k8s_operator::controllers::{{ controller }}::handle({{ controller }}_client).await;
     });
     {% endfor %}
 

@@ -430,11 +430,10 @@ fn generate_controllers(
 
 #[derive(Template)]
 #[template(path = "k8s_operator_controller.jinja")]
-struct ControllerTemplate<'a> {
+struct ControllerTemplate {
     tag: String,
     arg_name: String,
     kind_struct: String,
-    controllers: Vec<&'a ControllerAttributes>,
     dto_fields: Vec<Field>,
     resource_remote_ref: String,
     has_create_action: bool,
@@ -511,7 +510,6 @@ fn generate_controller(
         tag: tag.to_lowercase(),
         arg_name: tag.to_lowercase().to_singular(),
         kind_struct: type_name.clone(),
-        controllers: controller_attributes.iter().collect(),
         dto_fields: fields,
         resource_remote_ref: resource_remote_ref.clone(),
         has_create_action,

@@ -90,7 +90,7 @@ async fn main() -> anyhow::Result<()> {
     // Start the cats controller for the cats.example.com/v1 API group
     let cats_client = Api::namespaced(kube_client.clone(), "default");
     tokio::spawn(async {
-        let cats_controller = k8s_operator::controllers::cats::handle(cats_client).await;
+        let _cats_controller = k8s_operator::controllers::cats::handle(cats_client).await;
     });
 
     tokio::spawn(async {
