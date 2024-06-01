@@ -36,9 +36,26 @@ const REQUEUE_AFTER_IN_SEC: u64 = 30;
 const API_URL: &str = "{{ api_url }}";
 const API_USER_AGENT: &str = "k8s-operator";
 
+fn convert_uuid_to_string(uuid: Option<uuid::Uuid>) -> Option<String> {
+    match uuid {
+        Some(uuid) => Some(uuid.to_string()),
+        None => None,
+    }
+}
+
+fn convert_string_to_uuid(uuid: Option<String>) -> Option<uuid::Uuid> {
+    match uuid {
+        Some(uuid) => match uuid::Uuid::parse_str(&uuid) {
+            Ok(uuid) => Some(uuid),
+            Err(_) => None,
+        },
+        None => None,
+    }
+}
+
 fn convert_kube_type_to_dto({{ arg_name }}: {{ kind_struct }}) -> {{ kind_struct }}Dto {
     let {{ resource_remote_ref }} = match {{ arg_name }}.status {
-        Some(status) => status.{{ resource_remote_ref }},
+        Some(status) => convert_string_to_uuid(status.{{ resource_remote_ref }}),
         None => None,
     };
     {{ kind_struct }}Dto {
@@ -194,7 +211,7 @@ pub async fn check_for_drift(
     {{ arg_name }}: &mut {{ kind_struct }},
 ) -> Result<()> {
     let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
-    let {{ resource_remote_ref }} = dto.{{ resource_remote_ref }}.clone().unwrap_or_default();
+    let {{ resource_remote_ref }} = convert_uuid_to_string(dto.{{ resource_remote_ref }}).unwrap();
     let config = get_client_config().await?;
 
     if dto.{{ resource_remote_ref }}.is_none() {

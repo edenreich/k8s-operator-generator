@@ -22,9 +22,26 @@ const REQUEUE_AFTER_IN_SEC: u64 = 30;
 const API_URL: &str = "http://localhost:8080";
 const API_USER_AGENT: &str = "k8s-operator";
 
+fn convert_uuid_to_string(uuid: Option<uuid::Uuid>) -> Option<String> {
+    match uuid {
+        Some(uuid) => Some(uuid.to_string()),
+        None => None,
+    }
+}
+
+fn convert_string_to_uuid(uuid: Option<String>) -> Option<uuid::Uuid> {
+    match uuid {
+        Some(uuid) => match uuid::Uuid::parse_str(&uuid) {
+            Ok(uuid) => Some(uuid),
+            Err(_) => None,
+        },
+        None => None,
+    }
+}
+
 fn convert_kube_type_to_dto(cat: Cat) -> CatDto {
     let uuid = match cat.status {
-        Some(status) => status.uuid,
+        Some(status) => convert_string_to_uuid(status.uuid),
         None => None,
     };
     CatDto {
@@ -165,7 +182,7 @@ async fn add_default_status(kube_client: &Api<Cat>, cat: &mut Cat) -> Result<(),
 
 pub async fn check_for_drift(kube_client: &Api<Cat>, cat: &mut Cat) -> Result<()> {
     let dto = convert_kube_type_to_dto(cat.clone());
-    let uuid = dto.uuid.clone().unwrap_or_default();
+    let uuid = convert_uuid_to_string(dto.uuid).unwrap();
     let config = get_client_config().await?;
 
     if dto.uuid.is_none() {
@@ -267,6 +284,7 @@ pub async fn handle_create(kube_client: &Api<Cat>, cat: &mut Cat) -> Result<(), 
     match create_cat(&config, dto.clone()).await {
         Ok(remote_cat) => match remote_cat.uuid {
             Some(uuid) => {
+                let uuid = convert_uuid_to_string(Some(uuid)).unwrap();
                 add_finalizer(cat, kube_client.clone()).await?;
                 let condition = create_condition(
                     "Created",

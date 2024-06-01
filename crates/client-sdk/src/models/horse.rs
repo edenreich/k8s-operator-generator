@@ -13,7 +13,7 @@ use crate::models;
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Horse {
     #[serde(rename = "uuid", skip_serializing_if = "Option::is_none")]
-    pub uuid: Option<String>,
+    pub uuid: Option<uuid::Uuid>,
     #[serde(rename = "name")]
     pub name: String,
     #[serde(rename = "breed")]

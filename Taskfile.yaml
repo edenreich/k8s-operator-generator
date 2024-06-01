@@ -62,7 +62,7 @@ tasks:
   run-fake-server:
     desc: Run the fake server
     cmds:
-      - docker run --rm -it -p 8080:4010 -v ${PWD}/openapi.yaml:/tmp/openapi.yaml stoplight/prism:latest mock -h 0.0.0.0 /tmp/openapi.yaml
+      - docker run --rm -it -p 8080:4010 -v ${PWD}/openapi.yaml:/tmp/openapi.yaml stoplight/prism:latest mock -d -h 0.0.0.0 /tmp/openapi.yaml
 
   package:
     desc: Package the k8s operator

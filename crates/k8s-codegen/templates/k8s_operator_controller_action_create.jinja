@@ -10,6 +10,7 @@ pub async fn handle_create(
     match {{ controller.operation_id }}(&config, dto.clone()).await {
         Ok(remote_{{ arg_name }}) => match remote_{{ arg_name }}.{{ resource_remote_ref }} {
             Some({{ resource_remote_ref }}) => {
+                let uuid = convert_uuid_to_string(Some({{ resource_remote_ref }})).unwrap();
                 add_finalizer({{ arg_name }}, kube_client.clone()).await?;
                 let condition = create_condition(
                     "Created",

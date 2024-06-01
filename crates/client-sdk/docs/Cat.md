@@ -4,7 +4,7 @@
 
 Name | Type | Description | Notes
 ------------ | ------------- | ------------- | -------------
-**uuid** | Option<**String**> |  | [optional]
+**uuid** | Option<[**uuid::Uuid**](uuid::Uuid.md)> |  | [optional][readonly]
 **name** | **String** |  | 
 **breed** | **String** |  | 
 **age** | **i32** |  | 

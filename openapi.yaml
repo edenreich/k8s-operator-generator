@@ -9,7 +9,7 @@ info:
   x-kubernetes-operator-example-metadata-spec-field-ref: 'name'
   x-kubernetes-operator-include-tags:
     - cats
-    - dogs
+    # - dogs
     # - horses
 servers:
   - url: http://localhost:8080
@@ -410,12 +410,19 @@ components:
       properties:
         uuid:
           type: string
+          readOnly: true
+          format: uuid
         name:
           type: string
+          x-faker: name.findName
         breed:
           type: string
         age:
           type: integer
+          x-faker:
+            random.number:
+              min: 1
+              max: 20
     Dog:
       type: object
       required:
@@ -425,12 +432,19 @@ components:
       properties:
         uuid:
           type: string
+          readOnly: true
+          format: uuid
         name:
           type: string
+          x-faker: name.findName
         breed:
           type: string
         age:
           type: integer
+          x-faker:
+            random.number:
+              min: 1
+              max: 20
     Horse:
       type: object
       required:
@@ -440,9 +454,16 @@ components:
       properties:
         uuid:
           type: string
+          readOnly: true
+          format: uuid
         name:
           type: string
+          x-faker: name.findName
         breed:
           type: string
         age:
           type: integer
+          x-faker:
+            random.number:
+              min: 1
+              max: 20
