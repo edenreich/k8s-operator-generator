@@ -9,7 +9,12 @@ use std::{sync::Arc, time::Duration};
 
 use openapi::{
     apis::{
-        {{ tag }}_api::{create_{{ arg_name }}, delete_{{ arg_name }}_by_id, get_{{ arg_name }}_by_id, update_{{ arg_name }}_by_id},
+        {{ tag }}_api::{
+            create_{{ arg_name }},
+            delete_{{ arg_name }}_by_id,
+            get_{{ arg_name }}_by_id,
+            update_{{ arg_name }}_by_id
+        },
         configuration::Configuration,
     },
     models::{{ kind_struct }} as {{ kind_struct }}Dto,
@@ -28,6 +33,8 @@ use crate::{
 };
 
 const REQUEUE_AFTER_IN_SEC: u64 = 30;
+const API_URL: &str = "{{ api_url }}";
+const API_USER_AGENT: &str = "k8s-operator";
 
 fn convert_kube_type_to_dto({{ arg_name }}: {{ kind_struct }}) -> {{ kind_struct }}Dto {
     let uuid = match {{ arg_name }}.status {
@@ -52,7 +59,6 @@ fn convert_dto_to_kube_type({{ arg_name }}: {{ kind_struct }}Dto) -> {{ kind_str
 
 struct ExtraArgs {
     kube_client: Api<{{ kind_struct }}>,
-    config: Configuration,
 }
 
 #[derive(Debug, Error)]
@@ -69,8 +75,8 @@ enum OperatorError {
     // FailedToCreate{{ kind_struct }}(#[source] anyhow::Error),
     // #[error("Failed to get a {{ arg_name }}: {0}")]
     // FailedToGet{{ kind_struct }}(#[source] anyhow::Error),
-    // #[error("Failed to update status: {0}")]
-    // FailedToUpdateStatus(#[source] anyhow::Error),
+    #[error("Failed to update status: {0}")]
+    FailedToUpdateStatus(#[source] anyhow::Error),
     // #[error("Failed to remove finalizer: {0}")]
     // FailedToRemoveFinalizer(#[source] anyhow::Error),
     // #[error("Failed to add finalizer: {0}")]
@@ -79,13 +85,12 @@ enum OperatorError {
     // FailedToCheckForDrift(#[source] anyhow::Error),
 }
 
-pub async fn handle(kube_client: Api<{{ kind_struct }}>, config: Configuration) -> Result<()> {
+pub async fn handle(kube_client: Api<{{ kind_struct }}>) -> Result<()> {
     info!("Starting the controller");
     let controller = Controller::new(kube_client.clone(), watcher::Config::default());
 
     let extra_args = Arc::new(ExtraArgs {
         kube_client: kube_client.clone(),
-        config,
     });
 
     info!("Running the controller");
@@ -104,37 +109,28 @@ pub async fn handle(kube_client: Api<{{ kind_struct }}>, config: Configuration) 
 }
 
 async fn reconcile({{ arg_name }}: Arc<{{ kind_struct }}>, ctx: Arc<ExtraArgs>) -> Result<Action, OperatorError> {
-    let config = &ctx.config;
     let kube_client = ctx.kube_client.clone();
-    let {{ arg_name }} = {{ arg_name }}.as_ref();
+    let mut {{ arg_name }} = {{ arg_name }}.as_ref().clone();
 
     // Add default stauts if it's missing
     if {{ arg_name }}.status.is_none() {
-        let status = {{ kind_struct }}Status {
-            conditions: vec![],
-            uuid: None,
-            observed_generation: Some(0),
-        };
-        let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
-        {{ arg_name }}_clone.status = Some(status);
-        update_status(kube_client.clone(), {{ arg_name }}_clone).await?;
+        add_default_status(&kube_client, &mut {{ arg_name }}).await?;
     }
 
+    {% if has_delete_action %}
     // If the resource was marked for deletion, we need to delete it
     if {{ arg_name }}.meta().deletion_timestamp.is_some() {
-        if let Err(e) = handle_delete_{{ arg_name }}_by_id(config, &mut {{ arg_name }}.clone(), kube_client.clone()).await
-        {
-            error!("Failed to delete {{ arg_name }}: {:?}", e);
-            return Err(OperatorError::FailedToDelete{{ kind_struct }}(e));
-        }
-        return Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)));
+        handle_delete(&kube_client, &mut {{ arg_name }}).await?;
     }
+    {% else %}
+    warn!("OpenAPI Spec doesn't have a delete operation implemented for {{ tag }} tag.");
+    {% endif %}
 
     // If the resource has no remote reference, meaning it's a new resource, so we need to create it
     // Otherwise, we need to check for drift
     match {{ arg_name }}.clone().status.unwrap().uuid {
         Some(_) => {
-            check_for_drift(config, kube_client.clone(), &mut {{ arg_name }}.clone()).await?;
+            check_for_drift(kube_client.clone(), &mut {{ arg_name }}.clone()).await?;
             Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
         }
         None => {
@@ -150,19 +146,47 @@ async fn reconcile({{ arg_name }}: Arc<{{ kind_struct }}>, ctx: Arc<ExtraArgs>) 
                 status.observed_generation = {{ arg_name }}.meta().generation;
             }
             update_status(kube_client.clone(), {{ arg_name }}.clone()).await?;
-            handle_create_{{ arg_name }}(config, {{ arg_name }}.clone(), kube_client).await?;
+            {% if has_create_action %}
+            handle_create(kube_client, &mut {{ arg_name }}.clone()).await?;
+            {% else %}
+            warn!("OpenAPI Spec doesn't have a create operation implemented for {{ tag }} tag.");
+            {% endif %}
             Ok(Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC)))
         }
     }
 }
 
+async fn get_client_config() -> Result<Configuration> {
+    let config = Configuration {
+        base_path: API_URL.to_string(),
+        client: reqwest::Client::new(),
+        user_agent: Some(API_USER_AGENT.to_string()),
+        bearer_access_token: Some(std::env::var("ACCESS_TOKEN").unwrap_or_default()),
+        ..Default::default()
+    };
+    Ok(config)
+}
+
+async fn add_default_status(
+    kube_client: &Api<{{ kind_struct }}>,
+    {{ arg_name }}: &mut {{ kind_struct }},
+) -> Result<(), OperatorError> {
+    let status = {{ kind_struct }}Status {
+        conditions: vec![],
+        uuid: None,
+        observed_generation: Some(0),
+    };
+    {{ arg_name }}.status = Some(status);
+    update_status(kube_client.clone(), {{ arg_name }}.clone()).await.map_err(OperatorError::FailedToUpdateStatus)
+}
+
 pub async fn check_for_drift(
-    config: &Configuration,
-    kubernetes_api: Api<{{ kind_struct }}>,
+    kube_client: Api<{{ kind_struct }}>,
     {{ arg_name }}: &mut {{ kind_struct }},
 ) -> Result<()> {
     let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
     let {{ resource_remote_ref }} = dto.{{ resource_remote_ref }}.clone().unwrap_or_default();
+    let config = get_client_config().await?;
 
     if dto.{{ resource_remote_ref }}.is_none() {
         warn!("{{ kind_struct }} has no status, cannot get by id or check for drift. Skipping...");
@@ -190,7 +214,7 @@ pub async fn check_for_drift(
                             status.conditions.push(condition);
                             status.observed_generation = {{ arg_name }}.meta().generation;
                         }
-                        return update_status(kubernetes_api.clone(), {{ arg_name }}_clone).await;
+                        return update_status(kube_client.clone(), {{ arg_name }}_clone).await;
                     }
                     Err(e) => {
                         error!("Failed to update {{ kind_struct }}: {:?}", e);

@@ -453,6 +453,7 @@ struct ControllerTemplate<'a> {
     has_create_action: bool,
     has_update_action: bool,
     has_delete_action: bool,
+    api_url: String,
 }
 
 #[derive(Template)]
@@ -465,7 +466,7 @@ struct ControllerActionDeleteTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_controller_action_put.jinja")]
+#[template(path = "k8s_operator_controller_action_update.jinja")]
 struct ControllerActionPutTemplate<'a> {
     arg_name: String,
     kind_struct: String,
@@ -474,7 +475,7 @@ struct ControllerActionPutTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_controller_action_post.jinja")]
+#[template(path = "k8s_operator_controller_action_create.jinja")]
 struct ControllerActionPostTemplate<'a> {
     arg_name: String,
     kind_struct: String,
@@ -529,6 +530,7 @@ fn generate_controller(
         has_create_action,
         has_update_action,
         has_delete_action,
+        api_url: "http://localhost:8080".to_string(),
     }
     .render()
     .unwrap();

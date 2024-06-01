@@ -6,56 +6,8 @@ use kube::{
     Client as KubeClient, CustomResourceExt,
 };
 use log::{error, info, warn};
-use openapi::apis::configuration::Configuration;
 use tokio::time::timeout;
 use warp::Filter;
-
-async fn watch_resource<T, F>(
-    config: Arc<Configuration>,
-    api: Api<T>,
-    handle: F,
-) -> anyhow::Result<()>
-where
-    T: ResourceExt + Clone + Debug + Send + DeserializeOwned + 'static,
-    F: Fn(Arc<Configuration>, WatchEvent<T>, Api<T>) -> anyhow::Result<()> + Send + Sync + 'static,
-{
-    loop {
-        let watcher_stream = api.watch(&WatchParams::default(), "0").await?;
-        let events = watcher_stream.boxed();
-        process_events(events, config.clone(), api.clone(), &handle).await;
-        sleep(Duration::from_secs(5)).await;
-    }
-}
-
-async fn process_events<'a, T, F>(
-    events: BoxStream<'a, Result<WatchEvent<T>, kube::Error>>,
-    config: Arc<Configuration>,
-    api: Api<T>,
-    handle: &'a F,
-) where
-    T: ResourceExt + Clone + Debug + Send + DeserializeOwned + 'static,
-    F: Fn(Arc<Configuration>, WatchEvent<T>, Api<T>) -> anyhow::Result<()> + Send + Sync + 'static,
-{
-    events
-        .for_each(|event| {
-            let config = config.clone();
-            let api = api.clone();
-            let handle = handle.clone();
-            async move {
-                match event {
-                    Ok(event) => {
-                        if let Err(e) = handle(config, event, api) {
-                            error!("Error handling event: {:?}", e);
-                        }
-                    }
-                    Err(e) => {
-                        error!("Error watching events: {:?}", e);
-                    }
-                }
-            }
-        })
-        .await;
-}
 
 async fn deploy_crd(
     kube_client: Api<CustomResourceDefinition>,
@@ -111,17 +63,12 @@ async fn main() -> anyhow::Result<()> {
 
     info!("Starting operator...");
 
-    let access_token = std::env::var("ACCESS_TOKEN").context("ACCESS_TOKEN is not set")?;
-    let client = Client::try_default().await?;
-    let config = Arc::new(Configuration {
-        base_path: "http://localhost:8080".to_string(),
-        client: reqwest::Client::new(),
-        user_agent: Some("k8s-operator".to_string()),
-        bearer_access_token: Some(access_token),
-        ..Default::default()
-    });
+    let client = reqwest::Client::new();
 
-    let kube_client: Api<CustomResourceDefinition> = Api::all(client);
+    let access_token = std::env::var("ACCESS_TOKEN").context("ACCESS_TOKEN is not set")?;
+
+    let kube_client = KubeClient::try_default().await?;
+    let kube_client_api: Api<CustomResourceDefinition> = Api::all(kube_client.clone());
 
     if std::env::var("INSTALL_CRDS")
         .unwrap_or_default()
@@ -131,37 +78,36 @@ async fn main() -> anyhow::Result<()> {
         info!("INSTALL_CRDS is set to true. Deploying CRDs...");
 
         let crds = vec![
-            {% for (module, schema_name) in schemas %}
-            k8s_operator::types::{{ module }}::{{ schema_name }}::crd(),
-            {% endfor %}
+            k8s_operator::types::cat::Cat::crd(),
         ];
 
         for crd in crds {
-            deploy_crd(kube_client.clone(), crd).await?;
+            deploy_crd(kube_client_api.clone(), crd).await?;
         }
     }
 
     let controllers = vec![
-        {%- for controller in controllers.iter() %}
-        format!("{{ controller }}.{{ api_group }}"),
-        {%- endfor %}
+        format!("cats.example.com"),
     ];
     for controller in controllers {
-        if let Err(e) = wait_for_crd(kube_client.clone(), &controller).await {
+        if let Err(e) = wait_for_crd(kube_client_api.clone(), &controller).await {
             error!("Error waiting for CRD {}: {}", &controller, e);
         }
     }
 
-    {% for controller in controllers.iter() %}
-    // add controllers for {{ controller}}.{{ api_group }}/{{ api_version }} here
-    {% endfor %}
+    // add controllers for cats.example.com/v1 here
+    let _ = k8s_operator::controllers::cats::handle(Api::namespaced(kube_client, "default")).await;
+
+    // add controllers for dogs.example.com/v1 here
+
+    // add controllers for horses.example.com/v1 here
 
     tokio::spawn(async {
-        let liveness_route =
-            warp::path!("healthz").map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));
+        let liveness_route = warp::path!("healthz")
+            .map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));
 
-        let readiness_route =
-            warp::path!("readyz").map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));
+        let readiness_route = warp::path!("readyz")
+            .map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));
 
         let health_routes = liveness_route.or(readiness_route);
 
@@ -171,7 +117,7 @@ async fn main() -> anyhow::Result<()> {
     tokio::signal::ctrl_c()
         .await
         .context("Failed to listen for Ctrl+C")?;
-    println!("Termination signal received. Shutting down.");
+    info!("Termination signal received. Shutting down.");
 
     Ok(())
 }

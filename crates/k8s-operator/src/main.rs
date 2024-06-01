@@ -6,7 +6,6 @@ use kube::{
     Client as KubeClient, CustomResourceExt,
 };
 use log::{error, info, warn};
-use openapi::apis::configuration::Configuration;
 use tokio::time::timeout;
 use warp::Filter;
 
@@ -68,14 +67,6 @@ async fn main() -> anyhow::Result<()> {
 
     let access_token = std::env::var("ACCESS_TOKEN").context("ACCESS_TOKEN is not set")?;
 
-    let config = Configuration {
-        base_path: "http://localhost:8080".to_string(),
-        client,
-        user_agent: Some("k8s-operator".to_string()),
-        bearer_access_token: Some(access_token),
-        ..Default::default()
-    };
-
     let kube_client = KubeClient::try_default().await?;
     let kube_client_api: Api<CustomResourceDefinition> = Api::all(kube_client.clone());
 
@@ -109,11 +100,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // add controllers for cats.example.com/v1 here
-    let _ = k8s_operator::controllers::cats::handle(
-        Api::namespaced(kube_client, "default"),
-        config.clone(),
-    )
-    .await;
+    let _ = k8s_operator::controllers::cats::handle(Api::namespaced(kube_client, "default")).await;
 
     // add controllers for dogs.example.com/v1 here
 
