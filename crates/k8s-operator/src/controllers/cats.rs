@@ -182,10 +182,10 @@ async fn add_default_status(kube_client: &Api<Cat>, cat: &mut Cat) -> Result<(),
 
 pub async fn check_for_drift(kube_client: &Api<Cat>, cat: &mut Cat) -> Result<()> {
     let dto = convert_kube_type_to_dto(cat.clone());
-    let uuid = convert_uuid_to_string(dto.uuid).unwrap();
+    let uuid = convert_uuid_to_string(dto.uuid).unwrap_or_default();
     let config = get_client_config().await?;
 
-    if dto.uuid.is_none() {
+    if uuid.is_empty() {
         warn!("Cat has no status, cannot get by id or check for drift. Skipping...");
         return Ok(());
     }

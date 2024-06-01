@@ -211,10 +211,10 @@ pub async fn check_for_drift(
     {{ arg_name }}: &mut {{ kind_struct }},
 ) -> Result<()> {
     let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
-    let {{ resource_remote_ref }} = convert_uuid_to_string(dto.{{ resource_remote_ref }}).unwrap();
+    let {{ resource_remote_ref }} = convert_uuid_to_string(dto.{{ resource_remote_ref }}).unwrap_or_default();
     let config = get_client_config().await?;
 
-    if dto.{{ resource_remote_ref }}.is_none() {
+    if {{ resource_remote_ref }}.is_empty() {
         warn!("{{ kind_struct }} has no status, cannot get by id or check for drift. Skipping...");
         return Ok(());
     }
