@@ -7,7 +7,7 @@ description = "The Kubernetes Operator E2E tests"
 [dev-dependencies]
 k8s_operator = { path = "../crates/k8s-operator" }
 k8s-openapi = { version = "0.22.0", features = ["v1_26"] }
-kube = { version = "0.91.0", default-features = false, features = [
+kube = { version = "0.92.0", default-features = false, features = [
     "rustls-tls",
     "config",
     "client",
