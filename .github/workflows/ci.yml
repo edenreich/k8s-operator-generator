@@ -69,7 +69,10 @@ jobs:
           curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | TAG=v$K3D_VERSION bash
 
       - name: Quick Test
-        run: k3d cluster create
+        run: |
+          k3d cluster create
+          kubectl get nodes
+          kubectl get pods --all-namespaces
 
       # - name: Test
       #   run: task test
