@@ -16,39 +16,39 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # analyse:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
+  analyse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
 
-  #     - name: Install Task
-  #       uses: arduino/setup-task@v1
-  #       with:
-  #         version: 3.x
+      - name: Install Task
+        uses: arduino/setup-task@v1
+        with:
+          version: 3.x
 
-  #     - name: Analyse the code
-  #       run: task analyse
+      - name: Analyse the code
+        run: task analyse
 
-  # build:
-  #   needs:
-  #     - analyse
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Build
-  #       run: cargo build --verbose
+  build:
+    needs:
+      - analyse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --verbose
 
-  #     - name: Install Task
-  #       uses: arduino/setup-task@v1
-  #       with:
-  #         version: 3.x
+      - name: Install Task
+        uses: arduino/setup-task@v1
+        with:
+          version: 3.x
 
-  #     - name: Check if workspace is dirty
-  #       run: task dirty-check
+      - name: Check if workspace is dirty
+        run: task dirty-check
 
   test:
-    # needs:
-    #   - build
+    needs:
+      - build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -68,11 +68,5 @@ jobs:
           K3D_VERSION="5.6.3"
           curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | TAG=v$K3D_VERSION bash
 
-      - name: Quick Test
-        run: |
-          k3d cluster create
-          kubectl get nodes
-          kubectl get pods --all-namespaces
-
-      # - name: Test
-      #   run: task test
+      - name: Test
+        run: task test
