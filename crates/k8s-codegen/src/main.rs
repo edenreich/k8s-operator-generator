@@ -268,6 +268,7 @@ fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) 
     generate_role_binding_file_content();
     generate_cluster_role_binding_file_content();
     generate_operator_deployment_file();
+    generate_operator_secret_file();
 }
 
 #[derive(Template)]
@@ -903,6 +904,19 @@ fn generate_operator_deployment_file() {
 
     let content = OperatorDeploymentTemplate {}.render().unwrap();
     write_to_file("manifests/operator/deployment.yaml".to_string(), content);
+}
+
+#[derive(Template)]
+#[template(path = "manifest_operator_secret.jinja")]
+struct OperatorSecretTemplate {}
+
+fn generate_operator_secret_file() {
+    if get_ignored_files().contains(&"manifests/operator/secret.yaml".to_string()) {
+        return;
+    }
+
+    let content = OperatorSecretTemplate {}.render().unwrap();
+    write_to_file("manifests/operator/secret.yaml".to_string(), content);
 }
 
 #[derive(Template, Deserialize, Serialize)]
