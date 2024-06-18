@@ -45,3 +45,18 @@ jobs:
 
       - name: Check if workspace is dirty
         run: task dirty-check
+
+  test:
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Task
+        uses: arduino/setup-task@v1
+        with:
+          version: 3.x
+
+      - name: Test
+        run: task test
