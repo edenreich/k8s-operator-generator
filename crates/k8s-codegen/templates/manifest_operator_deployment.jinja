@@ -42,7 +42,7 @@ spec:
             httpGet:
               path: /healthz
               port: 8000
-            initialDelaySeconds: 25
+            initialDelaySeconds: 1
             periodSeconds: 5
             timeoutSeconds: 1
             successThreshold: 1
@@ -51,11 +51,9 @@ spec:
             httpGet:
               path: /readyz
               port: 8000
-            initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /healthz
               port: 8000
-            initialDelaySeconds: 15
             periodSeconds: 5
