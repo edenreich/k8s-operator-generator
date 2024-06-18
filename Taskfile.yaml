@@ -75,7 +75,8 @@ tasks:
     cmds:
       - kubectl config use-context k3d-k3s-default
       - kubectl apply -f manifests/rbac/
-      - kubectl apply -f manifests/operator/deployment.yaml
+      - kubectl apply -f manifests/operator/
+      - kubectl rollout status deployment/operator
 
   test:
     desc: Run the tests
