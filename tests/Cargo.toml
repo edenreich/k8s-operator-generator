@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "The Kubernetes Operator E2E tests"
 
-[dev-dependencies]
+[dependencies]
 k8s_operator = { path = "../crates/k8s-operator" }
 k8s-openapi = { version = "0.22.0", features = ["v1_26"] }
 kube = { version = "0.92.0", default-features = false, features = [
