@@ -12,6 +12,8 @@ So let's get 🦀 Rusty 🦀.
 
 - [🦀 Rusty Kubernetes Operator Generator 🦀](#-rusty-kubernetes-operator-generator-)
   - [Getting Started](#getting-started)
+    - [Option 1: Manual Installation](#option-1-manual-installation)
+    - [Option 2: Use the DevContainer Environment](#option-2-use-the-devcontainer-environment)
   - [Quick Start Guide](#quick-start-guide)
   - [Need Help?](#need-help)
   - [Motivation](#motivation)
@@ -19,12 +21,21 @@ So let's get 🦀 Rusty 🦀.
 
 ## Getting Started
 
-Before we dive in, make sure you have the following tools installed:
+Before you proceed, ensure that [Docker](https://docs.docker.com/engine/install/) is installed on your system. Docker is required for both manual setup and when using the DevContainer environment.
 
-- [Docker](https://docs.docker.com/engine/install/) - to build and package the operator
-- [k3d](https://k3d.io/v5.6.0/#releases) - for running Kubernetes in Docker
-- [ctlptl](https://formulae.brew.sh/formula/ctlptl) - to control your local Kubernetes setup
-- [Task](https://taskfile.dev/installation/) - the task runner, simplified version of make
+To set up the necessary tools, you have two options:
+
+### Option 1: Manual Installation
+
+Make sure the following tools are installed:
+
+- [k3d](https://k3d.io/v5.6.0/#releases) - Allows you to run Kubernetes clusters inside Docker containers.
+- [ctlptl](https://formulae.brew.sh/formula/ctlptl) - A convenient tool to manage your local Kubernetes environment.
+- [Task](https://taskfile.dev/installation/) - A simple and efficient task runner, serving as a streamlined alternative to Make.
+
+### Option 2: Use the DevContainer Environment
+
+Alternatively, you can leverage the provided DevContainer environment, which comes pre-configured with all the necessary dependencies, including the tools mentioned above and several useful VSCode extensions to enhance your development experience.
 
 ## Quick Start Guide
 
