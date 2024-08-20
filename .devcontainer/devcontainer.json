@@ -1,0 +1,29 @@
+{
+  "name": "Debian with Rust",
+  "image": "mcr.microsoft.com/devcontainers/base:bullseye",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "1.80"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "task.vscode-task-0.3.2",
+        "rust-lang.rust-analyzer-0.3.2078",
+        "swellaby.rust-pack-0.3.38",
+        "vadimcn.vscode-lldb-1.10.0"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh"
+      }
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder}/.devcontainer/.zshrc,target=/home/vscode/.zshrc,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/.devcontainer/launch.json.example,target=/workspaces/k8s-operator-generator/.vscode/launch.json,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/.devcontainer/deps.sh,target=/home/vscode/deps.sh,type=bind,consistency=cached"
+  ],
+  "postCreateCommand": "git config --global --add safe.directory /workspaces/k8s-operator-generator && /home/vscode/deps.sh"
+}
