@@ -10,10 +10,10 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "task.vscode-task-0.3.2",
-        "rust-lang.rust-analyzer-0.3.2078",
-        "swellaby.rust-pack-0.3.38",
-        "vadimcn.vscode-lldb-1.10.0"
+        "task.vscode-task",
+        "rust-lang.rust-analyzer",
+        "swellaby.rust-pack",
+        "vadimcn.vscode-lldb"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh"
