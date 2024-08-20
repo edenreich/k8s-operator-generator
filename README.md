@@ -13,7 +13,7 @@ So let's get 🦀 Rusty 🦀.
 - [🦀 Rusty Kubernetes Operator Generator 🦀](#-rusty-kubernetes-operator-generator-)
   - [Getting Started](#getting-started)
     - [Option 1: Manual Installation](#option-1-manual-installation)
-    - [Option 2: Use the DevContainer Environment](#option-2-use-the-devcontainer-environment)
+    - [Option 2: Use the DevContainer Environment (Recommended)](#option-2-use-the-devcontainer-environment-recommended)
   - [Quick Start Guide](#quick-start-guide)
   - [Need Help?](#need-help)
   - [Motivation](#motivation)
@@ -33,9 +33,11 @@ Make sure the following tools are installed:
 - [ctlptl](https://formulae.brew.sh/formula/ctlptl) - A convenient tool to manage your local Kubernetes environment.
 - [Task](https://taskfile.dev/installation/) - A simple and efficient task runner, serving as a streamlined alternative to Make.
 
-### Option 2: Use the DevContainer Environment
+### Option 2: Use the DevContainer Environment (Recommended)
 
-Alternatively, you can leverage the provided DevContainer environment, which comes pre-configured with all the necessary dependencies, including the tools mentioned above and several useful VSCode extensions to enhance your development experience.
+Alternatively, you can take advantage of the provided DevContainer environment, which comes fully configured with all the required dependencies, including the tools listed above and a selection of useful VSCode extensions to optimize your development workflow.
+
+This approach keeps your system clean by isolating project-specific dependencies within the container, ensuring a clutter-free and consistent development environment.
 
 ## Quick Start Guide
 
