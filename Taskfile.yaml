@@ -69,7 +69,7 @@ tasks:
   package:
     desc: Package the k8s operator
     cmds:
-      - docker build -t {{.CONTAINER_REGISTRY}}/operator:latest .
+      - docker build --build-arg TARGET_ARCH={{.TARGET_ARCH}} -t {{.CONTAINER_REGISTRY}}/operator:latest .
       - docker push {{.CONTAINER_REGISTRY}}/operator:latest
 
   deploy-operator:
