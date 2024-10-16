@@ -69,5 +69,8 @@ jobs:
           K3D_VERSION="5.6.3"
           curl -s https://raw.githubusercontent.com/rancher/k3d/main/install.sh | TAG=v$K3D_VERSION bash
 
+      - name: Use local environment variables
+        run: cp .env.example .env
+
       - name: Test
         run: task test
