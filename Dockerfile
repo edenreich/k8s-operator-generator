@@ -7,7 +7,8 @@ COPY crates/client-sdk client-sdk
 RUN cd k8s-operator && \
     cargo build \
     --release \
-    --no-default-features
+    --no-default-features \
+    --target aarch64-unknown-linux-musl
 
 FROM gcr.io/distroless/static:nonroot
 COPY --from=build /app/k8s-operator/target/aarch64-unknown-linux-musl/release/k8s_operator /operator
