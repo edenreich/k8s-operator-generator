@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['.env']
+
 tasks:
   oas-download:
     desc: Download OpenAPI specification
@@ -67,13 +69,13 @@ tasks:
   package:
     desc: Package the k8s operator
     cmds:
-      - docker build -t localhost:5005/operator:latest .
-      - docker push localhost:5005/operator:latest
+      - docker build -t {{.CONTAINER_REGISTRY}}/operator:latest .
+      - docker push {{.CONTAINER_REGISTRY}}/operator:latest
 
   deploy-operator:
     desc: Deploy the k8s operator
     cmds:
-      - kubectl config use-context k3d-k3s-default
+      - kubectl config use-context {{.CLUSTER_NAME}}
       - kubectl apply -f manifests/rbac/
       - kubectl apply -f manifests/operator/
       - kubectl rollout status deployment/operator
@@ -96,7 +98,7 @@ tasks:
   deploy-crds:
     desc: Deploy the k8s CRD's
     cmds:
-      - kubectl config use-context k3d-k3s-default
+      - kubectl config use-context {{.CLUSTER_NAME}}
       - kubectl apply -f manifests/crds/all.yaml
 
   dirty-check:
