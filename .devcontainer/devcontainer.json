@@ -25,5 +25,8 @@
     "source=${localWorkspaceFolder}/.devcontainer/launch.json.example,target=/workspaces/k8s-operator-generator/.vscode/launch.json,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/.devcontainer/deps.sh,target=/home/vscode/deps.sh,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "git config --global --add safe.directory /workspaces/k8s-operator-generator && /home/vscode/deps.sh"
+  "postCreateCommand": "git config --global --add safe.directory /workspaces/k8s-operator-generator && /home/vscode/deps.sh",
+  "remoteEnv": {
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
+  }
 }
