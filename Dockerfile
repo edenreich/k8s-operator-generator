@@ -4,8 +4,8 @@ WORKDIR /app
 COPY crates/k8s-operator/ k8s-operator
 COPY crates/client-sdk client-sdk
 
-RUN cd k8s-operator && \
-    cargo build \
+RUN rustup target add aarch64-unknown-linux-musl && \
+    cd k8s-operator && cargo build \
     --release \
     --no-default-features \
     --target aarch64-unknown-linux-musl
