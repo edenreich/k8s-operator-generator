@@ -34,7 +34,7 @@ tasks:
   build:
     desc: Build everything
     cmds:
-      - cargo build
+      - cargo build --verbose
 
   generate-code:
     desc: Generate the Rust types and controllers from the OpenAPI specification
