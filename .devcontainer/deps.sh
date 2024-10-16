@@ -17,3 +17,9 @@ curl -fsSL https://github.com/tilt-dev/ctlptl/releases/download/v$CTLPTL_VERSION
 # Install k3d
 K3D_VERSION="v5.7.3"
 curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=$K3D_VERSION bash
+
+# Install kubectl
+KUBECTL_VERSION="v1.31.0"
+curl -LO https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/kubectl
