@@ -81,7 +81,7 @@ tasks:
   test:
     desc: Run the tests
     cmds:
-      - cargo test --package k8s_operator_e2e -- --test-threads=1
+      - cargo test --package k8s_operator_e2e
 
   cluster-create:
     desc: Create a k8s cluster

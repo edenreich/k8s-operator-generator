@@ -8,8 +8,10 @@ mod test {
     use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
     use k8s_operator::{add_finalizer, types::cat::Cat};
     use kube::api::{Api, ObjectMeta};
+    use serial_test::serial;
 
     #[tokio::test]
+    #[serial]
     async fn test_cat_crds_exist() -> anyhow::Result<(), anyhow::Error> {
         cluster::setup().await?;
         operator::deploy().await?;
@@ -34,6 +36,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[serial]
     async fn test_add_finalizer() -> anyhow::Result<(), anyhow::Error> {
         cluster::setup().await?;
         operator::deploy().await?;

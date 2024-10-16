@@ -17,3 +17,4 @@ kube = { version = "0.96.0", default-features = false, features = [
 anyhow = "1.0.70"
 tokio = { version = "1.27.0", features = ["full"] }
 mockall = "0.13.0"
+serial_test = "3.1.1"
