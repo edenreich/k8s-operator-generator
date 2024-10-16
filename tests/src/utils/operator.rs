@@ -1,13 +1,17 @@
+use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 pub async fn deploy() -> anyhow::Result<(), anyhow::Error> {
+    let root_dir = Path::new("..");
     let _ = tokio::process::Command::new("task")
         .arg("package")
+        .current_dir(&root_dir)
         .status()
         .await?;
 
     let mut child = tokio::process::Command::new("task")
         .arg("deploy-operator")
+        .current_dir(&root_dir)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .spawn()
