@@ -16,6 +16,19 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Validate the code
+        run: task oas-validate
+
   analyse:
     runs-on: ubuntu-latest
     steps:

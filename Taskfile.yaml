@@ -8,6 +8,11 @@ tasks:
     cmds:
       - curl -o openapi.yaml https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/examples/v3.0/openapi.yaml
 
+  oas-validate:
+    desc: Validate the OpenAPI specification
+    cmds:
+      - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.4.0 validate -i /local/openapi.yaml
+
   oas-generate-rust-client:
     desc: Generate the OpenAPI Rust client
     cmds:
