@@ -44,6 +44,7 @@ jobs:
 
   build:
     needs:
+      - validate
       - analyse
     runs-on: ubuntu-latest
     steps:
