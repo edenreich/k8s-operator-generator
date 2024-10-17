@@ -17,6 +17,7 @@ env:
 
 jobs:
   validate:
+    name: Validate OpenAPI Spec
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +31,7 @@ jobs:
         run: task oas-validate
 
   analyse:
+    name: Analyse Rust Code
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,6 +45,7 @@ jobs:
         run: task analyse
 
   build:
+    name: Build the Rust Code
     needs:
       - validate
       - analyse
@@ -62,6 +65,7 @@ jobs:
         run: task dirty-check
 
   test:
+    name: End to End test Rust Code
     needs:
       - build
     runs-on: ubuntu-latest
