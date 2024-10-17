@@ -10,12 +10,12 @@ TASK_VERSION=v3.39.2
 curl -s https://taskfile.dev/install.sh | sudo sh -s -- -b /usr/local/bin $TASK_VERSION
 
 # Install ctlptl
-CTLPTL_VERSION="0.8.32"
+CTLPTL_VERSION="0.8.34"
 curl -fsSL https://github.com/tilt-dev/ctlptl/releases/download/v$CTLPTL_VERSION/ctlptl.$CTLPTL_VERSION.linux.x86_64.tar.gz | sudo tar -xzv -C /usr/local/bin ctlptl
 
 
 # Install k3d
-K3D_VERSION="v5.7.3"
+K3D_VERSION="v5.7.4"
 curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=$K3D_VERSION bash
 
 # Install kubectl
