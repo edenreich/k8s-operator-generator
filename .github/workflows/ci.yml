@@ -31,7 +31,7 @@ jobs:
         run: task oas-validate
 
   analyse:
-    name: Analyse Rust Code
+    name: Analyse Code
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
         run: task analyse
 
   build:
-    name: Build the Rust Code
+    name: Build Code
     needs:
       - validate
       - analyse
@@ -65,7 +65,7 @@ jobs:
         run: task dirty-check
 
   test:
-    name: End to End test Rust Code
+    name: End to end test
     needs:
       - build
     runs-on: ubuntu-latest
