@@ -4,3 +4,7 @@ crates/k8s-operator/** linguist-generated=true
 docs/** linguist-generated=true
 manifests/** linguist-generated=true
 tests/** linguist-generated=true
+
+*.jinja linguist-vendored=true
+.devcontainer/** linguist-vendored=true
+Dockerfile linguist-vendored=true
