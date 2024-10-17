@@ -1,27 +1,37 @@
 {
   "name": "Debian with Rust",
-  "image": "mcr.microsoft.com/devcontainers/base:bullseye",
+  "image": "mcr.microsoft.com/devcontainers/rust:1-1-bullseye",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/rust:1": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:latest": {}
   },
   "customizations": {
     "vscode": {
       "extensions": [
         "task.vscode-task",
         "rust-lang.rust-analyzer",
-        "swellaby.rust-pack",
-        "vadimcn.vscode-lldb"
+        "vadimcn.vscode-lldb",
+        "tamasfe.even-better-toml",
+        "mutantdino.resourcemonitor",
+        "streetsidesoftware.code-spell-checker",
+        "coenraads.bracket-pair-colorizer-2",
+        "esbenp.prettier-vscode",
+        "eamodio.gitlens",
+        "usernamehw.errorlens"
       ],
       "settings": {
-        "terminal.integrated.defaultProfile.linux": "zsh"
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "cSpell.ignorePaths": [
+          ".devcontainer/**",
+          ".vscode/**",
+          "target/**"
+        ]
       }
     }
   },
   "mounts": [
+    "source=${localWorkspaceFolder}/.devcontainer/deps.sh,target=/home/vscode/deps.sh,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/.devcontainer/.zshrc,target=/home/vscode/.zshrc,type=bind,consistency=cached",
-    "source=${localWorkspaceFolder}/.devcontainer/launch.json.example,target=/workspaces/k8s-operator-generator/.vscode/launch.json,type=bind,consistency=cached",
-    "source=${localWorkspaceFolder}/.devcontainer/deps.sh,target=/home/vscode/deps.sh,type=bind,consistency=cached"
+    "source=${localWorkspaceFolder}/.devcontainer/launch.json.example,target=/workspaces/k8s-operator-generator/.vscode/launch.json,type=bind,consistency=cached"
   ],
   "postCreateCommand": "git config --global --add safe.directory /workspaces/k8s-operator-generator && /home/vscode/deps.sh",
   "remoteEnv": {
