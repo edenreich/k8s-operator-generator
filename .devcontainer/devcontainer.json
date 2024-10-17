@@ -16,7 +16,8 @@
         "coenraads.bracket-pair-colorizer-2",
         "esbenp.prettier-vscode",
         "eamodio.gitlens",
-        "usernamehw.errorlens"
+        "usernamehw.errorlens",
+        "42Crunch.vscode-openapi"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
