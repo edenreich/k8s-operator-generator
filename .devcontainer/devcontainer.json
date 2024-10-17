@@ -23,6 +23,7 @@
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
+        "editor.renderWhitespace": "all",
         "cSpell.enabled": true,
         "cSpell.files": [
           "**/*.md"
