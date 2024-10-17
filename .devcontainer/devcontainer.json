@@ -23,7 +23,8 @@
         "cSpell.ignorePaths": [
           ".devcontainer/**",
           ".vscode/**",
-          "target/**"
+          "target/**",
+          "Taskfile.yaml"
         ]
       }
     }
