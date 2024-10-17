@@ -16,6 +16,20 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  dirty-check:
+    name: Dirty check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Check for dirty files - files that were generated but not committed
+        run: task dirty-check
+
   validate:
     name: Validate OpenAPI Spec
     runs-on: ubuntu-latest
@@ -47,6 +61,7 @@ jobs:
   build:
     name: Build Code
     needs:
+      - dirty-check
       - validate
       - analyse
     runs-on: ubuntu-latest
@@ -60,9 +75,6 @@ jobs:
 
       - name: Build
         run: task build
-
-      - name: Check if workspace is dirty
-        run: task dirty-check
 
   test:
     name: End to end test
