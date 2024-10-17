@@ -4,7 +4,7 @@
 
 Welcome to the Rusty Kubernetes Operator Generator! This project provides a generator for creating a CRUD Kubernetes operator from an OpenAPI Specification (OAS), all written in the powerful and efficient Rust language.
 
-You have a running API with a valid OpenAPI Specification, but no operator to operate the complexty of the API ? this is where this generator comes in handy.
+You have a running API with a valid OpenAPI Specification, but no operator to operate the complexity of the API ? this is where this generator comes in handy.
 
 It's a well-established fact that using YAML to define API resources not only simplifies complexity but also enhances collaboration between developers and operations teams. This approach allows teams to concentrate on what truly matters - delivering value.
 
