@@ -20,13 +20,9 @@
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
-        "cSpell.ignorePaths": [
-          ".devcontainer/**",
-          ".vscode/**",
-          "target/**"
-        ],
-        "cSpell.includeRegExpList": [
-          "**.md"
+        "cSpell.enabled": true,
+        "cSpell.files": [
+          "**/*.md"
         ]
       }
     }
