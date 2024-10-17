@@ -6,7 +6,7 @@ sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev
 git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
 
 # Install task
-TASK_VERSION=v3.38.0
+TASK_VERSION=v3.39.2
 curl -s https://taskfile.dev/install.sh | sudo sh -s -- -b /usr/local/bin $TASK_VERSION
 
 # Install ctlptl
