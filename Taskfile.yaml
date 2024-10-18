@@ -11,7 +11,7 @@ tasks:
   oas-validate:
     desc: Validate the OpenAPI specification
     cmds:
-      - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.4.0 validate -i /local/openapi.yaml
+      - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.9.0 validate -i /local/openapi.yaml
 
   oas-generate-rust-client:
     desc: Generate the OpenAPI Rust client
@@ -21,7 +21,7 @@ tasks:
           -w /local \
           -v ${PWD}/crates/client-sdk:/local/client-sdk \
           -v ${PWD}/openapi.yaml:/tmp/openapi.yaml \
-          openapitools/openapi-generator-cli:v7.4.0 \
+          openapitools/openapi-generator-cli:v7.9.0 \
           generate -i /tmp/openapi.yaml -g rust -o client-sdk
       - rm crates/client-sdk/{.travis.yml,git_push.sh}
 
@@ -30,7 +30,7 @@ tasks:
     cmds:
       - |
         docker run --rm -v ${PWD}:/local \
-          openapitools/openapi-generator-cli:v7.4.0 \
+          openapitools/openapi-generator-cli:v7.9.0 \
           generate -i /local/openapi.yaml -g markdown -o /local/docs
 
   analyse:

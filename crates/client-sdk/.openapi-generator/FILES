@@ -1,5 +1,6 @@
 .gitignore
 .travis.yml
+Cargo.toml
 README.md
 docs/Cat.md
 docs/CatsApi.md

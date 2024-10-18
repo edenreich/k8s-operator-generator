@@ -8,6 +8,7 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fs::{DirBuilder, File, OpenOptions},
     io::{BufRead, BufReader, Error, Write},
+    path::Path,
     process::Command as ProcessCommand,
     vec,
 };
@@ -90,15 +91,21 @@ fn main() {
 
     let cli = Cli::parse();
 
+    info!("Initializing directory structure...");
+    create_directory_if_not_exists(CRATE_K8S_OPERATOR);
+    create_directory_if_not_exists(TYPES_DIR);
+    create_directory_if_not_exists(CONTROLLERS_DIR);
+    create_directory_if_not_exists(CRATE_K8S_CRDGEN);
+    create_directory_if_not_exists(format!("{}/src", CRATE_K8S_CRDGEN).as_str());
+    create_directory_if_not_exists(RBAC_DIR);
+    create_directory_if_not_exists(EXAMPLES_DIR);
+    create_file_if_not_exists(CONTROLLERS_DIR, "mod.rs");
+    create_file_if_not_exists(TYPES_DIR, "mod.rs");
+    generate_k8s_operator_cargo_toml();
+    generate_k8s_crdgen_cargo_toml();
+
     match &cli.command {
-        Some(Commands::Init {}) => {
-            info!("Initialzing k8s_operator crate...");
-            create_directory_if_not_exists(CRATE_K8S_OPERATOR);
-            generate_k8s_operator_cargo_toml();
-            info!("Initialzing k8s_codegen crate...");
-            create_directory_if_not_exists(CRATE_K8S_CRDGEN);
-            generate_k8s_crdgen_cargo_toml();
-        }
+        Some(Commands::Init {}) => {}
         Some(Commands::Generate {
             all,
             lib,
@@ -138,8 +145,6 @@ fn main() {
             }
             if *manifests {
                 info!("Generating manifests...");
-                create_directory_if_not_exists(RBAC_DIR);
-                create_directory_if_not_exists(EXAMPLES_DIR);
                 generate_rbac_files(schema_names.clone(), &kubernetes_operator_group);
                 generate_crdgen_file(schema_names.clone());
                 generate_examples(
@@ -152,8 +157,6 @@ fn main() {
             }
             if *controllers {
                 info!("Generating controllers...");
-                create_directory_if_not_exists(CONTROLLERS_DIR);
-                create_file_if_not_exists(CONTROLLERS_DIR, "mod.rs");
                 let controllers = generate_controllers(
                     schemas.clone(),
                     paths.clone(),
@@ -168,8 +171,6 @@ fn main() {
             }
             if *types {
                 info!("Generating the types...");
-                create_directory_if_not_exists(TYPES_DIR);
-                create_file_if_not_exists(TYPES_DIR, "mod.rs");
                 generate_types(schemas.clone(), &kubernetes_operator_resource_ref);
             }
         }
@@ -230,10 +231,15 @@ fn extract_extension_array(openapi: &OpenAPI, key: &str) -> Vec<String> {
 }
 
 fn create_directory_if_not_exists(dir: &str) {
-    DirBuilder::new()
-        .recursive(true)
-        .create(dir)
-        .unwrap_or_else(|_| panic!("Unable to create {} directory", dir));
+    let path = Path::new(dir);
+    if path.exists() {
+        info!("Directory {} already exists. skipping...", dir);
+    } else {
+        DirBuilder::new()
+            .recursive(true)
+            .create(dir)
+            .unwrap_or_else(|_| panic!("Unable to create {} directory", dir));
+    }
 }
 
 fn create_file_if_not_exists(dir: &str, file: &str) {
