@@ -1,3 +1,4 @@
+.openapi-generator-ignore
 Apis/CatsApi.md
 Apis/DogsApi.md
 Apis/HorsesApi.md

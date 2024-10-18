@@ -31,7 +31,7 @@ tasks:
       - |
         docker run --rm -v ${PWD}:/local \
           openapitools/openapi-generator-cli:v7.9.0 \
-          generate -i /local/openapi.yaml -g markdown -o /local/docs
+          generate -i /local/openapi.yaml -g markdown -o /local/docs/openapi
 
   analyse:
     desc: Analyse the code
