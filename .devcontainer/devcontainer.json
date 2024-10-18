@@ -27,7 +27,8 @@
         "cSpell.enabled": true,
         "cSpell.files": [
           "**/*.md"
-        ]
+        ],
+        "editor.formatOnSave": true
       }
     }
   },
