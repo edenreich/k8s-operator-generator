@@ -8,3 +8,4 @@ tests/** linguist-generated=true
 *.jinja linguist-vendored=true
 .devcontainer/** linguist-vendored=true
 Dockerfile linguist-vendored=true
+docs/** linguist-vendored=true

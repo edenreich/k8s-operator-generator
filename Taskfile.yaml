@@ -56,9 +56,9 @@ tasks:
   generate:
     desc: Generate the k8s CRD's out of the rust structs
     deps:
-      - generate-code
       - oas-generate-rust-client
       - oas-generate-docs
+      - generate-code
       - generate-crds
 
   run:
