@@ -1,47 +1,42 @@
-# 🦀 Rusty Kubernetes Operator Generator 🦀
+# 🦀 Kubernetes Operator Generator 🦀
 
 [![CI](https://github.com/edenreich/k8s-operator-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/edenreich/k8s-operator-generator/actions/workflows/ci.yml)
 
-Welcome to the Rusty Kubernetes Operator Generator! This project provides a generator for creating a CRUD Kubernetes operator from an OpenAPI Specification (OAS), all written in the powerful and efficient Rust language.
+Welcome to the Kubernetes Operator Generator! This project provides a generator for creating a CRUD Kubernetes operator from an OpenAPI Specification (OAS), all written in the powerful and efficient Rust language.
 
-You have a running API with a valid OpenAPI Specification, but no operator to operate the complexity of the API ? this is where this generator comes in handy.
+If you have a running API with a valid OpenAPI Specification but lack an operator to manage its complexity, this generator is the perfect solution. Kubernetes operators also align seamlessly with the GitOps methodology, enhancing your operational efficiency.
 
 It's a well-established fact that using YAML to define API resources not only simplifies complexity but also enhances collaboration between developers and operations teams. This approach allows teams to concentrate on what truly matters - delivering value.
 
-So let's get 🦀 Rusty 🦀.
-
-- [🦀 Rusty Kubernetes Operator Generator 🦀](#-rusty-kubernetes-operator-generator-)
-  - [Getting Started](#getting-started)
-    - [Option 1: Manual Installation](#option-1-manual-installation)
-    - [Option 2: Use the DevContainer Environment (Recommended)](#option-2-use-the-devcontainer-environment-recommended)
+- [🦀 Kubernetes Operator Generator 🦀](#-kubernetes-operator-generator-)
+  - [Documentation](#documentation)
   - [Quick Start Guide](#quick-start-guide)
   - [Need Help?](#need-help)
   - [Motivation](#motivation)
   - [Why OpenAPI Specification?](#why-openapi-specification)
 
-## Getting Started
+## Documentation
 
-Before you proceed, ensure that [Docker](https://docs.docker.com/engine/install/) is installed on your system. Docker is required for both manual setup and when using the DevContainer environment.
+The documentation is available here: https://edenreich.github.io/k8s-operator-generator/introduction.html
 
-To set up the necessary tools, you have two options:
+For documentation Github-Pages is being used.
+It's built using rust mdbook which already comes pre-installed on the DevContainer.
 
-### Option 1: Manual Installation
+If you need to make adjustment to the documentation you can serve it locally, run:
 
-Make sure the following tools are installed:
-
-- [k3d](https://k3d.io/v5.6.0/#releases) - Allows you to run Kubernetes clusters inside Docker containers.
-- [ctlptl](https://formulae.brew.sh/formula/ctlptl) - A convenient tool to manage your local Kubernetes environment.
-- [Task](https://taskfile.dev/installation/) - A simple and efficient task runner, serving as a streamlined alternative to Make.
-
-### Option 2: Use the DevContainer Environment (Recommended)
-
-Alternatively, you can take advantage of the provided DevContainer environment, which comes fully configured with all the required dependencies, including the tools listed above and a selection of useful VSCode extensions to optimize your development workflow.
-
-This approach keeps your system clean by isolating project-specific dependencies within the container, ensuring a clutter-free and consistent development environment.
+```bash
+task open-docs
+```
 
 ## Quick Start Guide
 
-Ready to get your hands dirty with some Rust and Kubernetes? Follow these steps:
+Before you proceed, ensure that [Docker](https://docs.docker.com/engine/install/) is installed on your system.
+
+First open the project in VScode, a prompt to open the project inside of a Dev Container will be shown, click `open`.
+
+A Dev Container is essentially an encapsulate environment with all the necessary tools you would need for development of this project.
+
+To get started, follow these steps:
 
 1. **Configure**: Run `cp .env.example .env` to let the Taskfile know what environment variables you would like to use - you can keep it as is, because it's by default set to local environment.
 2. **Download the OAS**: Run `task oas-download` to get the latest OpenAPI Specification.
@@ -71,8 +66,6 @@ Why create a Kubernetes operator in Rust? Great question! Here are a few reasons
 
 6. **Strong Community**: The Rust community is known for being friendly and helpful, which is always a plus when learning a new language or starting a new project.
 
-So, are you ready to get Rusty? 🦀
-
 ## Why OpenAPI Specification?
 
 The OpenAPI Specification (OAS), formerly known as Swagger, is a standard for defining APIs. It provides a way to describe the capabilities of your API in a machine-readable format. This has several benefits:
@@ -88,13 +81,3 @@ The OpenAPI Specification (OAS), formerly known as Swagger, is a standard for de
 5. **Integration**: Because OAS is a standard, there are many tools that can import OAS documents and provide additional functionality, such as testing tools, API gateways, and more.
 
 In this project, we use the OpenAPI Specification to generate the necessary types and controllers for our Kubernetes operator. This allows us to easily keep our operator in sync with the latest version of our API.
-
-## Documentation
-
-For documentation Github-Pages is being used.
-It's build using rust mdbook which already comes pre-installed on the devcontainer.
-To serve the documentation locally, run:
-
-```bash
-task open-docs
-```
