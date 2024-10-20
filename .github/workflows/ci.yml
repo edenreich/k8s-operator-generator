@@ -78,6 +78,10 @@ jobs:
 
   build-docs:
     name: Build and deploy docs
+    needs:
+      - dirty-check
+      - validate
+      - analyse
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
