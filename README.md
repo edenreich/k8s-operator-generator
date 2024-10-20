@@ -88,3 +88,13 @@ The OpenAPI Specification (OAS), formerly known as Swagger, is a standard for de
 5. **Integration**: Because OAS is a standard, there are many tools that can import OAS documents and provide additional functionality, such as testing tools, API gateways, and more.
 
 In this project, we use the OpenAPI Specification to generate the necessary types and controllers for our Kubernetes operator. This allows us to easily keep our operator in sync with the latest version of our API.
+
+## Documentation
+
+For documentation Github-Pages is being used.
+It's build using rust mdbook which already comes pre-installed on the devcontainer.
+To serve the documentation locally, run:
+
+```bash
+task open-docs
+```

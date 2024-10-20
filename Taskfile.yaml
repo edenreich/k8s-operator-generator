@@ -3,6 +3,11 @@ version: '3'
 dotenv: ['.env']
 
 tasks:
+  open-docs:
+    desc: Open the documentation
+    cmds:
+      - mdbook serve --open docs/operator
+
   oas-download:
     desc: Download OpenAPI specification
     cmds:

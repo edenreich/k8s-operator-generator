@@ -31,7 +31,7 @@ jobs:
         run: task dirty-check
 
   validate:
-    name: Validate OpenAPI Spec
+    name: Validate OpenAPI specification
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
         run: task oas-validate
 
   analyse:
-    name: Analyse Code
+    name: Analyse code
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,7 +59,7 @@ jobs:
         run: task analyse
 
   build:
-    name: Build Code
+    name: Build code
     needs:
       - dirty-check
       - validate
@@ -75,6 +75,32 @@ jobs:
 
       - name: Build
         run: task build
+
+  build-docs:
+    name: Build and deploy docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Install mdBook
+        run: cargo install mdbook
+
+      - name: Build the book
+        run: mdbook build docs/operator
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/operator/book
 
   test:
     name: End to end test

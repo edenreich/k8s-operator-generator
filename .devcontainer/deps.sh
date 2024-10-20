@@ -22,3 +22,6 @@ KUBECTL_VERSION="v1.31.0"
 curl -L https://dl.k8s.io/release/$KUBECTL_VERSION/bin/linux/amd64/kubectl -o ~/kubectl
 chmod +x ~/kubectl
 sudo mv ~/kubectl /usr/local/bin/kubectl
+
+# Install mdbook
+cargo install mdbook
