@@ -3,7 +3,7 @@ version: '3'
 dotenv: ['.env']
 
 tasks:
-  open-docs:
+  docs:
     desc: Open the documentation
     cmds:
       - mdbook serve --open docs/operator

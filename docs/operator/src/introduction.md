@@ -2,8 +2,6 @@
 
 Welcome to the K8S Operator Generator documentation. This project helps you generate Kubernetes Custom Resource Definitions (CRDs) and operators from a standard OpenAPI Specification using Rust.
 
-This project is in its early stages, so your contributions would be highly valuable.
-
 ## Table of Contents
 
 1. [Introduction](introduction.md)
@@ -13,3 +11,16 @@ This project is in its early stages, so your contributions would be highly valua
 5. [Examples](examples.md)
 6. [Contributing](contributing.md)
 7. [License](license.md)
+
+## Architecture Overview
+
+```mermaid
+graph TD
+    A[OpenAPI Specification] -->|Input| B[K8S Operator Generator]
+    B -->|Generates| C[Kubernetes CRDs / Schema]
+    B -->|Generates| D[Kubernetes Operator]
+    C -->|Deploys to| E[Kubernetes Cluster]
+    D -->|Deploys to| E[Kubernetes Cluster]
+    D -->|Manages| F[Kubernetes Resources]
+    D -->|Syncing / Reconciles| G[External API Resources]
+```

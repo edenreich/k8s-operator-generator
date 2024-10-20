@@ -4,3 +4,11 @@ language = "en"
 multilingual = false
 src = "src"
 title = "k8s-operator-generator"
+
+[preprocessor]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
