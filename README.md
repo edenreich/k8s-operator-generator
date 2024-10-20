@@ -25,7 +25,7 @@ It's built using rust mdbook which already comes pre-installed on the DevContain
 If you need to make adjustment to the documentation you can serve it locally, run:
 
 ```bash
-task open-docs
+task docs
 ```
 
 ## Quick Start Guide
