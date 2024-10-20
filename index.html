@@ -186,7 +186,7 @@
 <li><a href="license.html">License</a></li>
 </ol>
 <h2 id="architecture-overview"><a class="header" href="#architecture-overview">Architecture Overview</a></h2>
-<pre><code class="language-mermaid">graph TD
+<pre class="mermaid">graph TD
     A[OpenAPI Specification] --&gt;|Input| B[K8S Operator Generator]
     B --&gt;|Generates| C[Kubernetes CRDs / Schema]
     B --&gt;|Generates| D[Kubernetes Operator]
@@ -194,7 +194,7 @@
     D --&gt;|Deploys to| E[Kubernetes Cluster]
     D --&gt;|Manages| F[Kubernetes Resources]
     D --&gt;|Syncing / Reconciles| G[External API Resources]
-</code></pre>
+</pre>
 
                     </main>
 
