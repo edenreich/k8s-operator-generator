@@ -34,7 +34,7 @@ Before you proceed, ensure that [Docker](https://docs.docker.com/engine/install/
 
 First open the project in VScode, a prompt to open the project inside of a Dev Container will be shown, click `open`.
 
-A Dev Container is essentially an encapsulate environment with all the necessary tools you would need for development of this project.
+A Dev Container is essentially an encapsulate environment with all the necessary tools you would need for the development of this project.
 
 To get started, follow these steps:
 
