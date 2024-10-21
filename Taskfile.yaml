@@ -51,7 +51,7 @@ tasks:
   generate-code:
     desc: Generate the Rust types and controllers from the OpenAPI specification
     cmds:
-      - cargo run --package k8s_codegen generate --all
+      - cargo run --package cli generate --all
 
   generate-crds:
     desc: Generate the k8s CRD's out of the rust structs

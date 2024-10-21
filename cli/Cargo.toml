@@ -1,8 +1,8 @@
 [package]
-name = "k8s_codegen"
+name = "cli"
 version = "0.1.0"
 edition = "2021"
-description = "Generate the Kubernetes operator rust code from the OpenAPI spec"
+description = "Generate the Kubernetes operator rust code and manifests from the OpenAPI spec"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
