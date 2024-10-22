@@ -37,11 +37,13 @@ jobs:
           sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build the CLI
-        run: RELEASE=true TARGET_ARCH=${{ matrix.target }} task build
+        run: |
+          RELEASE=true TARGET_ARCH=${{ matrix.target }} task build
+          mv target/${{ matrix.target }}/release/kopgen target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
 
       - name: Upload CLI binary
         uses: softprops/action-gh-release@v1
         with:
-          files: target/${{ matrix.target }}/release/kopgen
+          files: target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
