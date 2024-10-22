@@ -42,6 +42,6 @@ jobs:
       - name: Upload CLI binary
         uses: softprops/action-gh-release@v1
         with:
-          files: target/${{ matrix.target }}/release/kopegen
+          files: target/${{ matrix.target }}/release/kopgen
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
