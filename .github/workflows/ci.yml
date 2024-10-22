@@ -65,6 +65,11 @@ jobs:
       - validate
       - analyse
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - aarch64-unknown-linux-musl
+          - x86_64-unknown-linux-musl
     steps:
       - uses: actions/checkout@v4
 
@@ -74,7 +79,7 @@ jobs:
           version: 3.x
 
       - name: Build
-        run: task build
+        run: TARGET_ARCH=${{ matrix.target }} task build
 
   build-docs:
     name: Build and deploy docs
