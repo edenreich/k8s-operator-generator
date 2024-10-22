@@ -29,22 +29,25 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    #[command(about = "Initialize the directory structure")]
     Init {},
+    #[command(about = "Generate Kubernetes operator code from an OpenAPI specification")]
     Generate {
-        #[arg(short, long)]
+        #[arg(required = true, help = "Path to the OpenAPI specification file")]
+        openapi_file: String,
+        #[arg(short, long, help = "Generate all code")]
         all: bool,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Generate the lib.rs file")]
         lib: bool,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Generate the manifests")]
         manifests: bool,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Generate the controllers")]
         controllers: bool,
-        #[arg(short, long)]
+        #[arg(short, long, help = "Generate the types")]
         types: bool,
     },
 }
 
-const OPENAPI_FILE: &str = "openapi.yaml";
 const CONTROLLERS_DIR: &str = "crates/k8s-operator/src/controllers";
 const TYPES_DIR: &str = "crates/k8s-operator/src/types";
 const RBAC_DIR: &str = "manifests/rbac";
@@ -58,36 +61,6 @@ fn main() {
     }
 
     env_logger::init();
-
-    let openapi = read_and_parse_openapi_spec(OPENAPI_FILE);
-    let (
-        kubernetes_operator_group,
-        kubernetes_operator_version,
-        kubernetes_operator_resource_ref,
-        kubernetes_operator_include_tags,
-        kubernetes_operator_metadata_spec_field_name,
-    ) = extract_openapi_info(&openapi);
-    let components = openapi
-        .components
-        .clone()
-        .expect("No components in OpenAPI spec");
-    let paths: openapiv3::Paths = openapi.paths.clone();
-
-    let schemas: HashMap<String, Schema> = components
-        .schemas
-        .iter()
-        .filter_map(|(name, schema)| {
-            match schema {
-                openapiv3::ReferenceOr::Item(schema) => Some((name.clone(), schema.clone())),
-                openapiv3::ReferenceOr::Reference { .. } => None, // Ignore references for now
-            }
-        })
-        .collect();
-
-    let mut schema_names = vec![];
-    for (schema_name, _) in components.schemas.iter() {
-        schema_names.push(schema_name.to_lowercase().to_plural());
-    }
 
     let cli = Cli::parse();
 
@@ -107,12 +80,47 @@ fn main() {
     match &cli.command {
         Some(Commands::Init {}) => {}
         Some(Commands::Generate {
+            openapi_file,
             all,
             lib,
             manifests,
             controllers,
             types,
         }) => {
+            info!("Using OpenAPI file: {}", openapi_file);
+
+            let openapi = read_and_parse_openapi_spec(openapi_file);
+            let (
+                kubernetes_operator_group,
+                kubernetes_operator_version,
+                kubernetes_operator_resource_ref,
+                kubernetes_operator_include_tags,
+                kubernetes_operator_metadata_spec_field_name,
+            ) = extract_openapi_info(&openapi);
+            let components = openapi
+                .components
+                .clone()
+                .expect("No components in OpenAPI spec");
+            let paths: openapiv3::Paths = openapi.paths.clone();
+
+            let schemas: HashMap<String, Schema> = components
+                .schemas
+                .iter()
+                .filter_map(|(name, schema)| {
+                    match schema {
+                        openapiv3::ReferenceOr::Item(schema) => {
+                            Some((name.clone(), schema.clone()))
+                        }
+                        openapiv3::ReferenceOr::Reference { .. } => None, // Ignore references for now
+                    }
+                })
+                .collect();
+
+            let mut schema_names = vec![];
+            for (schema_name, _) in components.schemas.iter() {
+                schema_names.push(schema_name.to_lowercase().to_plural());
+            }
+
             if *all || (!*lib && !*manifests && !*controllers && !*types) {
                 info!("Generating all...");
                 generate_lib();
