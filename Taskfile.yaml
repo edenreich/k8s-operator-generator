@@ -44,9 +44,13 @@ tasks:
       - cargo clippy --all-targets --all-features -- -D warnings
 
   build:
-    desc: Build everything
+    desc: Build kopegen CLI
     cmds:
-      - cargo build --verbose
+      - rustup target add {{.TARGET_ARCH}}
+      - cargo build --verbose {{if eq .RELEASE "true"}}--release {{end}}{{if .TARGET_ARCH}}--target {{.TARGET_ARCH}}{{end}}
+    requires:
+      vars:
+        - TARGET_ARCH
 
   generate-code:
     desc: Generate the Rust types and controllers from the OpenAPI specification

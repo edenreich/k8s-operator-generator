@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - aarch64-unknown-linux-musl
+          - x86_64-unknown-linux-musl
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Build the CLI
+        run: RELEASE=true TARGET_ARCH=${{ matrix.target }} task build
+
+      - name: Upload CLI binary
+        uses: softprops/action-gh-release@v1
+        with:
+          files: target/${{ matrix.target }}/release/kopegen
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
