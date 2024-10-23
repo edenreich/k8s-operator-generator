@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'operator'",
+      "env": {
+        "RUST_BACKTRACE": "1",
+        "RUST_LOG": "debug",
+        "ACCESS_TOKEN": ""
+      },
+      "cargo": {
+        "args": ["build", "--package=k8s_operator"]
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug codegen",
+      "env": {
+        "RUST_BACKTRACE": "1",
+        "RUST_LOG": "debug",
+        "ACCESS_TOKEN": ""
+      },
+      "cargo": {
+        "args": ["build", "--package=k8s_codegen"]
+      },
+      "args": ["generate", "--all"],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

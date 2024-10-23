@@ -1,0 +1,20 @@
+[package]
+name = "k8s_operator_e2e"
+version = "0.1.0"
+edition = "2021"
+description = "The Kubernetes Operator E2E tests"
+
+[dependencies]
+k8s_operator = { path = "../crates/k8s-operator" }
+k8s-openapi = { version = "0.23.0", features = ["v1_26"] }
+kube = { version = "0.96.0", default-features = false, features = [
+    "rustls-tls",
+    "config",
+    "client",
+    "runtime",
+    "derive",
+] }
+anyhow = "1.0.70"
+tokio = { version = "1.27.0", features = ["full"] }
+mockall = "0.13.0"
+serial_test = "3.1.1"

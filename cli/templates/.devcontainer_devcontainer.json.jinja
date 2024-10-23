@@ -1,0 +1,55 @@
+{
+  "name": "Debian with Rust",
+  "image": "mcr.microsoft.com/devcontainers/rust:1-1-bullseye",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:latest": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "task.vscode-task",
+        "rust-lang.rust-analyzer",
+        "fill-labs.dependi",
+        "vadimcn.vscode-lldb",
+        "tamasfe.even-better-toml",
+        "mutantdino.resourcemonitor",
+        "streetsidesoftware.code-spell-checker",
+        "coenraads.bracket-pair-colorizer-2",
+        "esbenp.prettier-vscode",
+        "eamodio.gitlens",
+        "usernamehw.errorlens",
+        "42Crunch.vscode-openapi",
+        "github.vscode-github-actions"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "editor.renderWhitespace": "all",
+        "cSpell.enabled": true,
+        "cSpell.files": ["**/*.md"],
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[yaml]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[markdown]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[rust]": {
+          "editor.defaultFormatter": "rust-lang.rust-analyzer"
+        }
+      }
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder}/.devcontainer/deps.sh,target=/home/vscode/deps.sh,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/.devcontainer/.zshrc,target=/home/vscode/.zshrc,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/.devcontainer/launch.json.example,target=/workspaces/k8s-operator-generator/.vscode/launch.json,type=bind,consistency=cached"
+  ],
+  "postCreateCommand": "git config --global --add safe.directory /workspaces/k8s-operator-generator && /home/vscode/deps.sh",
+  "remoteEnv": {
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
+  }
+}
