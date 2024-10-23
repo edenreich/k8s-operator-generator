@@ -3,10 +3,6 @@
 resolver = "2"
 members = [
     "cli",
-    # "crates/client-sdk",
-    # "crates/k8s-crdgen",
-    # "crates/k8s-operator",
-    # "tests",
 ]
 
 [profile.release]
