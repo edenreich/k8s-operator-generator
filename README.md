@@ -32,7 +32,29 @@ task docs
 
 Before you proceed, ensure that [Docker](https://docs.docker.com/engine/install/) is installed on your system.
 
-First open the project in VScode, a prompt to open the project inside of a Dev Container will be shown, click `open`.
+Download and install the latest `kopgen CLI` [for ARM64](https://github.com/edenreich/k8s-operator-generator/releases/download/latest/kopgen_aarch64-unknown-linux-musl) or [for x86_64 Intel](https://github.com/edenreich/k8s-operator-generator/releases/download/v0.1.0/kopgen_x86_64-unknown-linux-musl).
+
+```bash
+# For Mac users with ARM CPU
+curl -sSL https://github.com/edenreich/k8s-operator-generator/releases/download/latest/kopgen_aarch64-unknown-linux-musl -o kopgen
+chmod +x kopgen
+mv kopgen /usr/local/bin
+
+# For all the other users running on intel
+curl -sSL https://github.com/edenreich/k8s-operator-generator/releases/download/latest/kopgen_x86_64-unknown-linux-musl -o kopgen
+chmod +x kopgen
+mv kopgen /usr/local/bin
+```
+
+Start a new project in an empty folder:
+
+```bash
+kopgen init
+```
+
+This will generate the project for the operator including a dev container environment, therefore it is recommended you use VScode.
+
+Open the project in VScode, a prompt to open the project inside of a Dev Container will be shown, click `open`.
 
 A Dev Container is essentially an encapsulate environment with all the necessary tools you would need for the development of this project.
 
