@@ -16,6 +16,11 @@ tasks:
       requires:
         - OPENAPI_DOWNLOAD_URL
 
+  oas-hydrate:
+    desc: Hydrate the OpenAPI specification
+    cmds:
+      - cargo run --package kopgen hydrate openapi.yaml
+
   oas-validate:
     desc: Validate the OpenAPI specification
     cmds:

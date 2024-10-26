@@ -1,4 +1,5 @@
 use askama::Template;
+use indexmap::IndexMap;
 use inflector::Inflector;
 use log::{error, info, warn};
 use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind, Type};
@@ -31,6 +32,11 @@ struct Cli {
 enum Commands {
     #[command(about = "Initialize the directory structure")]
     Init {},
+    #[command(about = "Hydrate the OpenAPI specification with x-kubernetes-operator-* extensions")]
+    Hydrate {
+        #[arg(required = true, help = "Path to the OpenAPI specification file")]
+        openapi_file: String,
+    },
     #[command(about = "Generate Kubernetes operator code from an OpenAPI specification")]
     Generate {
         #[arg(required = true, help = "Path to the OpenAPI specification file")]
@@ -60,9 +66,7 @@ const K8S_MANIFESTS_RBAC_DIR: &str = "manifests/rbac";
 const K8S_MANIFESTS_EXAMPLES_DIR: &str = "manifests/examples";
 
 fn main() {
-    if std::env::var("RUST_LOG").is_err() {
-        std::env::set_var("RUST_LOG", "info");
-    }
+    dotenv::dotenv().ok();
 
     env_logger::init();
 
@@ -123,6 +127,19 @@ fn main() {
 
             create_directory_if_not_exists(K8S_MANIFESTS_RBAC_DIR);
             create_directory_if_not_exists(K8S_MANIFESTS_EXAMPLES_DIR);
+        }
+        Some(Commands::Hydrate { openapi_file }) => {
+            info!("Hydrating OpenAPI spec...");
+            let openapi = read_and_parse_openapi_spec(openapi_file);
+            // TODO - implement hydration of open api spec from environment variables
+            // x-kubernetes-operator-group
+            // x-kubernetes-operator-version
+            // x-kubernetes-operator-resource-ref
+            // x-kubernetes-operator-include-tags
+            // x-kubernetes-operator-example-metadata-spec-field-ref
+
+
+            info!("OpenAPI spec hydrated successfully");
         }
         Some(Commands::Generate {
             openapi_file,
