@@ -39,16 +39,19 @@
         },
         "[rust]": {
           "editor.defaultFormatter": "rust-lang.rust-analyzer"
-        }
+        },
+        "git.enableCommitSigning": true,
+        "dev.containers.copyGitConfig": true
       }
     }
   },
   "mounts": [
+    "source=${localWorkspaceFolder}/.devcontainer/setup-git.sh,target=/home/vscode/setup-git.sh,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/.devcontainer/deps.sh,target=/home/vscode/deps.sh,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/.devcontainer/.zshrc,target=/home/vscode/.zshrc,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/.devcontainer/launch.json.example,target=/workspaces/k8s-operator-generator/.vscode/launch.json,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "git config --global --add safe.directory /workspaces/k8s-operator-generator && /home/vscode/deps.sh",
+  "postCreateCommand": "/home/vscode/setup-git.sh && /home/vscode/deps.sh",
   "remoteEnv": {
     "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
   }
