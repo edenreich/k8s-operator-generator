@@ -5,6 +5,7 @@ use log::{error, info, warn};
 use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind, Type};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+use serde_yaml::Value as YamlValue;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fs::{DirBuilder, File, OpenOptions},
@@ -130,13 +131,59 @@ fn main() {
         }
         Some(Commands::Hydrate { openapi_file }) => {
             info!("Hydrating OpenAPI spec...");
-            let _openapi = read_and_parse_openapi_spec(openapi_file);
-            // TODO - implement hydration of open api spec from environment variables
-            // x-kubernetes-operator-group
-            // x-kubernetes-operator-version
-            // x-kubernetes-operator-resource-ref
-            // x-kubernetes-operator-include-tags
-            // x-kubernetes-operator-example-metadata-spec-field-ref
+            let mut openapi = read_openapi_spec_raw(openapi_file);
+
+            if let Some(info) = openapi.get_mut("info") {
+                if let Some(info_map) = info.as_mapping_mut() {
+                    info_map.insert(
+                        YamlValue::String("x-kubernetes-operator-group".to_string()),
+                        YamlValue::String(
+                            std::env::var("KUBERNETES_OPERATOR_GROUP").unwrap_or_default(),
+                        ),
+                    );
+                    info_map.insert(
+                        YamlValue::String("x-kubernetes-operator-version".to_string()),
+                        YamlValue::String(
+                            std::env::var("KUBERNETES_OPERATOR_VERSION").unwrap_or_default(),
+                        ),
+                    );
+                    info_map.insert(
+                        YamlValue::String("x-kubernetes-operator-resource-ref".to_string()),
+                        YamlValue::String(
+                            std::env::var("KUBERNETES_OPERATOR_RESOURCE_REF").unwrap_or_default(),
+                        ),
+                    );
+                    let kubernetes_operator_include_tags = std::env::var(
+                        "KUBERNETES_OPERATOR_INCLUDE_TAGS",
+                    )
+                    .expect("KUBERNETES_OPERATOR_INCLUDE_TAGS environment variable not set");
+                    let tags_list: Vec<YamlValue> = kubernetes_operator_include_tags
+                        .split(',')
+                        .map(|tag| YamlValue::String(tag.trim().to_string()))
+                        .collect();
+                    info_map.insert(
+                        YamlValue::String("x-kubernetes-operator-include-tags".to_string()),
+                        YamlValue::Sequence(tags_list),
+                    );
+                    info_map.insert(
+                        YamlValue::String(
+                            "x-kubernetes-operator-example-metadata-spec-field-ref".to_string(),
+                        ),
+                        YamlValue::String(
+                            std::env::var("KUBERNETES_OPERATOR_EXAMPLE_METADATA_SPEC_FIELD_REF")
+                                .unwrap_or_default(),
+                        ),
+                    );
+                }
+            }
+
+            write_openapi_spec_raw(openapi_file, &openapi);
+
+            let _ = ProcessCommand::new("prettier")
+                .arg("--write")
+                .arg(openapi_file)
+                .output()
+                .expect("Failed to run prettier on OpenAPI spec");
 
             info!("OpenAPI spec hydrated successfully");
         }
@@ -150,7 +197,7 @@ fn main() {
         }) => {
             info!("Using OpenAPI file: {}", openapi_file);
 
-            let openapi = read_and_parse_openapi_spec(openapi_file);
+            let openapi = read_openapi_spec(openapi_file);
             let (
                 kubernetes_operator_group,
                 kubernetes_operator_version,
@@ -249,10 +296,21 @@ fn main() {
     }
 }
 
-fn read_and_parse_openapi_spec(file_path: &str) -> OpenAPI {
+fn read_openapi_spec_raw(file_path: &str) -> indexmap::IndexMap<String, YamlValue> {
     let file = File::open(file_path).expect("Unable to open file");
     let reader = BufReader::new(file);
     serde_yaml::from_reader(reader).expect("Unable to parse OpenAPI spec")
+}
+
+fn read_openapi_spec(file_path: &str) -> OpenAPI {
+    let file = File::open(file_path).expect("Unable to open file");
+    let reader = BufReader::new(file);
+    serde_yaml::from_reader(reader).expect("Unable to parse OpenAPI spec")
+}
+
+fn write_openapi_spec_raw(file_path: &str, openapi: &indexmap::IndexMap<String, YamlValue>) {
+    let file = File::create(file_path).expect("Unable to create file");
+    serde_yaml::to_writer(file, openapi).expect("Unable to write OpenAPI spec");
 }
 
 fn extract_openapi_info(openapi: &OpenAPI) -> (String, String, String, Vec<String>, String) {
