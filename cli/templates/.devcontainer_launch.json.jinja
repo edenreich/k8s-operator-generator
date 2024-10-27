@@ -1,0 +1,65 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'operator'",
+      "env": {
+        "RUST_BACKTRACE": "1",
+        "RUST_LOG": "debug",
+        "ACCESS_TOKEN": ""
+      },
+      "cargo": {
+        "args": ["build", "--package=k8s_operator"]
+      },
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug kopgen: init command",
+      "env": {
+        "RUST_BACKTRACE": "1",
+        "RUST_LOG": "debug",
+        "ACCESS_TOKEN": ""
+      },
+      "cargo": {
+        "args": ["build", "--package=kopgen"]
+      },
+      "args": ["init"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug codegen: hydrate command",
+      "env": {
+        "RUST_BACKTRACE": "1",
+        "RUST_LOG": "debug",
+        "ACCESS_TOKEN": ""
+      },
+      "cargo": {
+        "args": ["build", "--package=kopgen"]
+      },
+      "args": ["hydrate", "openapi.yaml"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug codegen: generate command",
+      "env": {
+        "RUST_BACKTRACE": "1",
+        "RUST_LOG": "debug",
+        "ACCESS_TOKEN": ""
+      },
+      "cargo": {
+        "args": ["build", "--package=kopgen"]
+      },
+      "args": ["generate", "openapi.yaml"],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

@@ -103,7 +103,7 @@ fn main() {
             generate_taskfile();
             generate_devcontainer_json();
             generate_devcontainer_deps();
-            generate_devcontainer_launch_example_json();
+            generate_devcontainer_launch_json();
             generate_devcontainer_zshrc();
             generate_cargo_config();
 
@@ -1073,12 +1073,12 @@ fn generate_devcontainer_deps() {
 }
 
 #[derive(Template)]
-#[template(path = ".devcontainer_launch.json.example.jinja")]
+#[template(path = ".devcontainer_launch.json.jinja")]
 struct DevcontainerLaunchJsonExampleTemplate {}
 
-fn generate_devcontainer_launch_example_json() {
+fn generate_devcontainer_launch_json() {
     let content = DevcontainerLaunchJsonExampleTemplate {}.render().unwrap();
-    write_to_file(String::from(".devcontainer/launch.example.json"), content);
+    write_to_file(String::from(".devcontainer/launch.json"), content);
 }
 
 #[derive(Template)]
