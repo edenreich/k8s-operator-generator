@@ -1,5 +1,5 @@
 use askama::Template;
-use indexmap::IndexMap;
+// use indexmap::IndexMap;
 use inflector::Inflector;
 use log::{error, info, warn};
 use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind, Type};
@@ -130,14 +130,13 @@ fn main() {
         }
         Some(Commands::Hydrate { openapi_file }) => {
             info!("Hydrating OpenAPI spec...");
-            let openapi = read_and_parse_openapi_spec(openapi_file);
+            let _openapi = read_and_parse_openapi_spec(openapi_file);
             // TODO - implement hydration of open api spec from environment variables
             // x-kubernetes-operator-group
             // x-kubernetes-operator-version
             // x-kubernetes-operator-resource-ref
             // x-kubernetes-operator-include-tags
             // x-kubernetes-operator-example-metadata-spec-field-ref
-
 
             info!("OpenAPI spec hydrated successfully");
         }
