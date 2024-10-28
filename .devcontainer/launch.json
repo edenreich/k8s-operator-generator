@@ -4,26 +4,10 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug executable 'operator'",
-      "env": {
-        "RUST_BACKTRACE": "1",
-        "RUST_LOG": "debug",
-        "ACCESS_TOKEN": ""
-      },
-      "cargo": {
-        "args": ["build", "--package=k8s_operator"]
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
       "name": "Debug kopgen: init command",
       "env": {
         "RUST_BACKTRACE": "1",
-        "RUST_LOG": "debug",
-        "ACCESS_TOKEN": ""
+        "RUST_LOG": "debug"
       },
       "cargo": {
         "args": ["build", "--package=kopgen"]
@@ -37,8 +21,7 @@
       "name": "Debug codegen: hydrate command",
       "env": {
         "RUST_BACKTRACE": "1",
-        "RUST_LOG": "debug",
-        "ACCESS_TOKEN": ""
+        "RUST_LOG": "debug"
       },
       "cargo": {
         "args": ["build", "--package=kopgen"]
@@ -52,8 +35,7 @@
       "name": "Debug codegen: generate command",
       "env": {
         "RUST_BACKTRACE": "1",
-        "RUST_LOG": "debug",
-        "ACCESS_TOKEN": ""
+        "RUST_LOG": "debug"
       },
       "cargo": {
         "args": ["build", "--package=kopgen"]

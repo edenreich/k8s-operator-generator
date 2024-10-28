@@ -49,7 +49,7 @@ mv kopgen /usr/local/bin
 Start a new project in an empty folder:
 
 ```bash
-kopgen init
+kopgen init .
 ```
 
 This will generate the project for the operator including a dev container environment, therefore it is recommended you use VScode.

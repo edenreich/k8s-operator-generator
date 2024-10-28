@@ -1,5 +1,5 @@
 .vscode
 target
-node_modules
 .DS_Store
 .env
+temp

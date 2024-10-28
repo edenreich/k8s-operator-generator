@@ -8,44 +8,6 @@ tasks:
     cmds:
       - mdbook serve --open docs/operator
 
-  oas-download:
-    desc: Download OpenAPI specification
-    cmds:
-      - curl -o openapi.yaml {{.OPENAPI_DOWNLOAD_URL}}
-    vars:
-      requires:
-        - OPENAPI_DOWNLOAD_URL
-
-  oas-hydrate:
-    desc: Hydrate the OpenAPI specification
-    cmds:
-      - cargo run --package kopgen hydrate openapi.yaml
-
-  oas-validate:
-    desc: Validate the OpenAPI specification
-    cmds:
-      - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.9.0 validate -i /local/openapi.yaml
-
-  oas-generate-rust-client:
-    desc: Generate the OpenAPI Rust client
-    cmds:
-      - |
-        docker run --rm \
-          -w /local \
-          -v ${PWD}/crates/client-sdk:/local/client-sdk \
-          -v ${PWD}/openapi.yaml:/tmp/openapi.yaml \
-          openapitools/openapi-generator-cli:v7.9.0 \
-          generate -i /tmp/openapi.yaml -g rust -o client-sdk
-      - rm crates/client-sdk/{.travis.yml,git_push.sh}
-
-  oas-generate-docs:
-    desc: Generate the OpenAPI documentation
-    cmds:
-      - |
-        docker run --rm -v ${PWD}:/local \
-          openapitools/openapi-generator-cli:v7.9.0 \
-          generate -i /local/openapi.yaml -g markdown -o /local/docs/openapi
-
   analyse:
     desc: Analyse the code
     cmds:
@@ -60,83 +22,18 @@ tasks:
       vars:
         - TARGET_ARCH
 
-  generate-code:
-    desc: Generate the Rust types and controllers from the OpenAPI specification
-    cmds:
-      - cargo run --package kopgen generate openapi.yaml --all
-
-  generate-crds:
-    desc: Generate the k8s CRD's out of the rust structs
-    cmds:
-      - cargo run --package k8s_crdgen > manifests/crds/all.yaml
-
-  generate:
-    desc: Generate the k8s CRD's out of the rust structs
-    deps:
-      - oas-generate-rust-client
-      - oas-generate-docs
-      - generate-code
-      - generate-crds
-
   run:
-    desc: Run the k8s operator
+    desc: Run the CLI
     cmds:
-      - RUST_LOG=info INSTALL_CRDS=true ACCESS_TOKEN="" cargo run --package k8s_operator
-
-  run-fake-server:
-    desc: Run the fake server
-    cmds:
-      - docker run --rm -it -p 8080:4010 -v ${PWD}/openapi.yaml:/tmp/openapi.yaml stoplight/prism:latest mock -d -h 0.0.0.0 /tmp/openapi.yaml
-
-  package:
-    desc: Package the k8s operator
-    cmds:
-      - docker build --build-arg TARGET_ARCH={{.TARGET_ARCH}} -t {{.CONTAINER_REGISTRY}}/operator:latest .
-      - docker push {{.CONTAINER_REGISTRY}}/operator:latest
-
-  deploy-operator:
-    desc: Deploy the k8s operator
-    cmds:
-      - kubectl config use-context {{.CLUSTER_NAME}}
-      - kubectl apply -f manifests/rbac/
-      - kubectl apply -f manifests/operator/
-      - kubectl rollout status deployment/operator
+      - cargo run --package kopgen -- {{.CLI_ARGS}}
 
   test-cli-output:
     desc: Test the CLI output
     cmds:
       - cargo run --package kopgen init temp
 
-  test:
-    desc: Run the tests
-    cmds:
-      - cargo test --package k8s_operator_e2e
-
-  cluster-create:
-    desc: Create a k8s cluster
-    cmds:
-      - ctlptl apply -f Cluster.yaml
-
-  cluster-delete:
-    desc: Delete a k8s cluster
-    cmds:
-      - ctlptl delete -f Cluster.yaml
-
-  deploy-crds:
-    desc: Deploy the k8s CRD's
-    cmds:
-      - kubectl config use-context {{.CLUSTER_NAME}}
-      - kubectl apply -f manifests/crds/all.yaml
-
-  dirty-check:
-    desc: Check if the project is dirty
-    cmds:
-      - task generate
-      - git diff --quiet || (echo "Project is dirty" && exit 1)
-
   clean:
     desc: Clean the project
     cmds:
       - rm -rf temp
       - cargo clean
-      - task cluster-delete
