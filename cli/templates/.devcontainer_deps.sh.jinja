@@ -5,9 +5,9 @@ set -e
 sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev
 
 # Install kopgen CLI
-curl -sSL https://github.com/edenreich/k8s-operator-generator/releases/download/latest/kopgen_$(uname -m)-unknown-linux-musl -o kopgen
+curl -sSL https://github.com/edenreich/k8s-operator-generator/releases/download/v0.1.0-rc.2/kopgen_$(uname -m)-unknown-linux-musl -o kopgen
 chmod +x kopgen
-mv kopgen /usr/local/bin
+sudo mv kopgen /usr/local/bin
 
 # Install NVM and NodeJS
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash

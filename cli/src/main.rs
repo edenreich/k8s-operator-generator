@@ -6,6 +6,7 @@ use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind, Type};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use serde_yaml::Value as YamlValue;
+use std::os::unix::fs::PermissionsExt;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     fs::{DirBuilder, File, OpenOptions},
@@ -115,6 +116,7 @@ fn main() {
             generate_taskfile(base_path);
             generate_devcontainer_json(base_path.join(DEVCONTAINER_DIR).as_path());
             generate_devcontainer_deps(base_path.join(DEVCONTAINER_DIR).as_path());
+            generate_devcontainer_setup_git(base_path.join(DEVCONTAINER_DIR).as_path());
             generate_devcontainer_launch_json(base_path.join(DEVCONTAINER_DIR).as_path());
             generate_devcontainer_zshrc(base_path.join(DEVCONTAINER_DIR).as_path());
             generate_cargo_config(base_path.join(CARGO_DIR).as_path());
@@ -146,6 +148,14 @@ fn main() {
             create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_RBAC_DIR).as_path());
             create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_OPERATOR_DIR).as_path());
             create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_EXAMPLES_DIR).as_path());
+
+            set_executable_permission(base_path.join(DEVCONTAINER_DIR).join("deps.sh").as_path());
+            set_executable_permission(
+                base_path
+                    .join(DEVCONTAINER_DIR)
+                    .join("setup-git.sh")
+                    .as_path(),
+            );
         }
         Some(Commands::Hydrate { openapi_file }) => {
             info!("Hydrating OpenAPI spec...");
@@ -1108,6 +1118,15 @@ fn generate_devcontainer_deps(base_path: &Path) {
 }
 
 #[derive(Template)]
+#[template(path = ".devcontainer_setup-git.sh.jinja")]
+struct DevcontainerSetupGitTemplate {}
+
+fn generate_devcontainer_setup_git(base_path: &Path) {
+    let content: String = DevcontainerSetupGitTemplate {}.render().unwrap();
+    write_to_file_without_filter(base_path, "setup-git.sh", content);
+}
+
+#[derive(Template)]
 #[template(path = ".devcontainer_launch.json.jinja")]
 struct DevcontainerLaunchJsonExampleTemplate {}
 
@@ -1520,4 +1539,11 @@ fn write_example_manifest(name: &str, resources: Vec<Resource>) {
             error!("Failed to render template: {}", e);
         }
     }
+}
+
+fn set_executable_permission(file_path: &Path) {
+    let metadata = std::fs::metadata(file_path).expect("Unable to read file metadata");
+    let mut permissions = metadata.permissions();
+    permissions.set_mode(0o755); // Set executable permission
+    std::fs::set_permissions(file_path, permissions).expect("Unable to set file permissions");
 }
