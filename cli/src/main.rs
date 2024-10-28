@@ -1,5 +1,5 @@
 use askama::Template;
-// use indexmap::IndexMap;
+use indexmap::IndexMap;
 use inflector::Inflector;
 use log::{error, info, warn};
 use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind, Type};
@@ -296,7 +296,7 @@ fn main() {
     }
 }
 
-fn read_openapi_spec_raw(file_path: &str) -> indexmap::IndexMap<String, YamlValue> {
+fn read_openapi_spec_raw(file_path: &str) -> IndexMap<String, YamlValue> {
     let file = File::open(file_path).expect("Unable to open file");
     let reader = BufReader::new(file);
     serde_yaml::from_reader(reader).expect("Unable to parse OpenAPI spec")
@@ -308,7 +308,7 @@ fn read_openapi_spec(file_path: &str) -> OpenAPI {
     serde_yaml::from_reader(reader).expect("Unable to parse OpenAPI spec")
 }
 
-fn write_openapi_spec_raw(file_path: &str, openapi: &indexmap::IndexMap<String, YamlValue>) {
+fn write_openapi_spec_raw(file_path: &str, openapi: &IndexMap<String, YamlValue>) {
     let file = File::create(file_path).expect("Unable to create file");
     serde_yaml::to_writer(file, openapi).expect("Unable to write OpenAPI spec");
 }
