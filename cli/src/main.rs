@@ -21,7 +21,7 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(
     name = "Kubernetes Operator Codegen",
-    version = "1.0",
+    version = "v1.0.0",
     author = "Eden Reich <eden.reich@gmail.com>",
     arg_required_else_help = true
 )]

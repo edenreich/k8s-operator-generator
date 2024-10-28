@@ -5,7 +5,7 @@ set -e
 sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev
 
 # Install kopgen CLI
-curl -sSL https://github.com/edenreich/k8s-operator-generator/releases/download/v0.1.0-rc.2/kopgen_$(uname -m)-unknown-linux-musl -o kopgen
+curl -sSL https://github.com/edenreich/k8s-operator-generator/releases/download/v1.0.0/kopgen_$(uname -m)-unknown-linux-musl -o kopgen
 chmod +x kopgen
 sudo mv kopgen /usr/local/bin
 
