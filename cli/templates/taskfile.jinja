@@ -58,12 +58,12 @@ tasks:
   generate-code:
     desc: Generate the Rust types and controllers from the OpenAPI specification
     cmds:
-      - cargo run --package kopgen generate openapi.yaml --all
+      - kopgen generate openapi.yaml --all
 
   generate-crds:
     desc: Generate the k8s CRD's out of the rust structs
     cmds:
-      - cargo run --package k8s_crdgen > manifests/crds/all.yaml
+      - cargo run --package crdgen > manifests/crds/all.yaml
 
   generate:
     desc: Generate the k8s CRD's out of the rust structs
@@ -76,7 +76,7 @@ tasks:
   run:
     desc: Run the k8s operator
     cmds:
-      - RUST_LOG=info INSTALL_CRDS=true ACCESS_TOKEN="" cargo run --package k8s_operator
+      - RUST_LOG=info INSTALL_CRDS=true ACCESS_TOKEN="" cargo run --package operator
 
   run-fake-server:
     desc: Run the fake server
