@@ -102,6 +102,11 @@ tasks:
       - kubectl apply -f manifests/operator/
       - kubectl rollout status deployment/operator
 
+  test-cli-output:
+    desc: Test the CLI output
+    cmds:
+      - cargo run --package kopgen init temp
+
   test:
     desc: Run the tests
     cmds:
@@ -132,5 +137,6 @@ tasks:
   clean:
     desc: Clean the project
     cmds:
+      - rm -rf temp
       - cargo clean
       - task cluster-delete
