@@ -21,6 +21,11 @@ tasks:
     cmds:
       - docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli:v7.9.0 validate -i /local/openapi.yaml
 
+  oas-hydrate:
+    desc: Hydrate the OpenAPI specification with metadata
+    cmds:
+      - kopgen hydrate openapi.yaml
+
   oas-generate-rust-client:
     desc: Generate the OpenAPI Rust client
     cmds:
@@ -68,6 +73,9 @@ tasks:
   generate:
     desc: Generate the k8s CRD's out of the rust structs
     cmds:
+      - task: oas-download
+      - task: oas-hydrate
+      - task: oas-validate
       - task: oas-generate-rust-client
       - task: oas-generate-docs
       - task: generate-code

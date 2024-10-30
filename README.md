@@ -65,12 +65,11 @@ A Dev Container is essentially an encapsulate environment with all the necessary
 To get started, follow these steps:
 
 1. **Configure**: Run `cp .env.example .env` to let the Taskfile know what environment variables you would like to use - you can keep it as is, because it's by default set to local environment.
-2. **Download the OAS**: Run `task oas-download` to get the latest OpenAPI Specification.
-3. **Generate the code**: Use `task generate` to create the necessary types and controllers.
-4. **Create a development cluster**: Use `task cluster-create` to set up your local Kubernetes cluster.
-5. **Deploy the CRDs (or set INSTALL_CRDS environment variable to true)**: Run `task deploy-crds` to deploy the Custom Resource Definitions to your cluster.
-6. **Run the operator**: Start your operator with `task run`.
-7. **Test it out**: Apply the example manifests with `kubectl apply -f manifests/examples/` and see your operator in action!
+2. **Generate the code**: Use `task generate` to create the necessary types and controllers.
+3. **Create a development cluster**: Use `task cluster-create` to set up your local Kubernetes cluster.
+4. **Deploy the CRDs (or set INSTALL_CRDS environment variable to true)**: Run `task deploy-crds` to deploy the Custom Resource Definitions to your cluster.
+5. **Run the operator**: Start your operator with `task run`.
+6. **Test it out**: Apply the example manifests with `kubectl apply -f manifests/examples/` and see your operator in action!
 
 ## Need Help?
 
