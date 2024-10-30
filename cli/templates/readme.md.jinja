@@ -1,6 +1,10 @@
-# 🦀 Kubernetes Operator Generator 🦀
+<h1 align="center">🦀 Kubernetes Operator Generator 🦀</h1>
 
-[![CI](https://github.com/edenreich/k8s-operator-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/edenreich/k8s-operator-generator/actions/workflows/ci.yml)
+<p align="center">
+<a href="https://github.com/edenreich/k8s-operator-generator/actions"><img src="https://github.com/edenreich/k8s-operator-generator/actions/workflows/ci.yml/badge.svg" alt="CI Status"/></a>
+<a href="https://github.com/edenreich/k8s-operator-generator/releases"><img src="https://img.shields.io/github/v/release/edenreich/k8s-operator-generator?color=blue&style=flat-square" alt="Version"/></a>
+<a href="https://github.com/edenreich/k8s-operator-generator/blob/main/LICENSE"><img src="https://img.shields.io/github/license/edenreich/k8s-operator-generator?color=blue&style=flat-square" alt="License"/></a>
+</p>
 
 Welcome to the Kubernetes Operator Generator! This project provides a generator for creating a CRUD Kubernetes operator from an OpenAPI Specification (OAS), all written in the powerful and efficient Rust language.
 
