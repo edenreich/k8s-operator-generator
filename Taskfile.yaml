@@ -6,7 +6,7 @@ tasks:
   docs:
     desc: Open the documentation
     cmds:
-      - mdbook serve --open docs/operator
+      - mdbook serve --open docs
 
   analyse:
     desc: Analyse the code
