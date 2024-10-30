@@ -453,7 +453,7 @@ struct MainTemplate {
 fn generate_main_file(api_group: &str, api_version: &str, mut controllers: Vec<String>) {
     let base_path = &Path::new(K8S_OPERATOR_DIR).join("src");
     let file_path = base_path.join("main.rs").to_string_lossy().to_string();
-    if get_ignored_files(Path::new(".")).contains(&file_path) {
+    if get_ignored_files().contains(&file_path) {
         return;
     }
 
@@ -655,7 +655,7 @@ fn generate_controller(
     controller_attributes: &[ControllerAttributes],
     resource_remote_ref: String,
 ) {
-    if get_ignored_files(Path::new(".")).contains(&format!(
+    if get_ignored_files().contains(&format!(
         "{}/{}.rs",
         K8S_OPERATOR_CONTROLLERS_DIR,
         tag.to_lowercase()
@@ -821,7 +821,7 @@ fn generate_type(
     operator_version: &str,
     operator_resource_ref: &str,
 ) {
-    if get_ignored_files(Path::new(".")).contains(&format!(
+    if get_ignored_files().contains(&format!(
         "{}/{}.rs",
         K8S_OPERATOR_TYPES_DIR,
         name.to_lowercase()
@@ -864,7 +864,7 @@ struct LibTemplate {}
 
 fn generate_lib() {
     let file_path = format!("{}/src/lib.rs", K8S_OPERATOR_DIR);
-    if get_ignored_files(Path::new(".")).contains(&file_path) {
+    if get_ignored_files().contains(&file_path) {
         return;
     }
 
@@ -924,9 +924,7 @@ struct CrdGenTemplate {
 fn generate_crdgen_file(resources: Vec<String>) {
     let base_path: &Path = &Path::new(K8S_CRDGEN_DIR).join("src");
     let file_name = "main.rs".to_string();
-    if get_ignored_files(Path::new("."))
-        .contains(&base_path.join(&file_name).to_string_lossy().to_string())
-    {
+    if get_ignored_files().contains(&base_path.join(&file_name).to_string_lossy().to_string()) {
         return;
     }
 
@@ -1153,8 +1151,8 @@ fn generate_cargo_config(base_path: &Path) {
     write_to_file_without_filter(base_path, "config.toml", content);
 }
 
-fn get_ignored_files(base_path: &Path) -> Vec<String> {
-    let ignore_file_path = base_path.join(".openapi-generator-ignore");
+fn get_ignored_files() -> Vec<String> {
+    let ignore_file_path = ".openapi-generator-ignore";
     let ignore_file = File::open(&ignore_file_path)
         .unwrap_or_else(|_| panic!("Unable to open file: {:?}", ignore_file_path));
     let reader = BufReader::new(ignore_file);
@@ -1163,7 +1161,7 @@ fn get_ignored_files(base_path: &Path) -> Vec<String> {
 
 fn write_to_file(base_path: &Path, file_name: &str, file_content: String) {
     let file_path = base_path.join(file_name);
-    if get_ignored_files(base_path).contains(&file_path.to_string_lossy().to_string()) {
+    if get_ignored_files().contains(&file_path.to_string_lossy().to_string()) {
         return;
     }
 
@@ -1181,7 +1179,7 @@ fn write_to_file_without_filter(base_path: &Path, file_name: &str, file_content:
 }
 
 fn upsert_line_to_file(file_path: &str, line: &str) -> Result<(), Error> {
-    if get_ignored_files(Path::new(file_path)).contains(&file_path.to_string()) {
+    if get_ignored_files().contains(&file_path.to_string()) {
         return Ok(());
     }
 
@@ -1215,7 +1213,7 @@ fn upsert_line_to_file_without_filter(file_path: &str, line: &str) -> Result<(),
 }
 
 fn format_file(file_path: String) {
-    if get_ignored_files(Path::new(".")).contains(&file_path) {
+    if get_ignored_files().contains(&file_path) {
         return;
     }
 
@@ -1255,7 +1253,7 @@ fn generate_role_file(resources: Vec<String>, api_group: &str) {
     let base_path: &Path = Path::new(K8S_MANIFESTS_RBAC_DIR);
     let file_name = "role.yaml";
     let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files(Path::new(".")).contains(&file_path) {
+    if get_ignored_files().contains(&file_path) {
         return;
     }
 
@@ -1285,7 +1283,7 @@ fn generate_cluster_role_file(resources: Vec<String>, api_group: &str) {
     let base_path: &Path = Path::new(K8S_MANIFESTS_RBAC_DIR);
     let file_name = "clusterrole.yaml";
     let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files(Path::new(".")).contains(&file_path) {
+    if get_ignored_files().contains(&file_path) {
         return;
     }
 
@@ -1308,7 +1306,7 @@ fn generate_service_account_file() {
     let base_path: &Path = Path::new(K8S_MANIFESTS_RBAC_DIR);
     let file_name = "serviceaccount.yaml";
     let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files(Path::new(".")).contains(&file_path) {
+    if get_ignored_files().contains(&file_path) {
         return;
     }
 
@@ -1324,7 +1322,7 @@ fn generate_role_binding_file_content() {
     let base_path: &Path = Path::new(K8S_MANIFESTS_RBAC_DIR);
     let file_name = "rolebinding.yaml";
     let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files(Path::new(".")).contains(&file_path) {
+    if get_ignored_files().contains(&file_path) {
         return;
     }
 
@@ -1340,7 +1338,7 @@ fn generate_cluster_role_binding_file_content() {
     let base_path: &Path = Path::new(K8S_MANIFESTS_RBAC_DIR);
     let file_name = "clusterrolebinding.yaml";
     let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files(Path::new(".")).contains(&file_path) {
+    if get_ignored_files().contains(&file_path) {
         return;
     }
 
@@ -1356,7 +1354,7 @@ fn generate_operator_deployment_file() {
     let base_path: &Path = Path::new(K8S_MANIFESTS_OPERATOR_DIR);
     let file_name = "deployment.yaml";
     let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files(Path::new(".")).contains(&file_path) {
+    if get_ignored_files().contains(&file_path) {
         return;
     }
 
@@ -1372,7 +1370,7 @@ fn generate_operator_secret_file() {
     let base_path: &Path = Path::new(K8S_MANIFESTS_OPERATOR_DIR);
     let file_name = "secret.yaml";
     let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files(Path::new(".")).contains(&file_path) {
+    if get_ignored_files().contains(&file_path) {
         return;
     }
 
