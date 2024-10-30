@@ -1,7 +1,7 @@
 use askama::Template;
 use indexmap::IndexMap;
 use inflector::Inflector;
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use openapiv3::{OpenAPI, ReferenceOr, Schema, SchemaKind, Type};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -96,6 +96,7 @@ fn main() {
 
             create_directory_if_not_exists(base_path.join(K8S_OPERATOR_DIR).as_path());
             create_directory_if_not_exists(base_path.join(K8S_CRDGEN_DIR).as_path());
+            create_directory_if_not_exists(base_path.join(K8S_CRDGEN_DIR).join("src").as_path());
             create_directory_if_not_exists(base_path.join(K8S_TESTS_DIR).as_path());
 
             generate_cargo_toml(base_path);
@@ -264,7 +265,7 @@ fn main() {
                 let controllers = generate_controllers(
                     schemas.clone(),
                     paths.clone(),
-                    kubernetes_operator_include_tags,
+                    kubernetes_operator_include_tags.clone(),
                     kubernetes_operator_resource_ref.clone(),
                 );
                 generate_main_file(
@@ -304,7 +305,7 @@ fn main() {
                 let controllers = generate_controllers(
                     schemas.clone(),
                     paths.clone(),
-                    kubernetes_operator_include_tags,
+                    kubernetes_operator_include_tags.clone(),
                     kubernetes_operator_resource_ref.clone(),
                 );
                 generate_main_file(
@@ -731,7 +732,7 @@ fn generate_controller(
     content.push_str(&content_action_post);
 
     let base_path: &Path = Path::new(K8S_OPERATOR_CONTROLLERS_DIR);
-    let file_name: String = tag.to_lowercase();
+    let file_name: String = format!("{}.rs", tag.to_lowercase());
     write_to_file(base_path, &file_name, content);
     format_file(base_path.join(file_name).to_string_lossy().to_string());
     add_controller_to_modfile(&tag.to_lowercase()).expect("Failed to add controller to mod file");
@@ -854,7 +855,7 @@ fn generate_type(
     .unwrap();
 
     let base_path: &Path = Path::new(K8S_OPERATOR_TYPES_DIR);
-    let file_name: String = arg_name_clone;
+    let file_name: String = format!("{}.rs", arg_name_clone);
     write_to_file(base_path, &file_name, content);
     format_file(base_path.join(file_name).to_string_lossy().to_string());
 }
@@ -1153,7 +1154,7 @@ fn generate_cargo_config(base_path: &Path) {
 
 fn get_ignored_files() -> Vec<String> {
     let ignore_file_path = ".openapi-generator-ignore";
-    let ignore_file = File::open(&ignore_file_path)
+    let ignore_file = File::open(ignore_file_path)
         .unwrap_or_else(|_| panic!("Unable to open file: {:?}", ignore_file_path));
     let reader = BufReader::new(ignore_file);
     reader.lines().map_while(Result::ok).collect()
@@ -1161,6 +1162,7 @@ fn get_ignored_files() -> Vec<String> {
 
 fn write_to_file(base_path: &Path, file_name: &str, file_content: String) {
     let file_path = base_path.join(file_name);
+    debug!("Writing to file: {}", file_path.to_string_lossy());
     if get_ignored_files().contains(&file_path.to_string_lossy().to_string()) {
         return;
     }
