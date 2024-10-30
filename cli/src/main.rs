@@ -1096,7 +1096,7 @@ struct TaskfileTemplate {}
 
 fn generate_taskfile(base_path: &Path) {
     let content = TaskfileTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "Taskfile", content);
+    write_to_file_without_filter(base_path, "Taskfile.yaml", content);
 }
 
 #[derive(Template)]
