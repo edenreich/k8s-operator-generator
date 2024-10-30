@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Pets API
-  version: 1.0.0
+  version: 1.0.1
   description: An API for managing pets
   x-kubernetes-operator-group: example.com
   x-kubernetes-operator-version: v1
