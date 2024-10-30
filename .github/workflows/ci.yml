@@ -79,10 +79,10 @@ jobs:
         run: cargo install mdbook mdbook-mermaid
 
       - name: Build the book
-        run: mdbook build docs/operator
+        run: mdbook build docs
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs/operator/book
+          publish_dir: ./docs/book
