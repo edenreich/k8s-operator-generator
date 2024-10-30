@@ -71,7 +71,7 @@ tasks:
       - cargo run --package crdgen > manifests/crds/all.yaml
 
   generate:
-    desc: Generate the k8s CRD's out of the rust structs
+    desc: Generate everything
     cmds:
       - task: oas-download
       - task: oas-hydrate
