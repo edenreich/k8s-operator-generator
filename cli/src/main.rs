@@ -67,6 +67,7 @@ const K8S_TESTS_DIR: &str = "tests";
 const K8S_TESTS_UTILS_DIR: &str = "tests/src/utils";
 const K8S_OPERATOR_CONTROLLERS_DIR: &str = "operator/src/controllers";
 const K8S_OPERATOR_TYPES_DIR: &str = "operator/src/types";
+const K8S_MANIFESTS_CRDS_DIR: &str = "manifests/crds";
 const K8S_MANIFESTS_RBAC_DIR: &str = "manifests/rbac";
 const K8S_MANIFESTS_OPERATOR_DIR: &str = "manifests/operator";
 const K8S_MANIFESTS_EXAMPLES_DIR: &str = "manifests/examples";
@@ -146,6 +147,7 @@ fn main() {
             // TODO - make the tests generated dynamically based on the defined API controllers and types.
             generate_tests(base_path.join(K8S_TESTS_DIR).as_path());
 
+            create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_CRDS_DIR).as_path());
             create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_RBAC_DIR).as_path());
             create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_OPERATOR_DIR).as_path());
             create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_EXAMPLES_DIR).as_path());

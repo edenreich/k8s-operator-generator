@@ -5,7 +5,7 @@ use kube::CustomResourceExt;
 fn main() {
     let crds = vec![
         {% for (resource, crd) in resources.iter() %}
-        k8s_operator::types::{{ resource }}::{{ crd }}::crd(),
+        operator::types::{{ resource }}::{{ crd }}::crd(),
         {% endfor %}
     ];
 
