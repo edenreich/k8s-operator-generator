@@ -27,11 +27,11 @@ tasks:
       - |
         docker run --rm \
           -w /local \
-          -v ${PWD}/crates/client-sdk:/local/client-sdk \
+          -v ${PWD}/client-sdk:/local/client-sdk \
           -v ${PWD}/openapi.yaml:/tmp/openapi.yaml \
           openapitools/openapi-generator-cli:v7.9.0 \
           generate -i /tmp/openapi.yaml -g rust -o client-sdk
-      - rm crates/client-sdk/{.travis.yml,git_push.sh}
+      - rm client-sdk/{.travis.yml,git_push.sh}
 
   oas-generate-docs:
     desc: Generate the OpenAPI documentation
