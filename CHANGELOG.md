@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/edenreich/k8s-operator-generator/compare/v1.3.0...v1.3.1) (2024-10-31)
+
+
+### Bug Fixes
+
+* Update release configuration and bump version to v1.3.0 in cli.rs ([e0549c7](https://github.com/edenreich/k8s-operator-generator/commit/e0549c7eab52c6a8e10c430602e78b79e6c13eb6))
+
 # [1.3.0](https://github.com/edenreich/k8s-operator-generator/compare/v1.2.0...v1.3.0) (2024-10-31)
 
 
