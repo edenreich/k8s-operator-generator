@@ -100,5 +100,8 @@ jobs:
         with:
           version: 3.x
 
+      - name: Configure the environment
+        run: cp .env.example .env
+
       - name: Test the code
         run: task test
