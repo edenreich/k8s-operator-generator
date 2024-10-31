@@ -1,3 +1,6 @@
+<p align="center">
+  <img src="logo/kopgen.webp" alt="Kopgen Logo" width="400"/>
+</p>
 <h1 align="center">🦀 Kopgen 🦀</h1>
 
 <p align="center">
@@ -6,7 +9,7 @@
 <a href="https://github.com/edenreich/kopgen/blob/main/LICENSE"><img src="https://img.shields.io/github/license/edenreich/kopgen?color=blue&style=flat-square" alt="License"/></a>
 </p>
 
-Welcome to the Kopgen tool! This project provides a generator for creating a CRUD Kubernetes operator from an OpenAPI Specification (OAS), all written in the powerful and efficient Rust language.
+Welcome to the Kopgen tool! This project provides a generator for creating a Create, Read, Update and Delete (CRUD) Kubernetes operator from an OpenAPI Specification (OAS), all written in the powerful and efficient Rust language.
 
 If you have a running API with a valid OpenAPI Specification but lack an operator to manage its complexity, this generator is the perfect solution. Kubernetes operators also align seamlessly with the GitOps methodology, enhancing your operational efficiency.
 
