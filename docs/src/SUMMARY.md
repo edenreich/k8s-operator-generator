@@ -1,6 +1,6 @@
-# K8S Operator Generator
+# Kopgen
 
-Welcome to the K8S Operator Generator documentation. This project helps you generate Kubernetes Custom Resource Definitions (CRDs) and operators from a standard OpenAPI Specification using Rust.
+Welcome to the Kopgen documentation. This project helps you generate Kubernetes Custom Resource Definitions (CRDs) and operators from a standard OpenAPI Specification using Rust.
 
 This project is in its early stages, so your contributions would be highly valuable.
 
