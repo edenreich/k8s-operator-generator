@@ -188,7 +188,7 @@
 </ol>
 <h2 id="architecture-overview"><a class="header" href="#architecture-overview">Architecture Overview</a></h2>
 <pre class="mermaid">graph TD
-    A[OpenAPI Specification] --&gt;|Input| B[K8S Operator Generator]
+    A[OpenAPI Specification] --&gt;|Input| B[Kopgen]
     B --&gt;|Generates| C[Kubernetes CRDs / Schema]
     B --&gt;|Generates| D[Kubernetes Operator]
     C --&gt;|Deploys to| E[Kubernetes Cluster]
