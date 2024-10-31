@@ -90,7 +90,11 @@ fn main() {
 
             create_directory_if_not_exists(base_path);
 
-            generate_openapi_generator_ignore(base_path);
+            generate_template_file(
+                OpenAPIGeneratorIgnoreTemplate {},
+                base_path,
+                ".openapi-generator-ignore",
+            );
 
             create_directory_if_not_exists(base_path.join(CARGO_DIR).as_path());
             create_directory_if_not_exists(base_path.join(DEVCONTAINER_DIR).as_path());
@@ -100,28 +104,64 @@ fn main() {
             create_directory_if_not_exists(base_path.join(K8S_CRDGEN_DIR).join("src").as_path());
             create_directory_if_not_exists(base_path.join(K8S_TESTS_DIR).as_path());
 
-            generate_cargo_toml(base_path);
-            generate_k8s_operator_cargo_toml(base_path.join(K8S_OPERATOR_DIR).as_path());
-            generate_k8s_crdgen_cargo_toml(base_path.join(K8S_CRDGEN_DIR).as_path());
-            generate_k8s_tests_cargo_toml(base_path.join(K8S_TESTS_DIR).as_path());
+            generate_template_file(CargoTomlTemplate {}, base_path, "Cargo.toml");
+            generate_template_file(
+                K8sOperatorCargoTomlTemplate {},
+                base_path.join(K8S_OPERATOR_DIR).as_path(),
+                "Cargo.toml",
+            );
+            generate_template_file(
+                K8sCrdgenCargoTomlTemplate {},
+                base_path.join(K8S_CRDGEN_DIR).as_path(),
+                "Cargo.toml",
+            );
+            generate_template_file(
+                K8sTestsCargoTomlTemplate {},
+                base_path.join(K8S_TESTS_DIR).as_path(),
+                "Cargo.toml",
+            );
 
-            generate_dockerignore(base_path);
-            generate_editorconfig(base_path);
-            generate_envexample(base_path);
-            generate_gitattributes(base_path);
-            generate_gitignore(base_path);
-            generate_prettierrc(base_path);
-            generate_rustfmt_toml(base_path);
-            generate_cluster_yaml(base_path);
-            generate_dockerfile(base_path);
-            generate_readme_md(base_path);
-            generate_taskfile(base_path);
-            generate_devcontainer_json(base_path.join(DEVCONTAINER_DIR).as_path());
-            generate_devcontainer_deps(base_path.join(DEVCONTAINER_DIR).as_path());
-            generate_devcontainer_setup_git(base_path.join(DEVCONTAINER_DIR).as_path());
-            generate_devcontainer_launch_json(base_path.join(DEVCONTAINER_DIR).as_path());
-            generate_devcontainer_zshrc(base_path.join(DEVCONTAINER_DIR).as_path());
-            generate_cargo_config(base_path.join(CARGO_DIR).as_path());
+            generate_template_file(DockerignoreTemplate {}, base_path, ".dockerignore");
+            generate_template_file(EditorconfigTemplate {}, base_path, ".editorconfig");
+            generate_template_file(EnvExampleTemplate {}, base_path, ".env.example");
+            generate_template_file(GitAttributesTemplate {}, base_path, ".gitattributes");
+            generate_template_file(GitIgnoreTemplate {}, base_path, ".gitignore");
+            generate_template_file(TaskfileTemplate {}, base_path, "Taskfile.yml");
+            generate_template_file(ReadmeMdTemplate {}, base_path, "README.md");
+            generate_template_file(PrettierrcTemplate {}, base_path, ".prettierrc");
+            generate_template_file(RustfmtTomlTemplate {}, base_path, ".rustfmt.toml");
+            generate_template_file(ClusterYamlTemplate {}, base_path, "Cluster.yaml");
+            generate_template_file(DockerfileTemplate {}, base_path, "Dockerfile");
+            generate_template_file(
+                DevcontainerJsonTemplate {},
+                base_path.join(DEVCONTAINER_DIR).as_path(),
+                "devcontainer.json",
+            );
+            generate_template_file(
+                DevcontainerDepsTemplate {},
+                base_path.join(DEVCONTAINER_DIR).as_path(),
+                "deps.sh",
+            );
+            generate_template_file(
+                DevcontainerSetupGitTemplate {},
+                base_path.join(DEVCONTAINER_DIR).as_path(),
+                "setup-git.sh",
+            );
+            generate_template_file(
+                DevcontainerLaunchJsonExampleTemplate {},
+                base_path.join(DEVCONTAINER_DIR).as_path(),
+                "launch.json",
+            );
+            generate_template_file(
+                DevcontainerZshrcTemplate {},
+                base_path.join(DEVCONTAINER_DIR).as_path(),
+                ".zshrc",
+            );
+            generate_template_file(
+                CargoConfigTemplate {},
+                base_path.join(CARGO_DIR).as_path(),
+                "config",
+            );
 
             create_directory_if_not_exists(&base_path.join(K8S_OPERATOR_CONTROLLERS_DIR));
             create_directory_if_not_exists(&base_path.join(K8S_OPERATOR_TYPES_DIR));
@@ -412,28 +452,13 @@ fn create_file_if_not_exists(base_path: &Path, file: &str) {
 #[template(path = "k8s_operator_cargo.toml.jinja")]
 struct K8sOperatorCargoTomlTemplate {}
 
-fn generate_k8s_operator_cargo_toml(base_path: &Path) {
-    let content = K8sOperatorCargoTomlTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "Cargo.toml", content);
-}
-
 #[derive(Template)]
 #[template(path = "k8s_crdgen_cargo.toml.jinja")]
 struct K8sCrdgenCargoTomlTemplate {}
 
-fn generate_k8s_crdgen_cargo_toml(base_path: &Path) {
-    let content = K8sCrdgenCargoTomlTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "Cargo.toml", content);
-}
-
 #[derive(Template)]
 #[template(path = "k8s_tests_cargo.toml.jinja")]
 struct K8sTestsCargoTomlTemplate {}
-
-fn generate_k8s_tests_cargo_toml(base_path: &Path) {
-    let content = K8sTestsCargoTomlTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "Cargo.toml", content);
-}
 
 fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) {
     generate_role_file(resources.clone(), kubernetes_operator_group);
@@ -983,176 +1008,86 @@ fn generate_tests_utils_cluster(base_path: &Path) {
     write_to_file_without_filter(base_path, "cluster.rs", content);
 }
 
+fn generate_template_file<T: Template>(template: T, base_path: &Path, file_name: &str) {
+    let content = template.render().unwrap();
+    write_to_file_without_filter(base_path, file_name, content);
+}
+
 #[derive(Template)]
 #[template(path = ".dockerignore.jinja")]
 struct DockerignoreTemplate {}
-
-fn generate_dockerignore(base_path: &Path) {
-    let content = DockerignoreTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, ".dockerignore", content);
-}
 
 #[derive(Template)]
 #[template(path = ".editorconfig.jinja")]
 struct EditorconfigTemplate {}
 
-fn generate_editorconfig(base_path: &Path) {
-    let content = EditorconfigTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, ".editorconfig", content);
-}
-
 #[derive(Template)]
 #[template(path = ".env.example.jinja")]
 struct EnvExampleTemplate {}
 
-fn generate_envexample(base_path: &Path) {
-    let content = EnvExampleTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, ".env.example", content);
-}
-
 #[derive(Template)]
 #[template(path = ".gitattributes.jinja")]
-struct GitattributesTemplate {}
-
-fn generate_gitattributes(base_path: &Path) {
-    let content = GitattributesTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, ".gitattributes", content);
-}
+struct GitAttributesTemplate {}
 
 #[derive(Template)]
 #[template(path = ".gitignore.jinja")]
-struct GitignoreTemplate {}
-
-fn generate_gitignore(base_path: &Path) {
-    let content = GitignoreTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, ".gitignore", content);
-}
+struct GitIgnoreTemplate {}
 
 #[derive(Template)]
 #[template(path = ".openapi-generator-ignore.jinja")]
 struct OpenAPIGeneratorIgnoreTemplate {}
 
-fn generate_openapi_generator_ignore(base_path: &Path) {
-    let content = OpenAPIGeneratorIgnoreTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, ".openapi-generator-ignore", content);
-}
-
 #[derive(Template)]
 #[template(path = ".prettierrc.jinja")]
 struct PrettierrcTemplate {}
-
-fn generate_prettierrc(base_path: &Path) {
-    let content = PrettierrcTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, ".prettierrc", content);
-}
 
 #[derive(Template)]
 #[template(path = ".rustfmt.toml.jinja")]
 struct RustfmtTomlTemplate {}
 
-fn generate_rustfmt_toml(base_path: &Path) {
-    let content = RustfmtTomlTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, ".rustfmt.toml", content);
-}
-
 #[derive(Template)]
 #[template(path = "cargo.toml.jinja")]
 struct CargoTomlTemplate {}
-
-fn generate_cargo_toml(base_path: &Path) {
-    let content = CargoTomlTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "Cargo.toml", content);
-}
 
 #[derive(Template)]
 #[template(path = "cluster.yaml.jinja")]
 struct ClusterYamlTemplate {}
 
-fn generate_cluster_yaml(base_path: &Path) {
-    let content = ClusterYamlTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "Cluster.yaml", content);
-}
-
 #[derive(Template)]
 #[template(path = "dockerfile.jinja")]
 struct DockerfileTemplate {}
-
-fn generate_dockerfile(base_path: &Path) {
-    let content = DockerfileTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "Dockerfile", content);
-}
 
 #[derive(Template)]
 #[template(path = "readme.md.jinja")]
 struct ReadmeMdTemplate {}
 
-fn generate_readme_md(base_path: &Path) {
-    let content = ReadmeMdTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "README.md", content);
-}
-
 #[derive(Template)]
 #[template(path = "taskfile.jinja")]
 struct TaskfileTemplate {}
-
-fn generate_taskfile(base_path: &Path) {
-    let content = TaskfileTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "Taskfile.yaml", content);
-}
 
 #[derive(Template)]
 #[template(path = ".devcontainer_devcontainer.json.jinja")]
 struct DevcontainerJsonTemplate {}
 
-fn generate_devcontainer_json(base_path: &Path) {
-    let content = DevcontainerJsonTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "devcontainer.json", content);
-}
-
 #[derive(Template)]
 #[template(path = ".devcontainer_deps.sh.jinja")]
 struct DevcontainerDepsTemplate {}
-
-fn generate_devcontainer_deps(base_path: &Path) {
-    let content = DevcontainerDepsTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "deps.sh", content);
-}
 
 #[derive(Template)]
 #[template(path = ".devcontainer_setup-git.sh.jinja")]
 struct DevcontainerSetupGitTemplate {}
 
-fn generate_devcontainer_setup_git(base_path: &Path) {
-    let content: String = DevcontainerSetupGitTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "setup-git.sh", content);
-}
-
 #[derive(Template)]
 #[template(path = ".devcontainer_launch.json.jinja")]
 struct DevcontainerLaunchJsonExampleTemplate {}
-
-fn generate_devcontainer_launch_json(base_path: &Path) {
-    let content = DevcontainerLaunchJsonExampleTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "launch.json", content);
-}
 
 #[derive(Template)]
 #[template(path = ".devcontainer_zshrc.jinja")]
 struct DevcontainerZshrcTemplate {}
 
-fn generate_devcontainer_zshrc(base_path: &Path) {
-    let content = DevcontainerZshrcTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, ".zshrc", content);
-}
-
 #[derive(Template)]
 #[template(path = ".cargo_config.toml.jinja")]
 struct CargoConfigTemplate {}
-
-fn generate_cargo_config(base_path: &Path) {
-    let content = CargoConfigTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "config.toml", content);
-}
 
 fn get_ignored_files() -> Vec<String> {
     let ignore_file_path = ".openapi-generator-ignore";
