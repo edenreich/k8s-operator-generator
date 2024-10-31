@@ -4,6 +4,24 @@ plugins:
   - '@semantic-release/commit-analyzer'
   - '@semantic-release/release-notes-generator'
   - ['@semantic-release/changelog', { 'changelogFile': 'CHANGELOG.md' }]
+  - [
+      '@semantic-release/exec',
+      { 'prepareCmd': './bump-version.sh ${nextRelease.version}' },
+    ]
   - '@semantic-release/github'
-  - '@semantic-release/git'
+  - [
+      '@semantic-release/git',
+      {
+        'assets':
+          [
+            'CHANGELOG.md',
+            'README.md',
+            'Cargo.lock',
+            'cli/Cargo.toml',
+            'cli/src/main.rs',
+            'cli/templates/.devcontainer_deps.sh.jinja',
+            'cli/templates/readme.md.jinja',
+          ],
+      },
+    ]
 repositoryUrl: 'https://github.com/edenreich/k8s-operator-generator'

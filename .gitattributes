@@ -1,4 +1,5 @@
 *.jinja linguist-vendored=true
+*.sh linguist-vendored=true
 .devcontainer/** linguist-vendored=true
 Dockerfile linguist-vendored=true
 docs/** linguist-vendored=true

@@ -14,7 +14,7 @@ nvm install --lts --latest-npm
 npm install -g prettier
 
 # Install semantic-release
-npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/github
+npm install -g semantic-release @semantic-release/changelog @semantic-release/exec @semantic-release/git @semantic-release/github
 
 # Install favorite prompt theme
 git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
