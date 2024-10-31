@@ -27,6 +27,11 @@ tasks:
     cmds:
       - cargo run --package kopgen -- {{.CLI_ARGS}}
 
+  test:
+    desc: Test the project
+    cmds:
+      - cargo test --all-features --verbose
+
   test-cli-output:
     desc: Test the CLI output
     cmds:

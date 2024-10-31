@@ -4,6 +4,7 @@ use crate::utils::{
     generate_template_file, set_executable_permission,
 };
 use log::{info, warn};
+use std::fs;
 use std::path::Path;
 
 const CARGO_DIR: &str = ".cargo";
@@ -23,8 +24,8 @@ pub fn execute(path: &String) -> Result<(), Box<dyn std::error::Error>> {
     info!("Initializing directory structure in {}...", path);
     let path = Path::new(&path);
     let base_path = Path::new(path);
-    if base_path.exists() {
-        warn!("Directory already exists. Skipping initialization...");
+    if base_path.exists() && fs::read_dir(base_path)?.next().is_some() {
+        warn!("Directory already exists and is not empty. Skipping initialization...");
         return Ok(());
     }
 
@@ -72,6 +73,7 @@ pub fn execute(path: &String) -> Result<(), Box<dyn std::error::Error>> {
     generate_template_file(RustfmtToml {}, base_path, ".rustfmt.toml");
     generate_template_file(ClusterYaml {}, base_path, "Cluster.yaml");
     generate_template_file(Dockerfile {}, base_path, "Dockerfile");
+
     generate_template_file(
         DevcontainerJson {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
@@ -97,10 +99,11 @@ pub fn execute(path: &String) -> Result<(), Box<dyn std::error::Error>> {
         base_path.join(DEVCONTAINER_DIR).as_path(),
         ".zshrc",
     );
+
     generate_template_file(
         CargoConfig {},
         base_path.join(CARGO_DIR).as_path(),
-        "config",
+        "config.toml",
     );
 
     create_directory_if_not_exists(&base_path.join(K8S_OPERATOR_CONTROLLERS_DIR));
