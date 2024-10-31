@@ -46,12 +46,12 @@ Download and install the latest `kopgen CLI` [for ARM64](https://github.com/eden
 # For Mac users with ARM CPU
 curl -sSL https://github.com/edenreich/kopgen/releases/download/latest/kopgen_aarch64-unknown-linux-musl -o kopgen
 chmod +x kopgen
-mv kopgen /usr/local/bin
+mv kopgen /usr/local/bin/
 
 # For all the other users running on intel
 curl -sSL https://github.com/edenreich/kopgen/releases/download/latest/kopgen_x86_64-unknown-linux-musl -o kopgen
 chmod +x kopgen
-mv kopgen /usr/local/bin
+mv kopgen /usr/local/bin/
 ```
 
 Start a new project in an empty folder:
