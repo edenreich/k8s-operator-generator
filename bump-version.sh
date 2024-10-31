@@ -15,7 +15,7 @@ echo "Bumping version to v${VERSION}"
 sed -i "s/^version = \"[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}\(-rc\.[1-9]\{1,1\}\)\?\"/version = \"${VERSION}\"/" cli/Cargo.toml
 
 # Bump cli version
-sed -i "s/version = \"v[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}\(-rc\.[1-9]\{1,1\}\)\?\"/version = \"v${VERSION}\"/" cli/src/main.rs
+sed -i "s/version = \"v[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}\(-rc\.[1-9]\{1,1\}\)\?\"/version = \"v${VERSION}\"/" cli/src/cli.rs
 
 # Bump version in MD files
 sed -i "s/v[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}\(-rc\.[0-9]\{1,1\}\)\?/v${VERSION}/g" README.md
