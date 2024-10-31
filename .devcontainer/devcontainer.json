@@ -49,7 +49,7 @@
     "source=${localWorkspaceFolder}/.devcontainer/setup-git.sh,target=/home/vscode/setup-git.sh,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/.devcontainer/deps.sh,target=/home/vscode/deps.sh,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/.devcontainer/.zshrc,target=/home/vscode/.zshrc,type=bind,consistency=cached",
-    "source=${localWorkspaceFolder}/.devcontainer/launch.json,target=/workspaces/k8s-operator-generator/.vscode/launch.json,type=bind,consistency=cached"
+    "source=${localWorkspaceFolder}/.devcontainer/launch.json,target=/workspaces/kopgen/.vscode/launch.json,type=bind,consistency=cached"
   ],
   "postCreateCommand": "/home/vscode/setup-git.sh && /home/vscode/deps.sh",
   "remoteEnv": {

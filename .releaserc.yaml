@@ -26,4 +26,4 @@ plugins:
           ],
       },
     ]
-repositoryUrl: 'https://github.com/edenreich/k8s-operator-generator'
+repositoryUrl: 'https://github.com/edenreich/kopgen'

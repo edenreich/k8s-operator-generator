@@ -1,18 +1,18 @@
-<h1 align="center">🦀 Kubernetes Operator Generator 🦀</h1>
+<h1 align="center">🦀 Kopgen 🦀</h1>
 
 <p align="center">
-<a href="https://github.com/edenreich/k8s-operator-generator/actions"><img src="https://github.com/edenreich/k8s-operator-generator/actions/workflows/ci.yml/badge.svg" alt="CI Status"/></a>
-<a href="https://github.com/edenreich/k8s-operator-generator/releases"><img src="https://img.shields.io/github/v/release/edenreich/k8s-operator-generator?color=blue&style=flat-square" alt="Version"/></a>
-<a href="https://github.com/edenreich/k8s-operator-generator/blob/main/LICENSE"><img src="https://img.shields.io/github/license/edenreich/k8s-operator-generator?color=blue&style=flat-square" alt="License"/></a>
+<a href="https://github.com/edenreich/kopgen/actions"><img src="https://github.com/edenreich/kopgen/actions/workflows/ci.yml/badge.svg" alt="CI Status"/></a>
+<a href="https://github.com/edenreich/kopgen/releases"><img src="https://img.shields.io/github/v/release/edenreich/kopgen?color=blue&style=flat-square" alt="Version"/></a>
+<a href="https://github.com/edenreich/kopgen/blob/main/LICENSE"><img src="https://img.shields.io/github/license/edenreich/kopgen?color=blue&style=flat-square" alt="License"/></a>
 </p>
 
-Welcome to the Kubernetes Operator Generator! This project provides a generator for creating a CRUD Kubernetes operator from an OpenAPI Specification (OAS), all written in the powerful and efficient Rust language.
+Welcome to the Kopgen tool! This project provides a generator for creating a CRUD Kubernetes operator from an OpenAPI Specification (OAS), all written in the powerful and efficient Rust language.
 
 If you have a running API with a valid OpenAPI Specification but lack an operator to manage its complexity, this generator is the perfect solution. Kubernetes operators also align seamlessly with the GitOps methodology, enhancing your operational efficiency.
 
 It's a well-established fact that using YAML to define API resources not only simplifies complexity but also enhances collaboration between developers and operations teams. This approach allows teams to concentrate on what truly matters - delivering value.
 
-- [🦀 Kubernetes Operator Generator 🦀](#-kubernetes-operator-generator-)
+- [🦀 Kopgen 🦀](#-kopgen-)
   - [Documentation](#documentation)
   - [Quick Start Guide](#quick-start-guide)
   - [Need Help?](#need-help)
@@ -21,7 +21,7 @@ It's a well-established fact that using YAML to define API resources not only si
 
 ## Documentation
 
-The documentation is available here: https://edenreich.github.io/k8s-operator-generator/introduction.html
+The documentation is available here: https://edenreich.github.io/kopgen/introduction.html
 
 For documentation Github-Pages is being used.
 It's built using rust mdbook which already comes pre-installed on the DevContainer.
@@ -36,16 +36,16 @@ task docs
 
 Before you proceed, ensure that [Docker](https://docs.docker.com/engine/install/) is installed on your system.
 
-Download and install the latest `kopgen CLI` [for ARM64](https://github.com/edenreich/k8s-operator-generator/releases/download/latest/kopgen_aarch64-unknown-linux-musl) or [for x86_64 Intel](https://github.com/edenreich/k8s-operator-generator/releases/download/v1.3.1/kopgen_x86_64-unknown-linux-musl).
+Download and install the latest `kopgen CLI` [for ARM64](https://github.com/edenreich/kopgen/releases/download/latest/kopgen_aarch64-unknown-linux-musl) or [for x86_64 Intel](https://github.com/edenreich/kopgen/releases/download/v1.3.1/kopgen_x86_64-unknown-linux-musl).
 
 ```bash
 # For Mac users with ARM CPU
-curl -sSL https://github.com/edenreich/k8s-operator-generator/releases/download/latest/kopgen_aarch64-unknown-linux-musl -o kopgen
+curl -sSL https://github.com/edenreich/kopgen/releases/download/latest/kopgen_aarch64-unknown-linux-musl -o kopgen
 chmod +x kopgen
 mv kopgen /usr/local/bin
 
 # For all the other users running on intel
-curl -sSL https://github.com/edenreich/k8s-operator-generator/releases/download/latest/kopgen_x86_64-unknown-linux-musl -o kopgen
+curl -sSL https://github.com/edenreich/kopgen/releases/download/latest/kopgen_x86_64-unknown-linux-musl -o kopgen
 chmod +x kopgen
 mv kopgen /usr/local/bin
 ```

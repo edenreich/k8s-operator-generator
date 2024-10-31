@@ -1,19 +1,19 @@
 # Getting Started
 
-This guide will help you get started with the Kubernetes Operator Generator.
+This guide will help you get started with the Kopgen tool.
 
 ## Prerequisites
 
--   Visual Studio Code
--   Docker
+- Visual Studio Code
+- Docker
 
 ## Installation
 
 Clone the repository and navigate to the project directory:
 
 ```sh
-git clone https://github.com/edenreich/k8s-operator-generator.git
-cd k8s-operator-generator
+git clone https://github.com/edenreich/kopgen.git
+cd kopgen
 ```
 
 ## Setting Up the Development Environment
