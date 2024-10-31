@@ -20,7 +20,7 @@ plugins:
             'README.md',
             'Cargo.lock',
             'cli/Cargo.toml',
-            'cli/src/main.rs',
+            'cli/src/cli.rs',
             'cli/templates/.devcontainer_deps.sh.jinja',
             'cli/templates/readme.md.jinja',
           ],
