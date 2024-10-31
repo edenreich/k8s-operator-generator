@@ -1,6 +1,6 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
-use std::{fs, thread, time::Duration};
+use std::fs;
 use tempfile::tempdir;
 
 #[test]
@@ -34,16 +34,7 @@ fn init_creates_required_directories() {
         "manifests/examples",
     ];
 
-    // Retry up to 5 times, with a short delay, to allow the file system to settle
     for dir in &expected_dirs {
-        let mut attempts = 5;
-        while attempts > 0 {
-            if path.join(dir).exists() {
-                break; // Directory exists, so we can move on
-            }
-            thread::sleep(Duration::from_millis(100));
-            attempts -= 1;
-        }
         assert!(path.join(dir).exists(), "Directory {} was not created", dir);
     }
 }
