@@ -110,7 +110,7 @@ fn init_skips_existing_directory() {
     let path = temp_dir.path();
 
     // Pre-create the directory to simulate an existing path
-    fs::create_dir_all(&path).unwrap();
+    fs::create_dir_all(path).unwrap();
 
     // Place a file in the directory to ensure it's not removed
     fs::write(path.join("existing-file.txt"), "Hello, world!").unwrap();
@@ -127,5 +127,5 @@ fn init_skips_existing_directory() {
         ));
 
     // Verify no other files are created
-    assert_eq!(fs::read_dir(&path).unwrap().count(), 1);
+    assert_eq!(fs::read_dir(path).unwrap().count(), 1);
 }
