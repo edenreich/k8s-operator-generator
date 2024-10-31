@@ -16,7 +16,7 @@ Welcome to the Kopgen documentation. This project helps you generate Kubernetes 
 
 ```mermaid
 graph TD
-    A[OpenAPI Specification] -->|Input| B[K8S Operator Generator]
+    A[OpenAPI Specification] -->|Input| B[Kopgen]
     B -->|Generates| C[Kubernetes CRDs / Schema]
     B -->|Generates| D[Kubernetes Operator]
     C -->|Deploys to| E[Kubernetes Cluster]
