@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/edenreich/k8s-operator-generator/compare/v1.1.0...v1.2.0) (2024-10-31)
+
+
+### Features
+
+* Make it easy to release a new version ([1668cf9](https://github.com/edenreich/k8s-operator-generator/commit/1668cf9aa0f925a9cf69b520183d67adcefc0ebb))
+
 # [1.1.0](https://github.com/edenreich/k8s-operator-generator/compare/v1.0.1...v1.1.0) (2024-10-31)
 
 
