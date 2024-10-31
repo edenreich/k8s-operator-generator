@@ -6,7 +6,9 @@ plugins:
   - ['@semantic-release/changelog', { 'changelogFile': 'CHANGELOG.md' }]
   - [
       '@semantic-release/exec',
-      { 'prepareCmd': './bump-version.sh ${nextRelease.version}' },
+      {
+        'prepareCmd': './bump-version.sh ${nextRelease.version} && task build',
+      },
     ]
   - '@semantic-release/github'
   - [
