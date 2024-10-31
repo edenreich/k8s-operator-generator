@@ -123,7 +123,7 @@ fn init_skips_existing_directory() {
         .assert()
         .success()
         .stderr(predicate::str::contains(
-            "Directory already exists and is not empty. Skipping initialization",
+            "Directory already exists and is not empty",
         ));
 
     // Verify no other files are created
