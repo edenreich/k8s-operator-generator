@@ -32,6 +32,20 @@ tasks:
     cmds:
       - cargo run --package kopgen init temp
 
+  pre-release:
+    desc: Pre-release the project
+    cmds:
+      - semantic-release --tag-format 'v${version}-rc' --prerelease rc
+    env:
+      CI: true
+
+  release:
+    desc: Release the project
+    cmds:
+      - semantic-release
+    env:
+      CI: true
+
   clean:
     desc: Clean the project
     cmds:
