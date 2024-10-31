@@ -176,16 +176,24 @@ fn main() {
 
             let tests_utils_path_buf = base_path.join(K8S_TESTS_UTILS_DIR);
             let tests_utils_path: &Path = tests_utils_path_buf.as_path();
-            generate_tests_utils_client(tests_utils_path);
-            generate_tests_utils_operator(tests_utils_path);
-            generate_tests_utils_cluster(tests_utils_path);
+            generate_template_file(TestsUtilsClientTemplate {}, tests_utils_path, "client.rs");
+            generate_template_file(
+                TestsUtilsOperatorTemplate {},
+                tests_utils_path,
+                "operator.rs",
+            );
+            generate_template_file(TestsUtilsClusterTemplate {}, tests_utils_path, "cluster.rs");
 
             add_tests_util_to_modfile(base_path, "client");
             add_tests_util_to_modfile(base_path, "operator");
             add_tests_util_to_modfile(base_path, "cluster");
 
             // TODO - make the tests generated dynamically based on the defined API controllers and types.
-            generate_tests(base_path.join(K8S_TESTS_DIR).as_path());
+            generate_template_file(
+                TestsMainTemplate {},
+                base_path.join(K8S_TESTS_DIR).as_path(),
+                "main.rs",
+            );
 
             create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_CRDS_DIR).as_path());
             create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_RBAC_DIR).as_path());
@@ -952,9 +960,6 @@ struct CrdGenTemplate {
 fn generate_crdgen_file(resources: Vec<String>) {
     let base_path: &Path = &Path::new(K8S_CRDGEN_DIR).join("src");
     let file_name = "main.rs".to_string();
-    if get_ignored_files().contains(&base_path.join(&file_name).to_string_lossy().to_string()) {
-        return;
-    }
 
     let resources: BTreeMap<String, String> = resources
         .into_iter()
@@ -972,47 +977,25 @@ fn generate_crdgen_file(resources: Vec<String>) {
     format_file(base_path.join(file_name).to_string_lossy().to_string());
 }
 
-#[derive(Template)]
-#[template(path = "k8s_tests_main.jinja")]
-struct TestsMainTemplate {}
-
-fn generate_tests(base_path: &Path) {
-    let content = TestsMainTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path.join("src").as_path(), "main.rs", content);
-}
-
-#[derive(Template)]
-#[template(path = "k8s_tests_utils_client.jinja")]
-struct TestsUtilsClientTemplate {}
-
-fn generate_tests_utils_client(base_path: &Path) {
-    let content = TestsUtilsClientTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "client.rs", content);
-}
-
-#[derive(Template)]
-#[template(path = "k8s_tests_utils_operator.jinja")]
-struct TestsUtilsOperatorTemplate {}
-
-fn generate_tests_utils_operator(base_path: &Path) {
-    let content = TestsUtilsOperatorTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "operator.rs", content);
-}
-
-#[derive(Template)]
-#[template(path = "k8s_tests_utils_cluster.jinja")]
-struct TestsUtilsClusterTemplate {}
-
-fn generate_tests_utils_cluster(base_path: &Path) {
-    let content = TestsUtilsClusterTemplate {}.render().unwrap();
-    write_to_file_without_filter(base_path, "cluster.rs", content);
-}
-
 fn generate_template_file<T: Template>(template: T, base_path: &Path, file_name: &str) {
     let content = template.render().unwrap();
     write_to_file_without_filter(base_path, file_name, content);
 }
 
+#[derive(Template)]
+#[template(path = "k8s_tests_main.jinja")]
+struct TestsMainTemplate {}
+
+#[derive(Template)]
+#[template(path = "k8s_tests_utils_client.jinja")]
+struct TestsUtilsClientTemplate {}
+
+#[derive(Template)]
+#[template(path = "k8s_tests_utils_operator.jinja")]
+struct TestsUtilsOperatorTemplate {}
+#[derive(Template)]
+#[template(path = "k8s_tests_utils_cluster.jinja")]
+struct TestsUtilsClusterTemplate {}
 #[derive(Template)]
 #[template(path = ".dockerignore.jinja")]
 struct DockerignoreTemplate {}
