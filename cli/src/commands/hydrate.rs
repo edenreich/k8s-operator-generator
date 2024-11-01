@@ -48,7 +48,8 @@ pub fn execute(openapi_file: &String, config: &Config) -> Result<(), Box<dyn std
 
     fs::write(openapi_file, serde_yaml::to_string(&openapi)?)?;
 
-    let _ = ProcessCommand::new("prettier")
+    let _ = ProcessCommand::new("npx")
+        .arg("prettier")
         .arg("--write")
         .arg(openapi_file)
         .output()
