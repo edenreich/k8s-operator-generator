@@ -43,6 +43,7 @@ tasks:
       - semantic-release --tag-format 'v${version}-rc' --prerelease rc
     env:
       CI: true
+      TARGET_ARCH: aarch64-unknown-linux-musl
 
   release:
     desc: Release the project
@@ -50,6 +51,7 @@ tasks:
       - semantic-release
     env:
       CI: true
+      TARGET_ARCH: aarch64-unknown-linux-musl
 
   clean:
     desc: Clean the project
