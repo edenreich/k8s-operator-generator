@@ -1,15 +1,17 @@
 mod cli;
 mod commands;
+mod config;
 mod templates;
 mod utils;
 
 use crate::cli::{Cli, Commands};
 use clap::Parser;
+use config::{ConfigProvider, EnvConfigProvider};
 use log::info;
 use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    dotenv::dotenv().ok();
+    let conf = EnvConfigProvider::load_config().expect("Unable to load environment variables");
 
     env_logger::init();
 
@@ -20,7 +22,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             commands::init::execute(path)?;
         }
         Some(Commands::Hydrate { openapi_file }) => {
-            commands::hydrate::execute(openapi_file)?;
+            commands::hydrate::execute(openapi_file, &conf)?;
         }
         Some(Commands::Generate {
             openapi_file,

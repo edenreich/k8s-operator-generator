@@ -1,86 +1,33 @@
-use log::error;
+use crate::config::Config;
 use log::info;
 use serde_yaml::Value as YamlValue;
-use std::env;
 use std::fs;
 use std::process::Command as ProcessCommand;
 
-pub fn execute(openapi_file: &String) -> Result<(), Box<dyn std::error::Error>> {
+pub fn execute(openapi_file: &String, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     info!("Hydrating OpenAPI spec...");
 
     let mut openapi: YamlValue = serde_yaml::from_str(&fs::read_to_string(openapi_file)?)?;
 
-    let kubernetes_operator_group = env::var("KUBERNETES_OPERATOR_GROUP")
-        .map_err(|e| {
-            error!(
-                "KUBERNETES_OPERATOR_GROUP environment variable not set: {}",
-                e
-            );
-            e
-        })
-        .expect("KUBERNETES_OPERATOR_GROUP environment variable not set");
-
-    let kubernetes_operator_version = env::var("KUBERNETES_OPERATOR_VERSION")
-        .map_err(|e| {
-            error!(
-                "KUBERNETES_OPERATOR_VERSION environment variable not set: {}",
-                e
-            );
-            e
-        })
-        .expect("KUBERNETES_OPERATOR_VERSION environment variable not set");
-
-    let kubernetes_operator_resource_ref = env::var("KUBERNETES_OPERATOR_RESOURCE_REF")
-        .map_err(|e| {
-            error!(
-                "KUBERNETES_OPERATOR_RESOURCE_REF environment variable not set: {}",
-                e
-            );
-            e
-        })
-        .expect("KUBERNETES_OPERATOR_RESOURCE_REF environment variable not set");
-
-    let kubernetes_operator_include_tags = env::var("KUBERNETES_OPERATOR_INCLUDE_TAGS")
-        .map_err(|e| {
-            error!(
-                "KUBERNETES_OPERATOR_INCLUDE_TAGS environment variable not set: {}",
-                e
-            );
-            e
-        })
-        .expect("KUBERNETES_OPERATOR_INCLUDE_TAGS environment variable not set");
-
-    let tags_list: Vec<YamlValue> = kubernetes_operator_include_tags
-        .split(',')
-        .map(|tag| YamlValue::String(tag.trim().to_string()))
+    let tags_list: Vec<YamlValue> = config
+        .kubernetes_operator_include_tags
+        .iter()
+        .map(|tag| YamlValue::String(tag.to_string()))
         .collect();
-
-    let kubernetes_operator_example_metadata_spec_field_ref =
-        env::var("KUBERNETES_OPERATOR_EXAMPLE_METADATA_SPEC_FIELD_REF")
-            .map_err(|e| {
-                error!(
-            "KUBERNETES_OPERATOR_EXAMPLE_METADATA_SPEC_FIELD_REF environment variable not set: {}",
-            e
-        );
-                e
-            })
-            .expect(
-                "KUBERNETES_OPERATOR_EXAMPLE_METADATA_SPEC_FIELD_REF environment variable not set",
-            );
 
     if let Some(info) = openapi.get_mut("info") {
         if let Some(info_map) = info.as_mapping_mut() {
             info_map.insert(
                 YamlValue::String("x-kubernetes-operator-group".to_string()),
-                YamlValue::String(kubernetes_operator_group),
+                YamlValue::String(config.kubernetes_operator_group.clone()),
             );
             info_map.insert(
                 YamlValue::String("x-kubernetes-operator-version".to_string()),
-                YamlValue::String(kubernetes_operator_version),
+                YamlValue::String(config.kubernetes_operator_version.clone()),
             );
             info_map.insert(
                 YamlValue::String("x-kubernetes-operator-resource-ref".to_string()),
-                YamlValue::String(kubernetes_operator_resource_ref),
+                YamlValue::String(config.kubernetes_operator_resource_ref.clone()),
             );
             info_map.insert(
                 YamlValue::String("x-kubernetes-operator-include-tags".to_string()),
@@ -90,7 +37,11 @@ pub fn execute(openapi_file: &String) -> Result<(), Box<dyn std::error::Error>> 
                 YamlValue::String(
                     "x-kubernetes-operator-example-metadata-spec-field-ref".to_string(),
                 ),
-                YamlValue::String(kubernetes_operator_example_metadata_spec_field_ref),
+                YamlValue::String(
+                    config
+                        .kubernetes_operator_example_metadata_spec_field_ref
+                        .clone(),
+                ),
             );
         }
     }

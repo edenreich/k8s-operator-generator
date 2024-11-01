@@ -87,8 +87,5 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Configure the environment
-        run: cp .env.example .env
-
       - name: Test the code
         run: task test

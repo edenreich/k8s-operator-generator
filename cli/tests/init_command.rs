@@ -2,13 +2,52 @@ mod utils;
 
 use assert_cmd::Command;
 use predicates::prelude::*;
-use std::fs;
+use serial_test::serial;
+use std::{env, fs};
 use tempfile::tempdir;
-use utils::setup_test_env;
+
+fn setup_env() {
+    env::set_var(
+        "OPENAPI_DOWNLOAD_URL",
+        "https://github.com/edenreich/kopgen/blob/main/openapi.yaml",
+    );
+    env::set_var("INSTALL_CRDS", "true");
+    env::set_var("RUST_LOG", "info");
+    env::set_var("RUST_BACKTRACE", "1");
+    env::set_var("CONTAINER_REGISTRY", "localhost:5005");
+    env::set_var("CLUSTER_NAME", "k3d-k3s-default");
+    env::set_var("TARGET_ARCH", "aarch64-unknown-linux-musl");
+    env::set_var("RELEASE", "false");
+    env::set_var("KUBERNETES_OPERATOR_GROUP", "test-group");
+    env::set_var("KUBERNETES_OPERATOR_VERSION", "v1");
+    env::set_var("KUBERNETES_OPERATOR_RESOURCE_REF", "test-resource-ref");
+    env::set_var("KUBERNETES_OPERATOR_INCLUDE_TAGS", "tag1,tag2");
+    env::set_var(
+        "KUBERNETES_OPERATOR_EXAMPLE_METADATA_SPEC_FIELD_REF",
+        "test-field-ref",
+    );
+}
+
+fn clear_env() {
+    env::remove_var("OPENAPI_DOWNLOAD_URL");
+    env::remove_var("INSTALL_CRDS");
+    env::remove_var("RUST_LOG");
+    env::remove_var("RUST_BACKTRACE");
+    env::remove_var("CONTAINER_REGISTRY");
+    env::remove_var("CLUSTER_NAME");
+    env::remove_var("TARGET_ARCH");
+    env::remove_var("RELEASE");
+    env::remove_var("KUBERNETES_OPERATOR_GROUP");
+    env::remove_var("KUBERNETES_OPERATOR_VERSION");
+    env::remove_var("KUBERNETES_OPERATOR_RESOURCE_REF");
+    env::remove_var("KUBERNETES_OPERATOR_INCLUDE_TAGS");
+    env::remove_var("KUBERNETES_OPERATOR_EXAMPLE_METADATA_SPEC_FIELD_REF");
+}
 
 #[test]
+#[serial]
 fn init_creates_required_directories() {
-    setup_test_env();
+    setup_env();
 
     let temp_dir = tempdir().unwrap();
     let path = temp_dir.path();
@@ -45,8 +84,9 @@ fn init_creates_required_directories() {
 }
 
 #[test]
+#[serial]
 fn init_creates_required_files() {
-    setup_test_env();
+    setup_env();
 
     let temp_dir = tempdir().unwrap();
     let path = temp_dir.path();
@@ -100,10 +140,15 @@ fn init_creates_required_files() {
             file_path.display()
         );
     }
+
+    clear_env();
 }
 
 #[test]
+#[serial]
 fn init_skips_existing_directory() {
+    setup_env();
+
     let temp_dir = tempdir().unwrap();
     let path = temp_dir.path();
 
@@ -126,4 +171,6 @@ fn init_skips_existing_directory() {
 
     // Verify no other files are created
     assert_eq!(fs::read_dir(path).unwrap().count(), 1);
+
+    clear_env();
 }

@@ -1,21 +1,8 @@
 use serde_yaml::Error;
 use serde_yaml::Value as YamlValue;
+use std::fs::File;
 use std::io::Write;
-use std::{env, fs::File};
 use tempfile::TempDir;
-
-pub fn setup_test_env() {
-    env::set_var("RUST_LOG", "info");
-
-    env::set_var("KUBERNETES_OPERATOR_GROUP", "test-group");
-    env::set_var("KUBERNETES_OPERATOR_VERSION", "v1");
-    env::set_var("KUBERNETES_OPERATOR_RESOURCE_REF", "test-resource-ref");
-    env::set_var("KUBERNETES_OPERATOR_INCLUDE_TAGS", "tag1,tag2");
-    env::set_var(
-        "KUBERNETES_OPERATOR_EXAMPLE_METADATA_SPEC_FIELD_REF",
-        "test-field-ref",
-    );
-}
 
 // This function is used to create a temporary file with the provided content
 #[allow(dead_code)]
