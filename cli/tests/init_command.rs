@@ -1,10 +1,15 @@
+mod utils;
+
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
 use tempfile::tempdir;
+use utils::setup_test_env;
 
 #[test]
 fn init_creates_required_directories() {
+    setup_test_env();
+
     let temp_dir = tempdir().unwrap();
     let path = temp_dir.path();
 
@@ -41,6 +46,8 @@ fn init_creates_required_directories() {
 
 #[test]
 fn init_creates_required_files() {
+    setup_test_env();
+
     let temp_dir = tempdir().unwrap();
     let path = temp_dir.path();
 

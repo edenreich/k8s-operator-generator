@@ -1,9 +1,7 @@
 use askama::Template;
 use clap::Error;
-use indexmap::IndexMap;
 use log::{error, info};
 use openapiv3::OpenAPI;
-use serde_yaml::Value as YamlValue;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::PermissionsExt;
@@ -45,21 +43,10 @@ pub fn set_executable_permission(file_path: &Path) {
     std::fs::set_permissions(file_path, permissions).expect("Unable to set file permissions");
 }
 
-pub fn read_openapi_spec_raw(file_path: &str) -> IndexMap<String, YamlValue> {
-    let file = File::open(file_path).expect("Unable to open file");
-    let reader = BufReader::new(file);
-    serde_yaml::from_reader(reader).expect("Unable to parse OpenAPI spec")
-}
-
 pub fn read_openapi_spec(file_path: &str) -> OpenAPI {
     let file = File::open(file_path).expect("Unable to open file");
     let reader = BufReader::new(file);
     serde_yaml::from_reader(reader).expect("Unable to parse OpenAPI spec")
-}
-
-pub fn write_openapi_spec_raw(file_path: &str, openapi: &IndexMap<String, YamlValue>) {
-    let file = File::create(file_path).expect("Unable to create file");
-    serde_yaml::to_writer(file, openapi).expect("Unable to write OpenAPI spec");
 }
 
 pub fn create_file_if_not_exists(base_path: &Path, file: &str) {

@@ -2,6 +2,7 @@ mod cli;
 mod commands;
 mod templates;
 mod utils;
+
 use crate::cli::{Cli, Commands};
 use clap::Parser;
 use log::info;
@@ -9,6 +10,7 @@ use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
     dotenv::dotenv().ok();
+
     env_logger::init();
 
     let cli = Cli::parse();
