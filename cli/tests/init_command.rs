@@ -8,6 +8,10 @@ use tempfile::tempdir;
 
 fn setup_env() {
     env::set_var(
+        "TARGET_ARCH",
+        format!("{}-unknown-linux-musl", std::env::consts::ARCH),
+    );
+    env::set_var(
         "OPENAPI_DOWNLOAD_URL",
         "https://github.com/edenreich/kopgen/blob/main/openapi.yaml",
     );
@@ -16,7 +20,6 @@ fn setup_env() {
     env::set_var("RUST_BACKTRACE", "1");
     env::set_var("CONTAINER_REGISTRY", "localhost:5005");
     env::set_var("CLUSTER_NAME", "k3d-k3s-default");
-    env::set_var("TARGET_ARCH", "aarch64-unknown-linux-musl");
     env::set_var("RELEASE", "false");
     env::set_var("KUBERNETES_OPERATOR_GROUP", "test-group");
     env::set_var("KUBERNETES_OPERATOR_VERSION", "v1");
