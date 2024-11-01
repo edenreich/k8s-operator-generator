@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/edenreich/kopgen/compare/v1.4.0...v1.4.1) (2024-11-01)
+
+
+### Bug Fixes
+
+* **security:** Release workflow was using a Github Action with a deprecated NodeJS version ([44835e0](https://github.com/edenreich/kopgen/commit/44835e0b77df43f7821b426a3a47aec3f462144d))
+
 # [1.4.0](https://github.com/edenreich/kopgen/compare/v1.3.1...v1.4.0) (2024-11-01)
 
 

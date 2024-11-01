@@ -40,7 +40,7 @@ task docs
 
 Before you proceed, ensure that [Docker](https://docs.docker.com/engine/install/) is installed on your system.
 
-Download and install the latest `kopgen CLI` [for ARM64](https://github.com/edenreich/kopgen/releases/download/latest/kopgen_aarch64-unknown-linux-musl) or [for x86_64 Intel](https://github.com/edenreich/kopgen/releases/download/v1.4.0/kopgen_x86_64-unknown-linux-musl).
+Download and install the latest `kopgen CLI` [for ARM64](https://github.com/edenreich/kopgen/releases/download/latest/kopgen_aarch64-unknown-linux-musl) or [for x86_64 Intel](https://github.com/edenreich/kopgen/releases/download/v1.4.1/kopgen_x86_64-unknown-linux-musl).
 
 ```bash
 # For Mac users with ARM CPU
