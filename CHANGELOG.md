@@ -1,3 +1,16 @@
+# [1.4.0](https://github.com/edenreich/kopgen/compare/v1.3.1...v1.4.0) (2024-11-01)
+
+
+### Bug Fixes
+
+* **hydrate:** Update command to use npx for prettier execution ([f2c1d6a](https://github.com/edenreich/kopgen/commit/f2c1d6aeaac4d6d7d4bde249b2e71adb724b91d1))
+* **task:** Set TARGET_ARCH environment variable for release tasks ([8101c49](https://github.com/edenreich/kopgen/commit/8101c494f603d918ac3bd83107374b923a60ae17))
+
+
+### Features
+
+* **config:** Introduce configuration management and update environment variable handling ([2e933d2](https://github.com/edenreich/kopgen/commit/2e933d23d3c5ba46146094ebf3c4f7083f8c7421))
+
 ## [1.3.1](https://github.com/edenreich/kopgen/compare/v1.3.0...v1.3.1) (2024-10-31)
 
 ### Bug Fixes
