@@ -69,12 +69,10 @@ fn test_config_missing_required_env_vars() {
 
     assert!(env::var("KUBERNETES_OPERATOR_GROUP").is_err());
 
-    let err: Option<()> = match EnvConfigProvider::load_config() {
+    let _: Option<()> = match EnvConfigProvider::load_config() {
         Ok(_) => None,
         Err(e) => assert_eq!(e, "KUBERNETES_OPERATOR_GROUP environment variable not set").into(),
     };
-
-    print!("{:?}", err);
 }
 
 #[test]
