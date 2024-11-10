@@ -1,4 +1,5 @@
 use askama::Template;
+use serde::{Deserialize, Serialize};
 
 #[derive(Template)]
 #[template(path = "k8s_tests_main.jinja")]
@@ -102,3 +103,65 @@ pub struct K8sCrdgenCargoToml {}
 #[derive(Template)]
 #[template(path = "k8s_tests_cargo.toml.jinja")]
 pub struct K8sTestsCargoToml {}
+
+pub struct RoleTemplateIdentifiers {
+    pub api_group: String,
+    pub resources: Vec<String>,
+}
+
+#[derive(Template)]
+#[template(path = "manifest_rbac_role.jinja")]
+pub struct RoleTemplate {
+    pub identifiers: RoleTemplateIdentifiers,
+}
+
+pub struct ClusterRoleTemplateIdentifiers {
+    pub api_group: String,
+    pub resources: Vec<String>,
+}
+
+#[derive(Template)]
+#[template(path = "manifest_rbac_cluster_role.jinja")]
+pub struct ClusterRoleTemplate {
+    pub identifiers: ClusterRoleTemplateIdentifiers,
+}
+
+#[derive(Template)]
+#[template(path = "manifest_rbac_service_account.jinja")]
+pub struct ServiceAccountTemplate {}
+
+#[derive(Template)]
+#[template(path = "manifest_rbac_role_binding.jinja")]
+pub struct RoleBindingTemplate {}
+
+#[derive(Template)]
+#[template(path = "manifest_rbac_cluster_role_binding.jinja")]
+pub struct ClusterRoleBindingTemplate {}
+
+#[derive(Template)]
+#[template(path = "manifest_operator_deployment.jinja")]
+pub struct OperatorDeploymentTemplate {}
+
+#[derive(Template)]
+#[template(path = "manifest_operator_secret.jinja")]
+pub struct OperatorSecretTemplate {}
+
+#[derive(Template, Deserialize, Serialize)]
+#[template(path = "manifest_example.jinja")]
+pub struct ExampleTemplate {
+    pub resources: Vec<Resource>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Resource {
+    pub api_group: String,
+    pub api_version: String,
+    pub kind: String,
+    pub metadata: Metadata,
+    pub spec: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Metadata {
+    pub name: String,
+}
