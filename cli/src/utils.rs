@@ -1,10 +1,11 @@
 use askama::Template;
 use clap::Error;
-use log::{error, info};
+use log::{debug, error, info};
 use openapiv3::OpenAPI;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::PermissionsExt;
+use std::process::Command;
 use std::{fs::DirBuilder, path::Path};
 
 const K8S_TESTS_UTILS_DIR: &str = "tests/src/utils";
@@ -131,4 +132,67 @@ fn upsert_line_to_file_without_filter(file_path: &str, line: &str) -> Result<(),
         }
     }
     Ok(())
+}
+
+pub fn get_ignored_files() -> Vec<String> {
+    let ignore_file_path = ".openapi-generator-ignore";
+    let ignore_file = File::open(ignore_file_path)
+        .unwrap_or_else(|_| panic!("Unable to open file: {:?}", ignore_file_path));
+    let reader = BufReader::new(ignore_file);
+    reader.lines().map_while(Result::ok).collect()
+}
+
+pub fn upsert_line_to_file(file_path: &str, line: &str) -> Result<(), Error> {
+    if get_ignored_files().contains(&file_path.to_string()) {
+        return Ok(());
+    }
+
+    let file = File::open(file_path)?;
+    let reader = BufReader::new(file);
+
+    let exists = reader.lines().any(|l| l.unwrap() == line);
+
+    if !exists {
+        let mut file = OpenOptions::new().append(true).open(file_path)?;
+        if let Err(e) = writeln!(file, "{}", line) {
+            error!("Couldn't write to file: {}", e);
+        }
+    }
+    Ok(())
+}
+
+pub fn write_to_file(base_path: &Path, file_name: &str, file_content: String) {
+    let file_path = base_path.join(file_name);
+    debug!("Writing to file: {}", file_path.to_string_lossy());
+    if get_ignored_files().contains(&file_path.to_string_lossy().to_string()) {
+        return;
+    }
+
+    std::fs::write(file_path, file_content + "\n").expect("Unable to write file");
+}
+
+pub fn format_file(file_path: String) {
+    if get_ignored_files().contains(&file_path) {
+        return;
+    }
+
+    let output = Command::new("rustfmt")
+        .arg(file_path)
+        .output()
+        .expect("Failed to execute command");
+
+    if !output.status.success() {
+        error!(
+            "rustfmt failed with output:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+}
+
+pub fn uppercase_first_letter(name: &str) -> String {
+    let mut chars = name.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(f) => f.to_uppercase().collect::<String>() + chars.as_str(),
+    }
 }
