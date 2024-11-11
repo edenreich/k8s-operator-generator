@@ -1,10 +1,17 @@
-use crate::utils::{extract_openapi_info, read_openapi_spec};
+use crate::templates::{
+    ClusterRoleBindingTemplate, ClusterRoleTemplate, ClusterRoleTemplateIdentifiers,
+    ControllerActionDeleteTemplate, ControllerActionPostTemplate, ControllerActionPutTemplate,
+    ControllerAttributes, ControllerTemplate, CrdGenTemplate, ExampleTemplate, Field, LibTemplate,
+    MainTemplate, Metadata, OperatorDeploymentTemplate, OperatorSecretTemplate, Resource,
+    RoleBindingTemplate, RoleTemplate, RoleTemplateIdentifiers, ServiceAccountTemplate,
+    TypeTemplate,
+};
+use crate::utils::{extract_openapi_info, generate_template_file, read_openapi_spec};
 use askama::Template;
 use clap::Error;
 use inflector::Inflector;
 use log::{debug, error, info, warn};
 use openapiv3::{ReferenceOr, Schema, SchemaKind, Type};
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::process::Command as ProcessCommand;
 use std::{
@@ -128,21 +135,46 @@ pub fn execute(
 }
 
 fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) {
-    generate_role_file(resources.clone(), kubernetes_operator_group);
-    generate_cluster_role_file(resources.clone(), kubernetes_operator_group);
-    generate_service_account_file();
-    generate_role_binding_file_content();
-    generate_cluster_role_binding_file_content();
-    generate_operator_deployment_file();
-    generate_operator_secret_file();
-}
+    let base_path_rbac = Path::new(K8S_MANIFESTS_RBAC_DIR);
+    let base_path_operator = Path::new(K8S_MANIFESTS_OPERATOR_DIR);
 
-#[derive(Template)]
-#[template(path = "k8s_operator_main.jinja")]
-struct MainTemplate {
-    api_group: String,
-    api_version: String,
-    controllers: Vec<String>,
+    generate_template_file(
+        RoleTemplate {
+            identifiers: RoleTemplateIdentifiers {
+                api_group: kubernetes_operator_group.to_string(),
+                resources: resources.clone(),
+            },
+        },
+        base_path_rbac,
+        "role.yaml",
+    );
+    generate_template_file(
+        ClusterRoleTemplate {
+            identifiers: ClusterRoleTemplateIdentifiers {
+                api_group: kubernetes_operator_group.to_string(),
+                resources: resources.clone(),
+            },
+        },
+        base_path_rbac,
+        "clusterrole.yaml",
+    );
+    generate_template_file(
+        ServiceAccountTemplate {},
+        base_path_rbac,
+        "serviceaccount.yaml",
+    );
+    generate_template_file(RoleBindingTemplate {}, base_path_rbac, "rolebinding.yaml");
+    generate_template_file(
+        ClusterRoleBindingTemplate {},
+        base_path_rbac,
+        "clusterrolebinding.yaml",
+    );
+    generate_template_file(
+        OperatorDeploymentTemplate {},
+        base_path_operator,
+        "deployment.yaml",
+    );
+    generate_template_file(OperatorSecretTemplate {}, base_path_operator, "secret.yaml");
 }
 
 fn generate_main_file(api_group: &str, api_version: &str, mut controllers: Vec<String>) {
@@ -164,12 +196,6 @@ fn generate_main_file(api_group: &str, api_version: &str, mut controllers: Vec<S
     .unwrap();
     write_to_file(base_path, "main.rs", content);
     format_file(base_path.join("main.rs").to_string_lossy().to_string());
-}
-
-struct ControllerAttributes {
-    operation_id: String,
-    http_method: String,
-    action_summary: String,
 }
 
 fn get_controller_attributes_for_operation(
@@ -298,52 +324,6 @@ fn generate_controllers(
     controllers.keys().cloned().collect()
 }
 
-struct Field {
-    pub_name: String,
-    field_type: String,
-}
-
-#[derive(Template)]
-#[template(path = "k8s_operator_controller.jinja")]
-struct ControllerTemplate {
-    tag: String,
-    arg_name: String,
-    kind_struct: String,
-    dto_fields: Vec<Field>,
-    resource_remote_ref: String,
-    has_create_action: bool,
-    has_update_action: bool,
-    has_delete_action: bool,
-    api_url: String,
-}
-
-#[derive(Template)]
-#[template(path = "k8s_operator_controller_action_delete.jinja")]
-struct ControllerActionDeleteTemplate<'a> {
-    arg_name: String,
-    kind_struct: String,
-    controllers: Vec<&'a ControllerAttributes>,
-    resource_remote_ref: String,
-}
-
-#[derive(Template)]
-#[template(path = "k8s_operator_controller_action_update.jinja")]
-struct ControllerActionPutTemplate<'a> {
-    arg_name: String,
-    kind_struct: String,
-    controllers: Vec<&'a ControllerAttributes>,
-    resource_remote_ref: String,
-}
-
-#[derive(Template)]
-#[template(path = "k8s_operator_controller_action_create.jinja")]
-struct ControllerActionPostTemplate<'a> {
-    arg_name: String,
-    kind_struct: String,
-    controllers: Vec<&'a ControllerAttributes>,
-    resource_remote_ref: String,
-}
-
 fn generate_controller(
     schemas: HashMap<String, Schema>,
     tag: String,
@@ -430,17 +410,6 @@ fn generate_controller(
     write_to_file(base_path, &file_name, content);
     format_file(base_path.join(file_name).to_string_lossy().to_string());
     add_controller_to_modfile(&tag.to_lowercase()).expect("Failed to add controller to mod file");
-}
-
-#[derive(Template)]
-#[template(path = "k8s_operator_type.jinja")]
-struct TypeTemplate {
-    tag_name: String,
-    type_name: String,
-    api_version: String,
-    group_name: String,
-    fields: Vec<Field>,
-    reference_id: String,
 }
 
 fn get_fields_for_type(
@@ -553,9 +522,6 @@ fn generate_type(
     write_to_file(base_path, &file_name, content);
     format_file(base_path.join(file_name).to_string_lossy().to_string());
 }
-#[derive(Template)]
-#[template(path = "k8s_operator_lib.jinja")]
-struct LibTemplate {}
 
 fn generate_lib() {
     let file_path = format!("{}/src/lib.rs", K8S_OPERATOR_DIR);
@@ -591,12 +557,6 @@ fn add_controller_to_modfile(controller_name: &str) -> Result<(), Error> {
         Ok(_) => Ok(()),
         Err(e) => Err(e),
     }
-}
-
-#[derive(Template)]
-#[template(path = "k8s_crdgen_main.jinja")]
-struct CrdGenTemplate {
-    resources: BTreeMap<String, String>,
 }
 
 fn generate_crdgen_file(resources: Vec<String>) {
@@ -680,166 +640,6 @@ fn uppercase_first_letter(name: &str) -> String {
         None => String::new(),
         Some(f) => f.to_uppercase().collect::<String>() + chars.as_str(),
     }
-}
-
-struct RoleTemplateIdentifiers {
-    api_group: String,
-    resources: Vec<String>,
-}
-
-#[derive(Template)]
-#[template(path = "manifest_rbac_role.jinja")]
-struct RoleTemplate {
-    identifiers: RoleTemplateIdentifiers,
-}
-
-fn generate_role_file(resources: Vec<String>, api_group: &str) {
-    let base_path: &Path = Path::new(K8S_MANIFESTS_RBAC_DIR);
-    let file_name = "role.yaml";
-    let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files().contains(&file_path) {
-        return;
-    }
-
-    let content = RoleTemplate {
-        identifiers: RoleTemplateIdentifiers {
-            api_group: api_group.to_string(),
-            resources,
-        },
-    }
-    .render()
-    .unwrap();
-    write_to_file(base_path, file_name, content);
-}
-
-struct ClusterRoleTemplateIdentifiers {
-    api_group: String,
-    resources: Vec<String>,
-}
-
-#[derive(Template)]
-#[template(path = "manifest_rbac_cluster_role.jinja")]
-struct ClusterRoleTemplate {
-    identifiers: ClusterRoleTemplateIdentifiers,
-}
-
-fn generate_cluster_role_file(resources: Vec<String>, api_group: &str) {
-    let base_path: &Path = Path::new(K8S_MANIFESTS_RBAC_DIR);
-    let file_name = "clusterrole.yaml";
-    let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files().contains(&file_path) {
-        return;
-    }
-
-    let content = ClusterRoleTemplate {
-        identifiers: ClusterRoleTemplateIdentifiers {
-            api_group: api_group.to_string(),
-            resources,
-        },
-    }
-    .render()
-    .unwrap();
-    write_to_file(base_path, file_name, content);
-}
-
-#[derive(Template)]
-#[template(path = "manifest_rbac_service_account.jinja")]
-struct ServiceAccountTemplate {}
-
-fn generate_service_account_file() {
-    let base_path: &Path = Path::new(K8S_MANIFESTS_RBAC_DIR);
-    let file_name = "serviceaccount.yaml";
-    let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files().contains(&file_path) {
-        return;
-    }
-
-    let content = ServiceAccountTemplate {}.render().unwrap();
-    write_to_file(base_path, file_name, content);
-}
-
-#[derive(Template)]
-#[template(path = "manifest_rbac_role_binding.jinja")]
-struct RoleBindingTemplate {}
-
-fn generate_role_binding_file_content() {
-    let base_path: &Path = Path::new(K8S_MANIFESTS_RBAC_DIR);
-    let file_name = "rolebinding.yaml";
-    let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files().contains(&file_path) {
-        return;
-    }
-
-    let content = RoleBindingTemplate {}.render().unwrap();
-    write_to_file(base_path, file_name, content);
-}
-
-#[derive(Template)]
-#[template(path = "manifest_rbac_cluster_role_binding.jinja")]
-struct ClusterRoleBindingTemplate {}
-
-fn generate_cluster_role_binding_file_content() {
-    let base_path: &Path = Path::new(K8S_MANIFESTS_RBAC_DIR);
-    let file_name = "clusterrolebinding.yaml";
-    let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files().contains(&file_path) {
-        return;
-    }
-
-    let content = ClusterRoleBindingTemplate {}.render().unwrap();
-    write_to_file(base_path, file_name, content);
-}
-
-#[derive(Template)]
-#[template(path = "manifest_operator_deployment.jinja")]
-struct OperatorDeploymentTemplate {}
-
-fn generate_operator_deployment_file() {
-    let base_path: &Path = Path::new(K8S_MANIFESTS_OPERATOR_DIR);
-    let file_name = "deployment.yaml";
-    let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files().contains(&file_path) {
-        return;
-    }
-
-    let content = OperatorDeploymentTemplate {}.render().unwrap();
-    write_to_file(base_path, file_name, content);
-}
-
-#[derive(Template)]
-#[template(path = "manifest_operator_secret.jinja")]
-struct OperatorSecretTemplate {}
-
-fn generate_operator_secret_file() {
-    let base_path: &Path = Path::new(K8S_MANIFESTS_OPERATOR_DIR);
-    let file_name = "secret.yaml";
-    let file_path: String = base_path.join(file_name).to_string_lossy().to_string();
-    if get_ignored_files().contains(&file_path) {
-        return;
-    }
-
-    let content = OperatorSecretTemplate {}.render().unwrap();
-    write_to_file(base_path, file_name, content);
-}
-
-#[derive(Template, Deserialize, Serialize)]
-#[template(path = "manifest_example.jinja")]
-struct ExampleTemplate {
-    resources: Vec<Resource>,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Resource {
-    api_group: String,
-    api_version: String,
-    kind: String,
-    metadata: Metadata,
-    spec: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Metadata {
-    name: String,
 }
 
 fn generate_examples(
