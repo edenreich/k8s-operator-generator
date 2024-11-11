@@ -6,18 +6,18 @@ use crate::templates::{
     RoleBindingTemplate, RoleTemplate, RoleTemplateIdentifiers, ServiceAccountTemplate,
     TypeTemplate,
 };
-use crate::utils::{extract_openapi_info, generate_template_file, read_openapi_spec};
+use crate::utils::{
+    extract_openapi_info, format_file, generate_template_file, get_ignored_files,
+    read_openapi_spec, uppercase_first_letter, upsert_line_to_file, write_to_file,
+};
 use askama::Template;
 use clap::Error;
 use inflector::Inflector;
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
 use openapiv3::{ReferenceOr, Schema, SchemaKind, Type};
 use serde_json::{json, Map, Value};
-use std::process::Command as ProcessCommand;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
-    fs::{File, OpenOptions},
-    io::{BufRead, BufReader, Write},
     path::Path,
 };
 
@@ -577,69 +577,6 @@ fn generate_crdgen_file(resources: Vec<String>) {
     let content = template.render().unwrap();
     write_to_file(base_path, &file_name, content);
     format_file(base_path.join(file_name).to_string_lossy().to_string());
-}
-
-fn get_ignored_files() -> Vec<String> {
-    let ignore_file_path = ".openapi-generator-ignore";
-    let ignore_file = File::open(ignore_file_path)
-        .unwrap_or_else(|_| panic!("Unable to open file: {:?}", ignore_file_path));
-    let reader = BufReader::new(ignore_file);
-    reader.lines().map_while(Result::ok).collect()
-}
-
-fn write_to_file(base_path: &Path, file_name: &str, file_content: String) {
-    let file_path = base_path.join(file_name);
-    debug!("Writing to file: {}", file_path.to_string_lossy());
-    if get_ignored_files().contains(&file_path.to_string_lossy().to_string()) {
-        return;
-    }
-
-    std::fs::write(file_path, file_content + "\n").expect("Unable to write file");
-}
-
-fn upsert_line_to_file(file_path: &str, line: &str) -> Result<(), Error> {
-    if get_ignored_files().contains(&file_path.to_string()) {
-        return Ok(());
-    }
-
-    let file = File::open(file_path)?;
-    let reader = BufReader::new(file);
-
-    let exists = reader.lines().any(|l| l.unwrap() == line);
-
-    if !exists {
-        let mut file = OpenOptions::new().append(true).open(file_path)?;
-        if let Err(e) = writeln!(file, "{}", line) {
-            error!("Couldn't write to file: {}", e);
-        }
-    }
-    Ok(())
-}
-
-fn format_file(file_path: String) {
-    if get_ignored_files().contains(&file_path) {
-        return;
-    }
-
-    let output = ProcessCommand::new("rustfmt")
-        .arg(file_path)
-        .output()
-        .expect("Failed to execute command");
-
-    if !output.status.success() {
-        error!(
-            "rustfmt failed with output:\n{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-}
-
-fn uppercase_first_letter(name: &str) -> String {
-    let mut chars = name.chars();
-    match chars.next() {
-        None => String::new(),
-        Some(f) => f.to_uppercase().collect::<String>() + chars.as_str(),
-    }
 }
 
 fn generate_examples(
