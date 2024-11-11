@@ -1,5 +1,6 @@
 use askama::Template;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 #[derive(Template)]
 #[template(path = "k8s_tests_main.jinja")]
@@ -12,10 +13,11 @@ pub struct TestsUtilsClient {}
 #[derive(Template)]
 #[template(path = "k8s_tests_utils_operator.jinja")]
 pub struct TestsUtilsOperator {}
+
 #[derive(Template)]
 #[template(path = "k8s_tests_utils_cluster.jinja")]
-
 pub struct TestsUtilsCluster {}
+
 #[derive(Template)]
 #[template(path = ".dockerignore.jinja")]
 pub struct Dockerignore {}
@@ -164,4 +166,85 @@ pub struct Resource {
 #[derive(Serialize, Deserialize)]
 pub struct Metadata {
     pub name: String,
+}
+
+#[derive(Template)]
+#[template(path = "k8s_operator_main.jinja")]
+pub struct MainTemplate {
+    pub api_group: String,
+    pub api_version: String,
+    pub controllers: Vec<String>,
+}
+
+pub struct Field {
+    pub pub_name: String,
+    pub field_type: String,
+}
+
+#[derive(Template)]
+#[template(path = "k8s_operator_controller.jinja")]
+pub struct ControllerTemplate {
+    pub tag: String,
+    pub arg_name: String,
+    pub kind_struct: String,
+    pub dto_fields: Vec<Field>,
+    pub resource_remote_ref: String,
+    pub has_create_action: bool,
+    pub has_update_action: bool,
+    pub has_delete_action: bool,
+    pub api_url: String,
+}
+
+#[derive(Template)]
+#[template(path = "k8s_operator_controller_action_delete.jinja")]
+pub struct ControllerActionDeleteTemplate<'a> {
+    pub arg_name: String,
+    pub kind_struct: String,
+    pub controllers: Vec<&'a ControllerAttributes>,
+    pub resource_remote_ref: String,
+}
+
+#[derive(Template)]
+#[template(path = "k8s_operator_controller_action_update.jinja")]
+pub struct ControllerActionPutTemplate<'a> {
+    pub arg_name: String,
+    pub kind_struct: String,
+    pub controllers: Vec<&'a ControllerAttributes>,
+    pub resource_remote_ref: String,
+}
+
+#[derive(Template)]
+#[template(path = "k8s_operator_controller_action_create.jinja")]
+pub struct ControllerActionPostTemplate<'a> {
+    pub arg_name: String,
+    pub kind_struct: String,
+    pub controllers: Vec<&'a ControllerAttributes>,
+    pub resource_remote_ref: String,
+}
+
+pub struct ControllerAttributes {
+    pub operation_id: String,
+    pub http_method: String,
+    pub action_summary: String,
+}
+
+#[derive(Template)]
+#[template(path = "k8s_operator_type.jinja")]
+pub struct TypeTemplate {
+    pub tag_name: String,
+    pub type_name: String,
+    pub api_version: String,
+    pub group_name: String,
+    pub fields: Vec<Field>,
+    pub reference_id: String,
+}
+
+#[derive(Template)]
+#[template(path = "k8s_operator_lib.jinja")]
+pub struct LibTemplate {}
+
+#[derive(Template)]
+#[template(path = "k8s_crdgen_main.jinja")]
+pub struct CrdGenTemplate {
+    pub resources: BTreeMap<String, String>,
 }

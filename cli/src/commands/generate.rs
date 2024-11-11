@@ -1,7 +1,10 @@
 use crate::templates::{
     ClusterRoleBindingTemplate, ClusterRoleTemplate, ClusterRoleTemplateIdentifiers,
-    ExampleTemplate, Metadata, OperatorDeploymentTemplate, OperatorSecretTemplate, Resource,
+    ControllerActionDeleteTemplate, ControllerActionPostTemplate, ControllerActionPutTemplate,
+    ControllerAttributes, ControllerTemplate, CrdGenTemplate, ExampleTemplate, Field, LibTemplate,
+    MainTemplate, Metadata, OperatorDeploymentTemplate, OperatorSecretTemplate, Resource,
     RoleBindingTemplate, RoleTemplate, RoleTemplateIdentifiers, ServiceAccountTemplate,
+    TypeTemplate,
 };
 use crate::utils::{extract_openapi_info, generate_template_file, read_openapi_spec};
 use askama::Template;
@@ -174,14 +177,6 @@ fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) 
     generate_template_file(OperatorSecretTemplate {}, base_path_operator, "secret.yaml");
 }
 
-#[derive(Template)]
-#[template(path = "k8s_operator_main.jinja")]
-struct MainTemplate {
-    api_group: String,
-    api_version: String,
-    controllers: Vec<String>,
-}
-
 fn generate_main_file(api_group: &str, api_version: &str, mut controllers: Vec<String>) {
     let base_path = &Path::new(K8S_OPERATOR_DIR).join("src");
     let file_path = base_path.join("main.rs").to_string_lossy().to_string();
@@ -201,12 +196,6 @@ fn generate_main_file(api_group: &str, api_version: &str, mut controllers: Vec<S
     .unwrap();
     write_to_file(base_path, "main.rs", content);
     format_file(base_path.join("main.rs").to_string_lossy().to_string());
-}
-
-struct ControllerAttributes {
-    operation_id: String,
-    http_method: String,
-    action_summary: String,
 }
 
 fn get_controller_attributes_for_operation(
@@ -335,52 +324,6 @@ fn generate_controllers(
     controllers.keys().cloned().collect()
 }
 
-struct Field {
-    pub_name: String,
-    field_type: String,
-}
-
-#[derive(Template)]
-#[template(path = "k8s_operator_controller.jinja")]
-struct ControllerTemplate {
-    tag: String,
-    arg_name: String,
-    kind_struct: String,
-    dto_fields: Vec<Field>,
-    resource_remote_ref: String,
-    has_create_action: bool,
-    has_update_action: bool,
-    has_delete_action: bool,
-    api_url: String,
-}
-
-#[derive(Template)]
-#[template(path = "k8s_operator_controller_action_delete.jinja")]
-struct ControllerActionDeleteTemplate<'a> {
-    arg_name: String,
-    kind_struct: String,
-    controllers: Vec<&'a ControllerAttributes>,
-    resource_remote_ref: String,
-}
-
-#[derive(Template)]
-#[template(path = "k8s_operator_controller_action_update.jinja")]
-struct ControllerActionPutTemplate<'a> {
-    arg_name: String,
-    kind_struct: String,
-    controllers: Vec<&'a ControllerAttributes>,
-    resource_remote_ref: String,
-}
-
-#[derive(Template)]
-#[template(path = "k8s_operator_controller_action_create.jinja")]
-struct ControllerActionPostTemplate<'a> {
-    arg_name: String,
-    kind_struct: String,
-    controllers: Vec<&'a ControllerAttributes>,
-    resource_remote_ref: String,
-}
-
 fn generate_controller(
     schemas: HashMap<String, Schema>,
     tag: String,
@@ -467,17 +410,6 @@ fn generate_controller(
     write_to_file(base_path, &file_name, content);
     format_file(base_path.join(file_name).to_string_lossy().to_string());
     add_controller_to_modfile(&tag.to_lowercase()).expect("Failed to add controller to mod file");
-}
-
-#[derive(Template)]
-#[template(path = "k8s_operator_type.jinja")]
-struct TypeTemplate {
-    tag_name: String,
-    type_name: String,
-    api_version: String,
-    group_name: String,
-    fields: Vec<Field>,
-    reference_id: String,
 }
 
 fn get_fields_for_type(
@@ -590,9 +522,6 @@ fn generate_type(
     write_to_file(base_path, &file_name, content);
     format_file(base_path.join(file_name).to_string_lossy().to_string());
 }
-#[derive(Template)]
-#[template(path = "k8s_operator_lib.jinja")]
-struct LibTemplate {}
 
 fn generate_lib() {
     let file_path = format!("{}/src/lib.rs", K8S_OPERATOR_DIR);
@@ -628,12 +557,6 @@ fn add_controller_to_modfile(controller_name: &str) -> Result<(), Error> {
         Ok(_) => Ok(()),
         Err(e) => Err(e),
     }
-}
-
-#[derive(Template)]
-#[template(path = "k8s_crdgen_main.jinja")]
-struct CrdGenTemplate {
-    resources: BTreeMap<String, String>,
 }
 
 fn generate_crdgen_file(resources: Vec<String>) {
