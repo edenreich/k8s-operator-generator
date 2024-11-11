@@ -1,6 +1,10 @@
 use dotenv::dotenv;
 use std::env;
 
+/// Configuration for the Kubernetes Operator Codegen tool.
+///
+/// This struct holds the configuration values required for the tool, which are
+/// typically loaded from environment variables.
 #[derive(Debug, Clone)]
 pub struct Config {
     pub kubernetes_operator_group: String,
@@ -11,6 +15,15 @@ pub struct Config {
 }
 
 impl Config {
+    /// Loads the configuration from environment variables.
+    ///
+    /// This function reads the necessary environment variables and constructs
+    /// a `Config` object. If any required environment variable is not set,
+    /// it returns an error.
+    ///
+    /// # Returns
+    ///
+    /// This function returns a `Result` containing the `Config` object or an error message.
     pub fn from_env() -> Result<Self, String> {
         dotenv().ok();
 
@@ -36,10 +49,25 @@ impl Config {
     }
 }
 
+/// Trait for loading configuration.
+///
+/// This trait defines a method for loading the configuration, which can be
+/// implemented by different configuration providers.
 pub trait ConfigProvider {
+    /// Loads the configuration.
+    ///
+    /// This function should be implemented to load the configuration from a specific source.
+    ///
+    /// # Returns
+    ///
+    /// This function returns a `Result` containing the `Config` object or an error message.
     fn load_config() -> Result<Config, String>;
 }
 
+/// Environment variable-based configuration provider.
+///
+/// This struct implements the `ConfigProvider` trait to load the configuration
+/// from environment variables.
 pub struct EnvConfigProvider;
 
 impl ConfigProvider for EnvConfigProvider {

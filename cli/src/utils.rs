@@ -10,6 +10,11 @@ use std::{fs::DirBuilder, path::Path};
 
 const K8S_TESTS_UTILS_DIR: &str = "tests/src/utils";
 
+/// Creates a directory if it does not already exist.
+///
+/// # Arguments
+///
+/// * `dir` - A reference to the path of the directory to create.
 pub fn create_directory_if_not_exists(dir: &Path) {
     let path_str = dir.to_string_lossy().to_string();
     if dir.exists() {
@@ -22,6 +27,13 @@ pub fn create_directory_if_not_exists(dir: &Path) {
     }
 }
 
+/// Writes content to a file without filtering.
+///
+/// # Arguments
+///
+/// * `base_path` - The base path where the file is located.
+/// * `file_name` - The name of the file to write to.
+/// * `file_content` - The content to write to the file.
 fn write_to_file_without_filter(base_path: &Path, file_name: &str, file_content: String) {
     let file_path = base_path.join(file_name);
     let file_path_str = file_path.to_string_lossy().to_string();
@@ -32,11 +44,23 @@ fn write_to_file_without_filter(base_path: &Path, file_name: &str, file_content:
     }
 }
 
+/// Generates a template file.
+///
+/// # Arguments
+///
+/// * `template` - The template to render.
+/// * `base_path` - The base path where the file is located.
+/// * `file_name` - The name of the file to write to.
 pub fn generate_template_file<T: Template>(template: T, base_path: &Path, file_name: &str) {
     let content = template.render().unwrap();
     write_to_file_without_filter(base_path, file_name, content);
 }
 
+/// Sets executable permission for a file.
+///
+/// # Arguments
+///
+/// * `file_path` - The path of the file to set the permission for.
 pub fn set_executable_permission(file_path: &Path) {
     let metadata = std::fs::metadata(file_path).expect("Unable to read file metadata");
     let mut permissions = metadata.permissions();
@@ -44,12 +68,27 @@ pub fn set_executable_permission(file_path: &Path) {
     std::fs::set_permissions(file_path, permissions).expect("Unable to set file permissions");
 }
 
+/// Reads the OpenAPI specification from a file.
+///
+/// # Arguments
+///
+/// * `file_path` - The path of the OpenAPI specification file.
+///
+/// # Returns
+///
+/// This function returns an `OpenAPI` object.
 pub fn read_openapi_spec(file_path: &str) -> OpenAPI {
     let file = File::open(file_path).expect("Unable to open file");
     let reader = BufReader::new(file);
     serde_yaml::from_reader(reader).expect("Unable to parse OpenAPI spec")
 }
 
+/// Creates a file if it does not already exist.
+///
+/// # Arguments
+///
+/// * `base_path` - The base path where the file is located.
+/// * `file` - The name of the file to create.
 pub fn create_file_if_not_exists(base_path: &Path, file: &str) {
     let file_path = base_path.join(file);
     if !file_path.exists() {
@@ -58,6 +97,15 @@ pub fn create_file_if_not_exists(base_path: &Path, file: &str) {
     }
 }
 
+/// Extracts information from the OpenAPI specification.
+///
+/// # Arguments
+///
+/// * `openapi` - A reference to the `OpenAPI` object.
+///
+/// # Returns
+///
+/// This function returns a tuple containing the extracted information.
 pub fn extract_openapi_info(openapi: &OpenAPI) -> (String, String, String, Vec<String>, String) {
     let kubernetes_operator_group = extract_extension(openapi, "x-kubernetes-operator-group");
     let kubernetes_operator_version = extract_extension(openapi, "x-kubernetes-operator-version");
@@ -78,6 +126,16 @@ pub fn extract_openapi_info(openapi: &OpenAPI) -> (String, String, String, Vec<S
     )
 }
 
+/// Extracts a string extension from the OpenAPI specification.
+///
+/// # Arguments
+///
+/// * `openapi` - A reference to the `OpenAPI` object.
+/// * `key` - The key of the extension to extract.
+///
+/// # Returns
+///
+/// This function returns the extracted string.
 fn extract_extension(openapi: &OpenAPI, key: &str) -> String {
     openapi
         .info
@@ -89,6 +147,16 @@ fn extract_extension(openapi: &OpenAPI, key: &str) -> String {
         .to_string()
 }
 
+/// Extracts an array extension from the OpenAPI specification.
+///
+/// # Arguments
+///
+/// * `openapi` - A reference to the `OpenAPI` object.
+/// * `key` - The key of the extension to extract.
+///
+/// # Returns
+///
+/// This function returns the extracted array as a vector of strings.
 fn extract_extension_array(openapi: &OpenAPI, key: &str) -> Vec<String> {
     openapi
         .info
@@ -102,6 +170,12 @@ fn extract_extension_array(openapi: &OpenAPI, key: &str) -> Vec<String> {
         .collect()
 }
 
+/// Adds a test utility module to the mod.rs file.
+///
+/// # Arguments
+///
+/// * `base_path` - The base path where the mod.rs file is located.
+/// * `util_name` - The name of the utility module to add.
 pub fn add_tests_util_to_modfile(base_path: &Path, util_name: &str) {
     let file_path = base_path.join(K8S_TESTS_UTILS_DIR).join("mod.rs");
     let file_path_str = file_path.to_string_lossy().to_string();
@@ -119,6 +193,16 @@ pub fn add_tests_util_to_modfile(base_path: &Path, util_name: &str) {
     }
 }
 
+/// Upserts a line to a file without filtering.
+///
+/// # Arguments
+///
+/// * `file_path` - The path of the file to upsert the line to.
+/// * `line` - The line to upsert.
+///
+/// # Returns
+///
+/// This function returns a `Result` indicating the success or failure of the operation.
 fn upsert_line_to_file_without_filter(file_path: &str, line: &str) -> Result<(), Error> {
     let file = File::open(file_path)?;
     let reader = BufReader::new(file);
@@ -134,6 +218,11 @@ fn upsert_line_to_file_without_filter(file_path: &str, line: &str) -> Result<(),
     Ok(())
 }
 
+/// Retrieves the list of ignored files.
+///
+/// # Returns
+///
+/// This function returns a vector of strings containing the paths of the ignored files.
 pub fn get_ignored_files() -> Vec<String> {
     let ignore_file_path = ".openapi-generator-ignore";
     let ignore_file = File::open(ignore_file_path)
@@ -142,6 +231,16 @@ pub fn get_ignored_files() -> Vec<String> {
     reader.lines().map_while(Result::ok).collect()
 }
 
+/// Upserts a line to a file.
+///
+/// # Arguments
+///
+/// * `file_path` - The path of the file to upsert the line to.
+/// * `line` - The line to upsert.
+///
+/// # Returns
+///
+/// This function returns a `Result` indicating the success or failure of the operation.
 pub fn upsert_line_to_file(file_path: &str, line: &str) -> Result<(), Error> {
     if get_ignored_files().contains(&file_path.to_string()) {
         return Ok(());
@@ -161,6 +260,13 @@ pub fn upsert_line_to_file(file_path: &str, line: &str) -> Result<(), Error> {
     Ok(())
 }
 
+/// Writes content to a file.
+///
+/// # Arguments
+///
+/// * `base_path` - The base path where the file is located.
+/// * `file_name` - The name of the file to write to.
+/// * `file_content` - The content to write to the file.
 pub fn write_to_file(base_path: &Path, file_name: &str, file_content: String) {
     let file_path = base_path.join(file_name);
     debug!("Writing to file: {}", file_path.to_string_lossy());
@@ -171,6 +277,11 @@ pub fn write_to_file(base_path: &Path, file_name: &str, file_content: String) {
     std::fs::write(file_path, file_content + "\n").expect("Unable to write file");
 }
 
+/// Formats a file using rustfmt.
+///
+/// # Arguments
+///
+/// * `file_path` - The path of the file to format.
 pub fn format_file(file_path: String) {
     if get_ignored_files().contains(&file_path) {
         return;
@@ -189,6 +300,15 @@ pub fn format_file(file_path: String) {
     }
 }
 
+/// Uppercases the first letter of a string.
+///
+/// # Arguments
+///
+/// * `name` - The string to uppercase the first letter of.
+///
+/// # Returns
+///
+/// This function returns the modified string with the first letter uppercased.
 pub fn uppercase_first_letter(name: &str) -> String {
     let mut chars = name.chars();
     match chars.next() {
