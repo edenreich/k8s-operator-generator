@@ -20,6 +20,18 @@ const K8S_MANIFESTS_RBAC_DIR: &str = "manifests/rbac";
 const K8S_MANIFESTS_OPERATOR_DIR: &str = "manifests/operator";
 const K8S_MANIFESTS_EXAMPLES_DIR: &str = "manifests/examples";
 
+/// Executes the initialization process for the project directory structure.
+///
+/// This function sets up the necessary directory structure and generates
+/// template files for the project based on the provided path.
+///
+/// # Arguments
+///
+/// * `path` - A string slice that holds the path to the project directory.
+///
+/// # Returns
+///
+/// This function returns a `Result` indicating the success or failure of the operation.
 pub fn execute(path: &String) -> Result<(), Box<dyn std::error::Error>> {
     info!("Initializing directory structure in {}...", path);
     let path = Path::new(&path);

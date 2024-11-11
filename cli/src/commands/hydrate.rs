@@ -4,6 +4,19 @@ use serde_yaml::Value as YamlValue;
 use std::fs;
 use std::process::Command as ProcessCommand;
 
+/// Executes the hydration process for the OpenAPI specification.
+///
+/// This function updates the OpenAPI specification with additional metadata
+/// from the provided configuration.
+///
+/// # Arguments
+///
+/// * `openapi_file` - A string slice that holds the path to the OpenAPI file.
+/// * `config` - A reference to the configuration object containing metadata to be added.
+///
+/// # Returns
+///
+/// This function returns a `Result` indicating the success or failure of the operation.
 pub fn execute(openapi_file: &String, config: &Config) -> Result<(), Box<dyn std::error::Error>> {
     info!("Hydrating OpenAPI spec...");
 

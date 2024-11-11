@@ -31,6 +31,30 @@ const K8S_MANIFESTS_RBAC_DIR: &str = "manifests/rbac";
 const K8S_MANIFESTS_OPERATOR_DIR: &str = "manifests/operator";
 const K8S_MANIFESTS_EXAMPLES_DIR: &str = "manifests/examples";
 
+/// Executes the generation process based on the provided OpenAPI file and flags.
+///
+/// This function generates various components of a Kubernetes operator project
+/// including library files, manifests, controllers, and types based on the
+/// OpenAPI specification provided. The generation process can be controlled
+/// using the provided flags to generate specific components or all components.
+///
+/// # Arguments
+///
+/// * `openapi_file` - A string slice that holds the path to the OpenAPI file.
+/// * `all` - A boolean flag indicating whether to generate all components.
+/// * `lib` - A boolean flag indicating whether to generate the library files.
+/// * `manifests` - A boolean flag indicating whether to generate the manifest files.
+/// * `controllers` - A boolean flag indicating whether to generate the controller files.
+/// * `types` - A boolean flag indicating whether to generate the type files.
+///
+/// # Returns
+///
+/// This function returns a `Result` indicating the success or failure of the operation.
+///
+/// # Errors
+///
+/// This function will return an error if the OpenAPI file cannot be read or parsed,
+/// or if any of the generation steps fail.
 pub fn execute(
     openapi_file: &String,
     all: &bool,
@@ -134,6 +158,7 @@ pub fn execute(
     Ok(())
 }
 
+/// Generates RBAC files based on the provided resources and Kubernetes operator group.
 fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) {
     let base_path_rbac = Path::new(K8S_MANIFESTS_RBAC_DIR);
     let base_path_operator = Path::new(K8S_MANIFESTS_OPERATOR_DIR);
@@ -177,6 +202,7 @@ fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) 
     generate_template_file(OperatorSecretTemplate {}, base_path_operator, "secret.yaml");
 }
 
+/// Generates the main file for the Kubernetes operator.
 fn generate_main_file(api_group: &str, api_version: &str, mut controllers: Vec<String>) {
     let base_path = &Path::new(K8S_OPERATOR_DIR).join("src");
     let file_path = base_path.join("main.rs").to_string_lossy().to_string();
@@ -198,6 +224,7 @@ fn generate_main_file(api_group: &str, api_version: &str, mut controllers: Vec<S
     format_file(base_path.join("main.rs").to_string_lossy().to_string());
 }
 
+/// Extracts controller attributes for a given operation.
 fn get_controller_attributes_for_operation(
     operation: &openapiv3::Operation,
     http_method: &str,
@@ -258,6 +285,7 @@ fn get_controller_attributes_for_operation(
     Some((tag.clone(), attributes))
 }
 
+/// Generates controllers based on the provided schemas, paths, and tags.
 fn generate_controllers(
     schemas: HashMap<String, Schema>,
     paths: openapiv3::Paths,
@@ -324,6 +352,7 @@ fn generate_controllers(
     controllers.keys().cloned().collect()
 }
 
+/// Generates a controller based on the provided schemas, tag, and attributes.
 fn generate_controller(
     schemas: HashMap<String, Schema>,
     tag: String,
@@ -412,6 +441,7 @@ fn generate_controller(
     add_controller_to_modfile(&tag.to_lowercase()).expect("Failed to add controller to mod file");
 }
 
+/// Retrieves fields for a given schema type.
 fn get_fields_for_type(
     schemas: &HashMap<String, Schema>,
     schema_name: &str,
@@ -462,6 +492,7 @@ fn get_fields_for_type(
     Ok(fields)
 }
 
+/// Generates types based on the provided schemas and operator resource reference.
 fn generate_types(schemas: HashMap<String, Schema>, operator_resource_ref: &str) {
     for name in schemas.keys() {
         generate_type(
@@ -478,6 +509,7 @@ fn generate_types(schemas: HashMap<String, Schema>, operator_resource_ref: &str)
     }
 }
 
+/// Generates a type based on the provided schemas, name, and operator details.
 fn generate_type(
     schemas: HashMap<String, Schema>,
     name: &str,
@@ -537,6 +569,7 @@ fn generate_lib() {
     format_file(base_path.join(file_name).to_string_lossy().to_string());
 }
 
+/// Adds a type to the module file.
 fn add_type_to_modfile(type_name: &str) -> Result<(), Error> {
     let file_path = format!("{}/mod.rs", K8S_OPERATOR_TYPES_DIR);
     match upsert_line_to_file(
@@ -548,6 +581,7 @@ fn add_type_to_modfile(type_name: &str) -> Result<(), Error> {
     }
 }
 
+/// Adds a controller to the module file.
 fn add_controller_to_modfile(controller_name: &str) -> Result<(), Error> {
     let file_path = format!("{}/mod.rs", K8S_OPERATOR_CONTROLLERS_DIR);
     match upsert_line_to_file(
@@ -559,6 +593,7 @@ fn add_controller_to_modfile(controller_name: &str) -> Result<(), Error> {
     }
 }
 
+/// Generates the CRD generator main file based on the provided resources.
 fn generate_crdgen_file(resources: Vec<String>) {
     let base_path: &Path = &Path::new(K8S_CRDGEN_DIR).join("src");
     let file_name = "main.rs".to_string();
@@ -579,6 +614,7 @@ fn generate_crdgen_file(resources: Vec<String>) {
     format_file(base_path.join(file_name).to_string_lossy().to_string());
 }
 
+/// Generates example manifests based on the provided examples.
 fn generate_examples(
     kubernetes_operator_metadata_spec_field_name: &str,
     examples: std::collections::HashMap<String, ReferenceOr<openapiv3::Example>>,
@@ -605,6 +641,7 @@ fn generate_examples(
     }
 }
 
+/// Generates a manifest from an example.
 fn generate_manifest_from_example(
     kubernetes_operator_metadata_spec_field_name: &str,
     name: &str,
@@ -652,6 +689,7 @@ fn generate_manifest_from_example(
     }
 }
 
+/// Retrieves the metadata name from the provided map.
 fn get_metadata_name(
     kubernetes_operator_metadata_spec_field_name: &str,
     map: &Map<String, Value>,
@@ -670,6 +708,7 @@ fn get_metadata_name(
     kubernetes_operator_metadata_spec_field_name.to_lowercase()
 }
 
+/// Generates a resource from the provided map.
 fn generate_resource_from_map(
     kind: &str,
     name: &str,
@@ -706,6 +745,7 @@ fn generate_resource_from_map(
     }
 }
 
+/// Writes the example manifest to a file.
 fn write_example_manifest(name: &str, resources: Vec<Resource>) {
     let template = ExampleTemplate { resources };
     let base_path = Path::new(K8S_MANIFESTS_EXAMPLES_DIR);
