@@ -19,7 +19,8 @@
         "eamodio.gitlens",
         "usernamehw.errorlens",
         "42Crunch.vscode-openapi",
-        "github.vscode-github-actions"
+        "github.vscode-github-actions",
+        "wholroyd.jinja"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",
@@ -41,7 +42,10 @@
           "editor.defaultFormatter": "rust-lang.rust-analyzer"
         },
         "git.enableCommitSigning": true,
-        "dev.containers.copyGitConfig": true
+        "dev.containers.copyGitConfig": true,
+        "files.associations": {
+          "*.jinja": "jinja"
+        }
       }
     }
   },
