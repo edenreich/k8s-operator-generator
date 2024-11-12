@@ -9,6 +9,7 @@ description = "The Kubernetes Operator"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
 openapi = { path = "../client-sdk" }
 tokio = { version = "1.27.0", features = ["macros", "rt-multi-thread"] }
 schemars = "0.8.12"
@@ -30,8 +31,8 @@ anyhow = "1.0.70"
 futures-util = "0.3.28"
 log = "0.4.17"
 env_logger = "0.11.3"
-reqwest = "0.12.4"
-warp = "0.3"
+reqwest = { version = "0.12.9", default-features = false, features = ["rustls-tls"] }
+warp = { version = "0.3", default-features = false, features = ["tls"] }
 futures = "0.3.30"
 thiserror = "2.0.3"
 uuid = { version = "1.0", features = ["v4"] }
