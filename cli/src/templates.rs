@@ -174,6 +174,7 @@ pub struct MainTemplate {
     pub api_group: String,
     pub api_version: String,
     pub controllers: Vec<String>,
+    pub types: Vec<String>,
 }
 
 pub struct Field {

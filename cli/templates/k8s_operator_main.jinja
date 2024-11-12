@@ -11,6 +11,22 @@ use log::{error, info, warn};
 use tokio::time::timeout;
 use warp::Filter;
 
+{% if controllers.len() > 0 %}
+use operator::controllers::{{"{"}}
+    {% for controller in controllers -%}
+        {{ controller }},
+     {%- endfor %}
+    {{"}"}};
+{% endif %}
+
+{% if types.len() > 0 %}
+use operator::types::{{"{"}}
+    {% for type in types -%}
+        {{ type }}::{{ type|capitalize }},
+    {%- endfor %}
+    {{"}"}};
+{% endif %}
+
 async fn deploy_crd(
     kube_client: Api<CustomResourceDefinition>,
     crd: CustomResourceDefinition,
@@ -76,7 +92,9 @@ async fn main() -> anyhow::Result<()> {
         info!("INSTALL_CRDS is set to true. Deploying CRDs...");
 
         let crds = vec![
-            k8s_operator::types::cat::Cat::crd(),
+            {% for type in types -%}
+            {{ type|capitalize }}::crd(),
+            {%- endfor %}
         ];
 
         for crd in crds {
@@ -85,9 +103,9 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let controllers_crds = vec![
-        {% for controller in controllers %}
+        {% for controller in controllers -%}
         format!("{{ controller }}.{{ api_group}}"),
-        {% endfor %}
+        {%- endfor %}
     ];
     for controller_crd in controllers_crds {
         if let Err(e) = wait_for_crd(kube_client_api.clone(), &controller_crd).await {
@@ -99,7 +117,7 @@ async fn main() -> anyhow::Result<()> {
     // Start the {{ controller }} controller for the {{ controller }}.{{ api_group }}/{{ api_version }} API group
     let {{ controller }}_client = Api::namespaced(kube_client.clone(), "default");
     tokio::spawn(async {
-        let _{{ controller }}_controller = k8s_operator::controllers::{{ controller }}::handle({{ controller }}_client).await;
+        let _{{ controller }}_controller = {{ controller }}::handle({{ controller }}_client).await;
     });
     {% endfor %}
 

@@ -109,6 +109,7 @@ pub fn execute(
             &kubernetes_operator_group,
             &kubernetes_operator_version,
             controllers,
+            schema_names.clone(),
         );
         generate_rbac_files(schema_names.clone(), &kubernetes_operator_group);
         generate_crdgen_file(schema_names.clone());
@@ -149,6 +150,7 @@ pub fn execute(
             &kubernetes_operator_group,
             &kubernetes_operator_version,
             controllers,
+            schema_names.clone(),
         );
     }
     if *types {
@@ -203,7 +205,12 @@ fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) 
 }
 
 /// Generates the main file for the Kubernetes operator.
-fn generate_main_file(api_group: &str, api_version: &str, mut controllers: Vec<String>) {
+fn generate_main_file(
+    api_group: &str,
+    api_version: &str,
+    mut controllers: Vec<String>,
+    mut types: Vec<String>,
+) {
     let base_path = &Path::new(K8S_OPERATOR_DIR).join("src");
     let file_path = base_path.join("main.rs").to_string_lossy().to_string();
     if get_ignored_files().contains(&file_path) {
@@ -212,11 +219,17 @@ fn generate_main_file(api_group: &str, api_version: &str, mut controllers: Vec<S
 
     controllers.sort();
 
+    types = types
+        .iter()
+        .map(|name| name.to_singular())
+        .collect::<Vec<String>>();
+
     let base_path = &Path::new(K8S_OPERATOR_DIR).join("src");
     let content: String = MainTemplate {
         api_group: api_group.into(),
         api_version: api_version.into(),
         controllers,
+        types,
     }
     .render()
     .unwrap();
