@@ -25,7 +25,7 @@ tasks:
   run:
     desc: Run the CLI
     cmds:
-      - cargo run --package kopgen -- {{.CLI_ARGS}}
+      - cargo run --package kopgen {{.CLI_ARGS}}
 
   test:
     desc: Test the project
@@ -40,7 +40,7 @@ tasks:
   pre-release:
     desc: Pre-release the project
     cmds:
-      - semantic-release --tag-format 'v${version}-rc' --prerelease rc
+      - semantic-release --tag-format 'v${version}-rc' --prerelease rc {{.CLI_ARGS}}
     env:
       CI: true
       TARGET_ARCH: aarch64-unknown-linux-musl
@@ -48,7 +48,7 @@ tasks:
   release:
     desc: Release the project
     cmds:
-      - semantic-release
+      - semantic-release {{.CLI_ARGS}}
     env:
       CI: true
       TARGET_ARCH: aarch64-unknown-linux-musl
