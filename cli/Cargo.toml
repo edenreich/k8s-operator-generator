@@ -1,6 +1,6 @@
 [package]
 name = "kopgen"
-version = "1.4.1"
+version = "1.5.0"
 edition = "2021"
 description = "Generate the Kubernetes operator rust code and manifests from the OpenAPI spec"
 

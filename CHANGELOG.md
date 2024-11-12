@@ -1,3 +1,11 @@
+# [1.5.0](https://github.com/edenreich/kopgen/compare/v1.4.1...v1.5.0) (2024-11-12)
+
+
+### Features
+
+* Enhance Kubernetes operator generation with support for types and controllers automatically added in the main file ([1ba164d](https://github.com/edenreich/kopgen/commit/1ba164d7dab823dc2b63b2c677121385aea944db))
+* Update cross-compilation support and dependencies for Rust binaries ([d4ceeff](https://github.com/edenreich/kopgen/commit/d4ceeffa892ce8b6da58976e3e5e781ecb606af5))
+
 ## [1.4.1](https://github.com/edenreich/kopgen/compare/v1.4.0...v1.4.1) (2024-11-01)
 
 
