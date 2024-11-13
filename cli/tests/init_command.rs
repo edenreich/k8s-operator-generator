@@ -1,5 +1,3 @@
-mod utils;
-
 use assert_cmd::Command;
 use predicates::prelude::*;
 use serial_test::serial;
