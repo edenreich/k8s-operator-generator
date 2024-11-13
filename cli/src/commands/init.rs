@@ -1,3 +1,4 @@
+use crate::errors::AppError;
 use crate::templates::*;
 use crate::utils::{
     add_tests_util_to_modfile, create_directory_if_not_exists, create_file_if_not_exists,
@@ -32,7 +33,7 @@ const K8S_MANIFESTS_EXAMPLES_DIR: &str = "manifests/examples";
 /// # Returns
 ///
 /// This function returns a `Result` indicating the success or failure of the operation.
-pub fn execute(path: &String) -> Result<(), Box<dyn std::error::Error>> {
+pub fn execute(path: &String) -> Result<(), AppError> {
     info!("Initializing directory structure in {}...", path);
     let path = Path::new(&path);
     let base_path = Path::new(path);
@@ -47,7 +48,7 @@ pub fn execute(path: &String) -> Result<(), Box<dyn std::error::Error>> {
         OpenAPIGeneratorIgnore {},
         base_path,
         ".openapi-generator-ignore",
-    );
+    )?;
 
     create_directory_if_not_exists(base_path.join(CARGO_DIR).as_path());
     create_directory_if_not_exists(base_path.join(DEVCONTAINER_DIR).as_path());
@@ -57,66 +58,66 @@ pub fn execute(path: &String) -> Result<(), Box<dyn std::error::Error>> {
     create_directory_if_not_exists(base_path.join(K8S_CRDGEN_DIR).join("src").as_path());
     create_directory_if_not_exists(base_path.join(K8S_TESTS_DIR).as_path());
 
-    generate_template_file(CargoToml {}, base_path, "Cargo.toml");
+    generate_template_file(CargoToml {}, base_path, "Cargo.toml")?;
     generate_template_file(
         K8sOperatorCargoToml {},
         base_path.join(K8S_OPERATOR_DIR).as_path(),
         "Cargo.toml",
-    );
+    )?;
     generate_template_file(
         K8sCrdgenCargoToml {},
         base_path.join(K8S_CRDGEN_DIR).as_path(),
         "Cargo.toml",
-    );
+    )?;
     generate_template_file(
         K8sTestsCargoToml {},
         base_path.join(K8S_TESTS_DIR).as_path(),
         "Cargo.toml",
-    );
+    )?;
 
-    generate_template_file(Dockerignore {}, base_path, ".dockerignore");
-    generate_template_file(Editorconfig {}, base_path, ".editorconfig");
-    generate_template_file(EnvExample {}, base_path, ".env.example");
-    generate_template_file(GitAttributes {}, base_path, ".gitattributes");
-    generate_template_file(GitIgnore {}, base_path, ".gitignore");
-    generate_template_file(Taskfile {}, base_path, "Taskfile.yml");
-    generate_template_file(ReadmeMd {}, base_path, "README.md");
-    generate_template_file(Prettierrc {}, base_path, ".prettierrc");
-    generate_template_file(RustfmtToml {}, base_path, ".rustfmt.toml");
-    generate_template_file(ClusterYaml {}, base_path, "Cluster.yaml");
-    generate_template_file(Dockerfile {}, base_path, "Dockerfile");
+    generate_template_file(Dockerignore {}, base_path, ".dockerignore")?;
+    generate_template_file(Editorconfig {}, base_path, ".editorconfig")?;
+    generate_template_file(EnvExample {}, base_path, ".env.example")?;
+    generate_template_file(GitAttributes {}, base_path, ".gitattributes")?;
+    generate_template_file(GitIgnore {}, base_path, ".gitignore")?;
+    generate_template_file(Taskfile {}, base_path, "Taskfile.yml")?;
+    generate_template_file(ReadmeMd {}, base_path, "README.md")?;
+    generate_template_file(Prettierrc {}, base_path, ".prettierrc")?;
+    generate_template_file(RustfmtToml {}, base_path, ".rustfmt.toml")?;
+    generate_template_file(ClusterYaml {}, base_path, "Cluster.yaml")?;
+    generate_template_file(Dockerfile {}, base_path, "Dockerfile")?;
 
     generate_template_file(
         DevcontainerJson {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
         "devcontainer.json",
-    );
+    )?;
     generate_template_file(
         DevcontainerDeps {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
         "deps.sh",
-    );
+    )?;
     generate_template_file(
         DevcontainerSetupGit {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
         "setup-git.sh",
-    );
+    )?;
     generate_template_file(
         DevcontainerLaunchJsonExample {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
         "launch.json",
-    );
+    )?;
     generate_template_file(
         DevcontainerZshrc {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
         ".zshrc",
-    );
+    )?;
 
     generate_template_file(
         CargoConfig {},
         base_path.join(CARGO_DIR).as_path(),
         "config.toml",
-    );
+    )?;
 
     create_directory_if_not_exists(&base_path.join(K8S_OPERATOR_CONTROLLERS_DIR));
     create_directory_if_not_exists(&base_path.join(K8S_OPERATOR_TYPES_DIR));
@@ -131,9 +132,9 @@ pub fn execute(path: &String) -> Result<(), Box<dyn std::error::Error>> {
 
     let tests_utils_path_buf = base_path.join(K8S_TESTS_UTILS_DIR);
     let tests_utils_path: &Path = tests_utils_path_buf.as_path();
-    generate_template_file(TestsUtilsClient {}, tests_utils_path, "client.rs");
-    generate_template_file(TestsUtilsOperator {}, tests_utils_path, "operator.rs");
-    generate_template_file(TestsUtilsCluster {}, tests_utils_path, "cluster.rs");
+    generate_template_file(TestsUtilsClient {}, tests_utils_path, "client.rs")?;
+    generate_template_file(TestsUtilsOperator {}, tests_utils_path, "operator.rs")?;
+    generate_template_file(TestsUtilsCluster {}, tests_utils_path, "cluster.rs")?;
 
     add_tests_util_to_modfile(base_path, "client");
     add_tests_util_to_modfile(base_path, "operator");
@@ -144,7 +145,7 @@ pub fn execute(path: &String) -> Result<(), Box<dyn std::error::Error>> {
         TestsMain {},
         base_path.join(K8S_TESTS_DIR).as_path(),
         "main.rs",
-    );
+    )?;
 
     create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_CRDS_DIR).as_path());
     create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_RBAC_DIR).as_path());

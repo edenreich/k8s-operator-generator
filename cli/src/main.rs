@@ -1,16 +1,17 @@
 mod cli;
 mod commands;
 mod config;
+mod errors;
 mod templates;
 mod utils;
 
 use crate::cli::{Cli, Commands};
+use crate::errors::AppError;
 use clap::Parser;
 use config::{ConfigProvider, EnvConfigProvider};
 use log::info;
-use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), AppError> {
     let conf = EnvConfigProvider::load_config().expect("Unable to load environment variables");
 
     env_logger::init();

@@ -1,5 +1,4 @@
 use askama::Template;
-use clap::Error;
 use log::{debug, error, info};
 use openapiv3::OpenAPI;
 use std::fs::{File, OpenOptions};
@@ -7,6 +6,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
 use std::{fs::DirBuilder, path::Path};
+use crate::errors::AppError;
 
 const K8S_TESTS_UTILS_DIR: &str = "tests/src/utils";
 
@@ -34,14 +34,22 @@ pub fn create_directory_if_not_exists(dir: &Path) {
 /// * `base_path` - The base path where the file is located.
 /// * `file_name` - The name of the file to write to.
 /// * `file_content` - The content to write to the file.
-fn write_to_file_without_filter(base_path: &Path, file_name: &str, file_content: String) {
+fn write_to_file_without_filter(
+    base_path: &Path,
+    file_name: &str,
+    file_content: String,
+) -> Result<(), AppError> {
     let file_path = base_path.join(file_name);
     let file_path_str = file_path.to_string_lossy().to_string();
 
-    match std::fs::write(&file_path, file_content + "\n") {
-        Ok(_) => info!("Successfully wrote to file: {}", file_path_str),
-        Err(e) => error!("Failed to write to file: {}. Error: {}", file_path_str, e),
+    if std::fs::write(&file_path, file_content + "\n").is_err() {
+        return Err(AppError::Other(format!(
+            "Unable to write file: {}",
+            file_path_str
+        )));
     }
+
+    Ok(())
 }
 
 /// Generates a template file.
@@ -51,9 +59,13 @@ fn write_to_file_without_filter(base_path: &Path, file_name: &str, file_content:
 /// * `template` - The template to render.
 /// * `base_path` - The base path where the file is located.
 /// * `file_name` - The name of the file to write to.
-pub fn generate_template_file<T: Template>(template: T, base_path: &Path, file_name: &str) {
+pub fn generate_template_file<T: Template>(
+    template: T,
+    base_path: &Path,
+    file_name: &str,
+) -> Result<(), AppError> {
     let content = template.render().unwrap();
-    write_to_file_without_filter(base_path, file_name, content);
+    write_to_file_without_filter(base_path, file_name, content)
 }
 
 /// Sets executable permission for a file.
@@ -203,7 +215,7 @@ pub fn add_tests_util_to_modfile(base_path: &Path, util_name: &str) {
 /// # Returns
 ///
 /// This function returns a `Result` indicating the success or failure of the operation.
-fn upsert_line_to_file_without_filter(file_path: &str, line: &str) -> Result<(), Error> {
+fn upsert_line_to_file_without_filter(file_path: &str, line: &str) -> Result<(), AppError> {
     let file = File::open(file_path)?;
     let reader = BufReader::new(file);
 
@@ -241,7 +253,7 @@ pub fn get_ignored_files() -> Vec<String> {
 /// # Returns
 ///
 /// This function returns a `Result` indicating the success or failure of the operation.
-pub fn upsert_line_to_file(file_path: &str, line: &str) -> Result<(), Error> {
+pub fn upsert_line_to_file(file_path: &str, line: &str) -> Result<(), AppError> {
     if get_ignored_files().contains(&file_path.to_string()) {
         return Ok(());
     }
@@ -267,14 +279,26 @@ pub fn upsert_line_to_file(file_path: &str, line: &str) -> Result<(), Error> {
 /// * `base_path` - The base path where the file is located.
 /// * `file_name` - The name of the file to write to.
 /// * `file_content` - The content to write to the file.
-pub fn write_to_file(base_path: &Path, file_name: &str, file_content: String) {
+pub fn write_to_file(
+    base_path: &Path,
+    file_name: &str,
+    file_content: String,
+) -> Result<(), AppError> {
     let file_path = base_path.join(file_name);
-    debug!("Writing to file: {}", file_path.to_string_lossy());
+    let file_path_str = file_path.to_string_lossy().to_string();
+    debug!("Writing to file: {}", file_path_str);
     if get_ignored_files().contains(&file_path.to_string_lossy().to_string()) {
-        return;
+        return Ok(());
     }
 
-    std::fs::write(file_path, file_content + "\n").expect("Unable to write file");
+    if std::fs::write(file_path, file_content + "\n").is_err() {
+        return Err(AppError::Other(format!(
+            "Unable to write file: {}",
+            file_path_str
+        )));
+    }
+
+    Ok(())
 }
 
 /// Formats a file using rustfmt.
@@ -282,22 +306,16 @@ pub fn write_to_file(base_path: &Path, file_name: &str, file_content: String) {
 /// # Arguments
 ///
 /// * `file_path` - The path of the file to format.
-pub fn format_file(file_path: String) {
-    if get_ignored_files().contains(&file_path) {
-        return;
-    }
-
-    let output = Command::new("rustfmt")
-        .arg(file_path)
-        .output()
-        .expect("Failed to execute command");
+pub fn format_file(file_path: &str) -> Result<(), AppError> {
+    let output = Command::new("rustfmt").arg(file_path).output()?; // Propagate std::io::Error as AppError::IoError
 
     if !output.status.success() {
-        error!(
-            "rustfmt failed with output:\n{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        error!("rustfmt failed for {}: {}", file_path, stderr);
+        return Err(AppError::Other(stderr));
     }
+
+    Ok(())
 }
 
 /// Uppercases the first letter of a string.

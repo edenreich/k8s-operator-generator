@@ -1,3 +1,4 @@
+use crate::errors::AppError;
 use crate::templates::{
     ClusterRoleBindingTemplate, ClusterRoleTemplate, ClusterRoleTemplateIdentifiers,
     ControllerActionDeleteTemplate, ControllerActionPostTemplate, ControllerActionPutTemplate,
@@ -11,7 +12,6 @@ use crate::utils::{
     read_openapi_spec, uppercase_first_letter, upsert_line_to_file, write_to_file,
 };
 use askama::Template;
-use clap::Error;
 use inflector::Inflector;
 use log::{error, info, warn};
 use openapiv3::{ReferenceOr, Schema, SchemaKind, Type};
@@ -62,7 +62,7 @@ pub fn execute(
     manifests: &bool,
     controllers: &bool,
     types: &bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), AppError> {
     info!("Using OpenAPI file: {}", openapi_file);
 
     let openapi = read_openapi_spec(openapi_file);
@@ -97,46 +97,46 @@ pub fn execute(
 
     if *all || (!*lib && !*manifests && !*controllers && !*types) {
         info!("Generating all...");
-        generate_lib();
-        generate_types(schemas.clone(), &kubernetes_operator_resource_ref);
+        generate_lib()?;
+        generate_types(schemas.clone(), &kubernetes_operator_resource_ref)?;
         let controllers = generate_controllers(
             schemas.clone(),
             paths.clone(),
             kubernetes_operator_include_tags.clone(),
             kubernetes_operator_resource_ref.clone(),
-        );
+        )?;
         generate_main_file(
             &kubernetes_operator_group,
             &kubernetes_operator_version,
             controllers,
             schema_names.clone(),
-        );
-        generate_rbac_files(schema_names.clone(), &kubernetes_operator_group);
-        generate_crdgen_file(schema_names.clone());
+        )?;
+        generate_rbac_files(schema_names.clone(), &kubernetes_operator_group)?;
+        generate_crdgen_file(schema_names.clone())?;
         generate_examples(
             &kubernetes_operator_metadata_spec_field_name,
             components.examples.into_iter().collect(),
             &kubernetes_operator_group,
             &kubernetes_operator_version,
             &kubernetes_operator_resource_ref.clone(),
-        );
+        )?;
         return Ok(());
     }
     if *lib {
         info!("Generating lib...");
-        generate_lib();
+        generate_lib()?;
     }
     if *manifests {
         info!("Generating manifests...");
-        generate_rbac_files(schema_names.clone(), &kubernetes_operator_group);
-        generate_crdgen_file(schema_names.clone());
+        generate_rbac_files(schema_names.clone(), &kubernetes_operator_group)?;
+        generate_crdgen_file(schema_names.clone())?;
         generate_examples(
             &kubernetes_operator_metadata_spec_field_name,
             components.examples.into_iter().collect(),
             &kubernetes_operator_group,
             &kubernetes_operator_version,
             &kubernetes_operator_resource_ref.clone(),
-        );
+        )?;
     }
     if *controllers {
         info!("Generating controllers...");
@@ -145,23 +145,26 @@ pub fn execute(
             paths.clone(),
             kubernetes_operator_include_tags.clone(),
             kubernetes_operator_resource_ref.clone(),
-        );
+        )?;
         generate_main_file(
             &kubernetes_operator_group,
             &kubernetes_operator_version,
             controllers,
             schema_names.clone(),
-        );
+        )?;
     }
     if *types {
         info!("Generating the types...");
-        generate_types(schemas.clone(), &kubernetes_operator_resource_ref);
+        generate_types(schemas.clone(), &kubernetes_operator_resource_ref)?;
     }
     Ok(())
 }
 
 /// Generates RBAC files based on the provided resources and Kubernetes operator group.
-fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) {
+fn generate_rbac_files(
+    resources: Vec<String>,
+    kubernetes_operator_group: &str,
+) -> Result<(), AppError> {
     let base_path_rbac = Path::new(K8S_MANIFESTS_RBAC_DIR);
     let base_path_operator = Path::new(K8S_MANIFESTS_OPERATOR_DIR);
 
@@ -174,7 +177,7 @@ fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) 
         },
         base_path_rbac,
         "role.yaml",
-    );
+    )?;
     generate_template_file(
         ClusterRoleTemplate {
             identifiers: ClusterRoleTemplateIdentifiers {
@@ -184,24 +187,26 @@ fn generate_rbac_files(resources: Vec<String>, kubernetes_operator_group: &str) 
         },
         base_path_rbac,
         "clusterrole.yaml",
-    );
+    )?;
     generate_template_file(
         ServiceAccountTemplate {},
         base_path_rbac,
         "serviceaccount.yaml",
-    );
-    generate_template_file(RoleBindingTemplate {}, base_path_rbac, "rolebinding.yaml");
+    )?;
+    generate_template_file(RoleBindingTemplate {}, base_path_rbac, "rolebinding.yaml")?;
     generate_template_file(
         ClusterRoleBindingTemplate {},
         base_path_rbac,
         "clusterrolebinding.yaml",
-    );
+    )?;
     generate_template_file(
         OperatorDeploymentTemplate {},
         base_path_operator,
         "deployment.yaml",
-    );
-    generate_template_file(OperatorSecretTemplate {}, base_path_operator, "secret.yaml");
+    )?;
+    generate_template_file(OperatorSecretTemplate {}, base_path_operator, "secret.yaml")?;
+
+    Ok(())
 }
 
 /// Generates the main file for the Kubernetes operator.
@@ -210,11 +215,11 @@ fn generate_main_file(
     api_version: &str,
     mut controllers: Vec<String>,
     mut types: Vec<String>,
-) {
+) -> Result<(), AppError> {
     let base_path = &Path::new(K8S_OPERATOR_DIR).join("src");
     let file_path = base_path.join("main.rs").to_string_lossy().to_string();
     if get_ignored_files().contains(&file_path) {
-        return;
+        return Ok(());
     }
 
     controllers.sort();
@@ -231,10 +236,10 @@ fn generate_main_file(
         controllers,
         types,
     }
-    .render()
-    .unwrap();
-    write_to_file(base_path, "main.rs", content);
-    format_file(base_path.join("main.rs").to_string_lossy().to_string());
+    .render()?;
+
+    write_to_file(base_path, "main.rs", content)?;
+    format_file(base_path.join("main.rs").to_str().unwrap())
 }
 
 /// Extracts controller attributes for a given operation.
@@ -304,7 +309,7 @@ fn generate_controllers(
     paths: openapiv3::Paths,
     include_tags: Vec<String>,
     kubernetes_operator_resource_ref: String,
-) -> Vec<String> {
+) -> Result<Vec<String>, AppError> {
     let mut controllers: HashMap<String, Vec<ControllerAttributes>> = HashMap::new();
 
     for (_path, path_item) in paths {
@@ -349,7 +354,7 @@ fn generate_controllers(
             tag.clone(),
             controller_attributes,
             kubernetes_operator_resource_ref.clone(),
-        );
+        )?;
 
         if let Err(e) = upsert_line_to_file(
             ".openapi-generator-ignore",
@@ -362,7 +367,7 @@ fn generate_controllers(
         }
     }
 
-    controllers.keys().cloned().collect()
+    Ok(controllers.keys().cloned().collect())
 }
 
 /// Generates a controller based on the provided schemas, tag, and attributes.
@@ -371,13 +376,13 @@ fn generate_controller(
     tag: String,
     controller_attributes: &[ControllerAttributes],
     resource_remote_ref: String,
-) {
+) -> Result<(), AppError> {
     if get_ignored_files().contains(&format!(
         "{}/{}.rs",
         K8S_OPERATOR_CONTROLLERS_DIR,
         tag.to_lowercase()
     )) {
-        return;
+        return Ok(());
     }
 
     let has_create_action = controller_attributes
@@ -394,13 +399,7 @@ fn generate_controller(
 
     let type_name = uppercase_first_letter(&tag.to_singular());
 
-    let fields = match get_fields_for_type(&schemas, &type_name, &resource_remote_ref) {
-        Ok(fields) => fields,
-        Err(e) => {
-            error!("Failed to get fields for type: {:?}", e);
-            return;
-        }
-    };
+    let fields = get_fields_for_type(&schemas, &type_name, &resource_remote_ref)?;
 
     let mut content: String = ControllerTemplate {
         tag: tag.to_lowercase(),
@@ -413,8 +412,7 @@ fn generate_controller(
         has_delete_action,
         api_url: "http://localhost:8080".to_string(),
     }
-    .render()
-    .unwrap();
+    .render()?;
 
     let content_action_delete: String = ControllerActionDeleteTemplate {
         arg_name: tag.to_lowercase().to_singular(),
@@ -422,8 +420,7 @@ fn generate_controller(
         controllers: controller_attributes.iter().collect(),
         resource_remote_ref: resource_remote_ref.clone(),
     }
-    .render()
-    .unwrap();
+    .render()?;
 
     let content_action_put: String = ControllerActionPutTemplate {
         arg_name: tag.to_lowercase().to_singular(),
@@ -431,8 +428,7 @@ fn generate_controller(
         controllers: controller_attributes.iter().collect(),
         resource_remote_ref: resource_remote_ref.clone(),
     }
-    .render()
-    .unwrap();
+    .render()?;
 
     let content_action_post: String = ControllerActionPostTemplate {
         arg_name: tag.to_lowercase().to_singular(),
@@ -440,8 +436,7 @@ fn generate_controller(
         controllers: controller_attributes.iter().collect(),
         resource_remote_ref: resource_remote_ref.clone(),
     }
-    .render()
-    .unwrap();
+    .render()?;
 
     content.push_str(&content_action_delete);
     content.push_str(&content_action_put);
@@ -449,9 +444,10 @@ fn generate_controller(
 
     let base_path: &Path = Path::new(K8S_OPERATOR_CONTROLLERS_DIR);
     let file_name: String = format!("{}.rs", tag.to_lowercase());
-    write_to_file(base_path, &file_name, content);
-    format_file(base_path.join(file_name).to_string_lossy().to_string());
-    add_controller_to_modfile(&tag.to_lowercase()).expect("Failed to add controller to mod file");
+    write_to_file(base_path, &file_name, content)?;
+    format_file(base_path.join(file_name).to_str().unwrap())?;
+    add_controller_to_modfile(&tag.to_lowercase())?;
+    Ok(())
 }
 
 /// Retrieves fields for a given schema type.
@@ -459,10 +455,10 @@ fn get_fields_for_type(
     schemas: &HashMap<String, Schema>,
     schema_name: &str,
     operator_resource_ref: &str,
-) -> Result<Vec<Field>, Box<dyn std::error::Error>> {
+) -> Result<Vec<Field>, AppError> {
     let schema = schemas
         .get(schema_name)
-        .ok_or_else(|| format!("Schema {} not found", schema_name))?;
+        .ok_or_else(|| AppError::Other(format!("Schema not found for type: {}", schema_name)))?;
 
     let object = match &schema.schema_kind {
         SchemaKind::Type(Type::Object(object)) => object,
@@ -506,7 +502,10 @@ fn get_fields_for_type(
 }
 
 /// Generates types based on the provided schemas and operator resource reference.
-fn generate_types(schemas: HashMap<String, Schema>, operator_resource_ref: &str) {
+pub fn generate_types(
+    schemas: HashMap<String, Schema>,
+    operator_resource_ref: &str,
+) -> Result<(), AppError> {
     for name in schemas.keys() {
         generate_type(
             schemas.clone(),
@@ -514,12 +513,16 @@ fn generate_types(schemas: HashMap<String, Schema>, operator_resource_ref: &str)
             "example.com",
             "v1",
             operator_resource_ref,
-        );
-        match add_type_to_modfile(name) {
-            Ok(_) => (),
-            Err(e) => error!("Failed to add type to mod file: {:?}", e),
-        }
+        )?;
+        if add_type_to_modfile(name).is_err() {
+            error!("Failed to add {} type to mod file", name);
+            return Err(AppError::Other(
+                "Failed to add type to mod file".to_string(),
+            ));
+        };
     }
+
+    Ok(())
 }
 
 /// Generates a type based on the provided schemas, name, and operator details.
@@ -529,20 +532,20 @@ fn generate_type(
     operator_group: &str,
     operator_version: &str,
     operator_resource_ref: &str,
-) {
+) -> Result<(), AppError> {
     if get_ignored_files().contains(&format!(
         "{}/{}.rs",
         K8S_OPERATOR_TYPES_DIR,
         name.to_lowercase()
     )) {
-        return;
+        return Ok(());
     }
 
     let fields = match get_fields_for_type(&schemas, name, operator_resource_ref) {
         Ok(fields) => fields,
         Err(e) => {
             error!("Failed to get fields for type: {:?}", e);
-            return;
+            return Ok(());
         }
     };
 
@@ -559,31 +562,30 @@ fn generate_type(
         fields,
         reference_id: operator_resource_ref.to_string(),
     }
-    .render()
-    .unwrap();
+    .render()?;
 
     let base_path: &Path = Path::new(K8S_OPERATOR_TYPES_DIR);
     let file_name: String = format!("{}.rs", arg_name_clone);
-    write_to_file(base_path, &file_name, content);
-    format_file(base_path.join(file_name).to_string_lossy().to_string());
+    write_to_file(base_path, &file_name, content)?;
+    format_file(base_path.join(file_name).to_str().unwrap())
 }
 
-fn generate_lib() {
+fn generate_lib() -> Result<(), AppError> {
     let file_path = format!("{}/src/lib.rs", K8S_OPERATOR_DIR);
     if get_ignored_files().contains(&file_path) {
-        return;
+        return Ok(());
     }
 
     let content: String = LibTemplate {}.render().unwrap();
 
     let base_path: &Path = &Path::new(K8S_OPERATOR_DIR).join("src");
     let file_name: String = "lib.rs".to_string();
-    write_to_file(base_path, &file_name, content);
-    format_file(base_path.join(file_name).to_string_lossy().to_string());
+    write_to_file(base_path, &file_name, content)?;
+    format_file(base_path.join(file_name).to_str().unwrap())
 }
 
 /// Adds a type to the module file.
-fn add_type_to_modfile(type_name: &str) -> Result<(), Error> {
+fn add_type_to_modfile(type_name: &str) -> Result<(), AppError> {
     let file_path = format!("{}/mod.rs", K8S_OPERATOR_TYPES_DIR);
     match upsert_line_to_file(
         file_path.as_str(),
@@ -595,19 +597,22 @@ fn add_type_to_modfile(type_name: &str) -> Result<(), Error> {
 }
 
 /// Adds a controller to the module file.
-fn add_controller_to_modfile(controller_name: &str) -> Result<(), Error> {
+fn add_controller_to_modfile(controller_name: &str) -> Result<(), AppError> {
     let file_path = format!("{}/mod.rs", K8S_OPERATOR_CONTROLLERS_DIR);
     match upsert_line_to_file(
         file_path.as_str(),
         format!("pub mod {};", controller_name.to_lowercase()).as_str(),
     ) {
         Ok(_) => Ok(()),
-        Err(e) => Err(e),
+        Err(e) => Err(AppError::Other(format!(
+            "Failed to add controller to mod file: {:?}",
+            e
+        ))),
     }
 }
 
 /// Generates the CRD generator main file based on the provided resources.
-fn generate_crdgen_file(resources: Vec<String>) {
+fn generate_crdgen_file(resources: Vec<String>) -> Result<(), AppError> {
     let base_path: &Path = &Path::new(K8S_CRDGEN_DIR).join("src");
     let file_name = "main.rs".to_string();
 
@@ -623,8 +628,8 @@ fn generate_crdgen_file(resources: Vec<String>) {
 
     let template = CrdGenTemplate { resources };
     let content = template.render().unwrap();
-    write_to_file(base_path, &file_name, content);
-    format_file(base_path.join(file_name).to_string_lossy().to_string());
+    write_to_file(base_path, &file_name, content)?;
+    format_file(base_path.join(file_name).to_str().unwrap())
 }
 
 /// Generates example manifests based on the provided examples.
@@ -634,7 +639,7 @@ fn generate_examples(
     operator_group: &str,
     operator_version: &str,
     operator_resource_ref: &str,
-) {
+) -> Result<(), AppError> {
     let examples_map: std::collections::HashMap<String, openapiv3::Example> = examples
         .into_iter()
         .filter_map(|(k, v)| match v {
@@ -650,8 +655,10 @@ fn generate_examples(
             operator_group,
             operator_version,
             operator_resource_ref,
-        );
+        )?;
     }
+
+    Ok(())
 }
 
 /// Generates a manifest from an example.
@@ -662,7 +669,7 @@ fn generate_manifest_from_example(
     operator_group: &str,
     operator_version: &str,
     operator_resource_ref: &str,
-) {
+) -> Result<(), AppError> {
     let mut resources = Vec::new();
 
     match &example.value {
@@ -698,8 +705,10 @@ fn generate_manifest_from_example(
     }
 
     if !resources.is_empty() {
-        write_example_manifest(name, resources);
+        write_example_manifest(name, resources)?;
     }
+
+    Ok(())
 }
 
 /// Retrieves the metadata name from the provided map.
@@ -759,16 +768,9 @@ fn generate_resource_from_map(
 }
 
 /// Writes the example manifest to a file.
-fn write_example_manifest(name: &str, resources: Vec<Resource>) {
+fn write_example_manifest(name: &str, resources: Vec<Resource>) -> Result<(), AppError> {
     let template = ExampleTemplate { resources };
     let base_path = Path::new(K8S_MANIFESTS_EXAMPLES_DIR);
-
-    match template.render() {
-        Ok(content) => {
-            write_to_file(base_path, &format!("{}.yaml", name.to_lowercase()), content);
-        }
-        Err(e) => {
-            error!("Failed to render template: {}", e);
-        }
-    }
+    let content = template.render()?;
+    write_to_file(base_path, &format!("{}.yaml", name.to_lowercase()), content)
 }
