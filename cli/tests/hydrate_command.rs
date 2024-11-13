@@ -1,13 +1,12 @@
 mod utils;
 
-use std::env;
-
 use kopgen::{
     commands,
     config::{ConfigProvider, EnvConfigProvider},
 };
 use serde_yaml::{Mapping, Value as YamlValue};
 use serial_test::serial;
+use std::env;
 use utils::{create_temp_file, read_temp_file};
 
 fn setup_env() {
