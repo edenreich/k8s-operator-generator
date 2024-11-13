@@ -194,7 +194,7 @@ fn extract_extension(openapi: &OpenAPI, key: &str) -> Result<String, AppError> {
         .info
         .extensions
         .get(key)
-        .ok_or_else(|| AppError::MissingRequiredExtension(key.to_string()))?;
+        .expect("Validation for missing extensions failed.");
 
     let string_value = value
         .as_str()
