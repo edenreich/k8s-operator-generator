@@ -9,13 +9,15 @@ use crate::templates::{
 };
 use crate::utils::{
     extract_openapi_info, format_file, generate_template_file, get_ignored_files,
-    read_openapi_spec, uppercase_first_letter, upsert_line_to_file, write_to_file,
+    read_openapi_spec, uppercase_first_letter, upsert_line_to_file,
+    validate_openapi_kubernetes_extensions_exists, write_to_file,
 };
 use askama::Template;
 use inflector::Inflector;
 use log::{error, info, warn};
 use openapiv3::{ReferenceOr, Schema, SchemaKind, Type};
 use serde_json::{json, Map, Value};
+use std::fs::File;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     path::Path,
@@ -65,14 +67,18 @@ pub fn execute(
 ) -> Result<(), AppError> {
     info!("Using OpenAPI file: {}", openapi_file);
 
-    let openapi = read_openapi_spec(openapi_file);
+    let openapi = read_openapi_spec(openapi_file)?;
+
+    validate_openapi_kubernetes_extensions_exists(&openapi)?;
+
     let (
         kubernetes_operator_group,
         kubernetes_operator_version,
         kubernetes_operator_resource_ref,
         kubernetes_operator_include_tags,
         kubernetes_operator_metadata_spec_field_name,
-    ) = extract_openapi_info(&openapi);
+    ) = extract_openapi_info(&openapi)?;
+
     let components = openapi
         .components
         .clone()
@@ -98,7 +104,11 @@ pub fn execute(
     if *all || (!*lib && !*manifests && !*controllers && !*types) {
         info!("Generating all...");
         generate_lib()?;
-        generate_types(schemas.clone(), &kubernetes_operator_resource_ref)?;
+        generate_types(
+            schemas.clone(),
+            &kubernetes_operator_resource_ref,
+            K8S_OPERATOR_TYPES_DIR,
+        )?;
         let controllers = generate_controllers(
             schemas.clone(),
             paths.clone(),
@@ -155,7 +165,11 @@ pub fn execute(
     }
     if *types {
         info!("Generating the types...");
-        generate_types(schemas.clone(), &kubernetes_operator_resource_ref)?;
+        generate_types(
+            schemas.clone(),
+            &kubernetes_operator_resource_ref,
+            K8S_OPERATOR_TYPES_DIR,
+        )?;
     }
     Ok(())
 }
@@ -218,7 +232,7 @@ fn generate_main_file(
 ) -> Result<(), AppError> {
     let base_path = &Path::new(K8S_OPERATOR_DIR).join("src");
     let file_path = base_path.join("main.rs").to_string_lossy().to_string();
-    if get_ignored_files().contains(&file_path) {
+    if get_ignored_files()?.contains(&file_path) {
         return Ok(());
     }
 
@@ -377,7 +391,7 @@ fn generate_controller(
     controller_attributes: &[ControllerAttributes],
     resource_remote_ref: String,
 ) -> Result<(), AppError> {
-    if get_ignored_files().contains(&format!(
+    if get_ignored_files()?.contains(&format!(
         "{}/{}.rs",
         K8S_OPERATOR_CONTROLLERS_DIR,
         tag.to_lowercase()
@@ -505,6 +519,7 @@ fn get_fields_for_type(
 pub fn generate_types(
     schemas: HashMap<String, Schema>,
     operator_resource_ref: &str,
+    directory: &str,
 ) -> Result<(), AppError> {
     for name in schemas.keys() {
         generate_type(
@@ -513,13 +528,9 @@ pub fn generate_types(
             "example.com",
             "v1",
             operator_resource_ref,
+            directory,
         )?;
-        if add_type_to_modfile(name).is_err() {
-            error!("Failed to add {} type to mod file", name);
-            return Err(AppError::Other(
-                "Failed to add type to mod file".to_string(),
-            ));
-        };
+        add_type_to_modfile(name, directory)?;
     }
 
     Ok(())
@@ -532,12 +543,9 @@ fn generate_type(
     operator_group: &str,
     operator_version: &str,
     operator_resource_ref: &str,
+    directory: &str,
 ) -> Result<(), AppError> {
-    if get_ignored_files().contains(&format!(
-        "{}/{}.rs",
-        K8S_OPERATOR_TYPES_DIR,
-        name.to_lowercase()
-    )) {
+    if get_ignored_files()?.contains(&format!("{}/{}.rs", directory, name.to_lowercase())) {
         return Ok(());
     }
 
@@ -564,7 +572,7 @@ fn generate_type(
     }
     .render()?;
 
-    let base_path: &Path = Path::new(K8S_OPERATOR_TYPES_DIR);
+    let base_path: &Path = Path::new(directory);
     let file_name: String = format!("{}.rs", arg_name_clone);
     write_to_file(base_path, &file_name, content)?;
     format_file(base_path.join(file_name).to_str().unwrap())
@@ -572,7 +580,7 @@ fn generate_type(
 
 fn generate_lib() -> Result<(), AppError> {
     let file_path = format!("{}/src/lib.rs", K8S_OPERATOR_DIR);
-    if get_ignored_files().contains(&file_path) {
+    if get_ignored_files()?.contains(&file_path) {
         return Ok(());
     }
 
@@ -585,15 +593,19 @@ fn generate_lib() -> Result<(), AppError> {
 }
 
 /// Adds a type to the module file.
-fn add_type_to_modfile(type_name: &str) -> Result<(), AppError> {
-    let file_path = format!("{}/mod.rs", K8S_OPERATOR_TYPES_DIR);
-    match upsert_line_to_file(
-        file_path.as_str(),
-        format!("pub mod {};", type_name.to_lowercase()).as_str(),
-    ) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e),
+fn add_type_to_modfile(type_name: &str, directory: &str) -> Result<(), AppError> {
+    let mod_file_path = Path::new(directory).join("mod.rs");
+
+    if !mod_file_path.exists() {
+        File::create(&mod_file_path).map_err(AppError::IoError)?;
     }
+
+    upsert_line_to_file(
+        mod_file_path.to_str().unwrap(),
+        format!("pub mod {};", type_name.to_lowercase()).as_str(),
+    )?;
+
+    Ok(())
 }
 
 /// Adds a controller to the module file.

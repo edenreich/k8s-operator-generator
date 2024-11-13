@@ -1,12 +1,12 @@
+use crate::errors::AppError;
 use askama::Template;
 use log::{debug, error, info};
 use openapiv3::OpenAPI;
-use std::fs::{File, OpenOptions};
+use std::fs::{self, File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::process::Command;
 use std::{fs::DirBuilder, path::Path};
-use crate::errors::AppError;
 
 const K8S_TESTS_UTILS_DIR: &str = "tests/src/utils";
 
@@ -89,10 +89,10 @@ pub fn set_executable_permission(file_path: &Path) {
 /// # Returns
 ///
 /// This function returns an `OpenAPI` object.
-pub fn read_openapi_spec(file_path: &str) -> OpenAPI {
-    let file = File::open(file_path).expect("Unable to open file");
+pub fn read_openapi_spec(file_path: &str) -> Result<OpenAPI, AppError> {
+    let file = File::open(file_path)?;
     let reader = BufReader::new(file);
-    serde_yaml::from_reader(reader).expect("Unable to parse OpenAPI spec")
+    Ok(serde_yaml::from_reader(reader)?)
 }
 
 /// Creates a file if it does not already exist.
@@ -109,6 +109,45 @@ pub fn create_file_if_not_exists(base_path: &Path, file: &str) {
     }
 }
 
+/// Validates the OpenAPI specification for kubernetes extensions.
+/// The OpenAPI specification must contain the following extensions:
+/// - x-kubernetes-operator-group
+/// - x-kubernetes-operator-version
+/// - x-kubernetes-operator-resource-ref
+/// - x-kubernetes-operator-include-tags
+/// - x-kubernetes-operator-example-metadata-spec-field-ref
+///
+/// If any of the extensions are missing, an error is returned.
+/// If all extensions are present, return ok.
+///
+/// # Arguments
+///
+/// * `openapi` - A reference to the `OpenAPI` object.
+///
+/// # Returns
+///
+/// This function returns a `Result` indicating the success or failure of the operation.
+/// If the OpenAPI specification is valid, the function returns `Ok(())`.
+/// If the OpenAPI specification is invalid, the function returns an `AppError`.
+/// The `AppError` contains an error message indicating the missing extension.
+pub fn validate_openapi_kubernetes_extensions_exists(openapi: &OpenAPI) -> Result<(), AppError> {
+    let required_extensions = vec![
+        "x-kubernetes-operator-group",
+        "x-kubernetes-operator-version",
+        "x-kubernetes-operator-resource-ref",
+        "x-kubernetes-operator-include-tags",
+        "x-kubernetes-operator-example-metadata-spec-field-ref",
+    ];
+
+    for extension in required_extensions {
+        if !openapi.info.extensions.contains_key(extension) {
+            return Err(AppError::MissingRequiredExtension(extension.to_string()));
+        }
+    }
+
+    Ok(())
+}
+
 /// Extracts information from the OpenAPI specification.
 ///
 /// # Arguments
@@ -118,24 +157,26 @@ pub fn create_file_if_not_exists(base_path: &Path, file: &str) {
 /// # Returns
 ///
 /// This function returns a tuple containing the extracted information.
-pub fn extract_openapi_info(openapi: &OpenAPI) -> (String, String, String, Vec<String>, String) {
-    let kubernetes_operator_group = extract_extension(openapi, "x-kubernetes-operator-group");
-    let kubernetes_operator_version = extract_extension(openapi, "x-kubernetes-operator-version");
+pub fn extract_openapi_info(
+    openapi: &OpenAPI,
+) -> Result<(String, String, String, Vec<String>, String), AppError> {
+    let kubernetes_operator_group = extract_extension(openapi, "x-kubernetes-operator-group")?;
+    let kubernetes_operator_version = extract_extension(openapi, "x-kubernetes-operator-version")?;
     let kubernetes_operator_resource_ref =
-        extract_extension(openapi, "x-kubernetes-operator-resource-ref");
+        extract_extension(openapi, "x-kubernetes-operator-resource-ref")?;
     let kubernetes_operator_include_tags =
-        extract_extension_array(openapi, "x-kubernetes-operator-include-tags");
+        extract_extension_array(openapi, "x-kubernetes-operator-include-tags")?;
     let kubernetes_operator_metadata_spec_field_name = extract_extension(
         openapi,
         "x-kubernetes-operator-example-metadata-spec-field-ref",
-    );
-    (
+    )?;
+    Ok((
         kubernetes_operator_group,
         kubernetes_operator_version,
         kubernetes_operator_resource_ref,
         kubernetes_operator_include_tags,
         kubernetes_operator_metadata_spec_field_name,
-    )
+    ))
 }
 
 /// Extracts a string extension from the OpenAPI specification.
@@ -148,15 +189,18 @@ pub fn extract_openapi_info(openapi: &OpenAPI) -> (String, String, String, Vec<S
 /// # Returns
 ///
 /// This function returns the extracted string.
-fn extract_extension(openapi: &OpenAPI, key: &str) -> String {
-    openapi
+fn extract_extension(openapi: &OpenAPI, key: &str) -> Result<String, AppError> {
+    let value = openapi
         .info
         .extensions
         .get(key)
-        .unwrap_or_else(|| panic!("No {} in OpenAPI spec", key))
+        .ok_or_else(|| AppError::MissingRequiredExtension(key.to_string()))?;
+
+    let string_value = value
         .as_str()
-        .unwrap_or_else(|| panic!("{} is not a string", key))
-        .to_string()
+        .ok_or_else(|| AppError::Other(format!("The '{}' extension is not a string.", key)))?;
+
+    Ok(string_value.to_string())
 }
 
 /// Extracts an array extension from the OpenAPI specification.
@@ -169,17 +213,33 @@ fn extract_extension(openapi: &OpenAPI, key: &str) -> String {
 /// # Returns
 ///
 /// This function returns the extracted array as a vector of strings.
-fn extract_extension_array(openapi: &OpenAPI, key: &str) -> Vec<String> {
-    openapi
+fn extract_extension_array(openapi: &OpenAPI, key: &str) -> Result<Vec<String>, AppError> {
+    let extension_value = openapi
         .info
         .extensions
         .get(key)
-        .unwrap_or_else(|| panic!("No {} in OpenAPI spec", key))
+        .ok_or_else(|| AppError::MissingRequiredExtension(key.to_string()))?;
+
+    let array_value = extension_value
         .as_array()
-        .unwrap_or_else(|| panic!("{} is not an array", key))
+        .ok_or_else(|| AppError::Other(format!("The '{}' extension is not an array.", key)))?;
+
+    let extracted_strings = array_value
         .iter()
-        .map(|v| v.as_str().unwrap().to_string())
-        .collect()
+        .map(|value| {
+            value
+                .as_str()
+                .ok_or_else(|| {
+                    AppError::Other(format!(
+                        "An element in '{}' extension is not a string.",
+                        key
+                    ))
+                })
+                .map(|s| s.to_string())
+        })
+        .collect::<Result<Vec<String>, AppError>>()?;
+
+    Ok(extracted_strings)
 }
 
 /// Adds a test utility module to the mod.rs file.
@@ -235,12 +295,16 @@ fn upsert_line_to_file_without_filter(file_path: &str, line: &str) -> Result<(),
 /// # Returns
 ///
 /// This function returns a vector of strings containing the paths of the ignored files.
-pub fn get_ignored_files() -> Vec<String> {
-    let ignore_file_path = ".openapi-generator-ignore";
-    let ignore_file = File::open(ignore_file_path)
-        .unwrap_or_else(|_| panic!("Unable to open file: {:?}", ignore_file_path));
-    let reader = BufReader::new(ignore_file);
-    reader.lines().map_while(Result::ok).collect()
+pub fn get_ignored_files() -> Result<Vec<String>, AppError> {
+    fs::read_to_string(".openapi-generator-ignore")
+        .map(|content| content.lines().map(|s| s.to_string()).collect())
+        .or_else(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                Ok(vec![])
+            } else {
+                Err(AppError::IoError(e))
+            }
+        })
 }
 
 /// Upserts a line to a file.
@@ -254,7 +318,7 @@ pub fn get_ignored_files() -> Vec<String> {
 ///
 /// This function returns a `Result` indicating the success or failure of the operation.
 pub fn upsert_line_to_file(file_path: &str, line: &str) -> Result<(), AppError> {
-    if get_ignored_files().contains(&file_path.to_string()) {
+    if get_ignored_files()?.contains(&file_path.to_string()) {
         return Ok(());
     }
 
@@ -287,7 +351,7 @@ pub fn write_to_file(
     let file_path = base_path.join(file_name);
     let file_path_str = file_path.to_string_lossy().to_string();
     debug!("Writing to file: {}", file_path_str);
-    if get_ignored_files().contains(&file_path.to_string_lossy().to_string()) {
+    if get_ignored_files()?.contains(&file_path.to_string_lossy().to_string()) {
         return Ok(());
     }
 

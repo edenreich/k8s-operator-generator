@@ -7,6 +7,9 @@ pub enum AppError {
     #[error("Failed to load environment variables")]
     ConfigError(#[from] std::env::VarError),
 
+    #[error("Missing required extension: {0}")]
+    MissingRequiredExtension(String),
+
     #[error("YAML deserialization error: {0}")]
     YamlError(#[from] YamlError),
 
