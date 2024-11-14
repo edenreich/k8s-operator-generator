@@ -3,19 +3,19 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Template)]
-#[template(path = "k8s_tests_main.rs.jinja")]
+#[template(path = "tests/main.rs.jinja")]
 pub struct TestsMain {}
 
 #[derive(Template)]
-#[template(path = "k8s_tests_utils_client.rs.jinja")]
+#[template(path = "tests/utils_client.rs.jinja")]
 pub struct TestsUtilsClient {}
 
 #[derive(Template)]
-#[template(path = "k8s_tests_utils_operator.rs.jinja")]
+#[template(path = "tests/utils_operator.rs.jinja")]
 pub struct TestsUtilsOperator {}
 
 #[derive(Template)]
-#[template(path = "k8s_tests_utils_cluster.rs.jinja")]
+#[template(path = "tests/utils_cluster.rs.jinja")]
 pub struct TestsUtilsCluster {}
 
 #[derive(Template)]
@@ -71,39 +71,39 @@ pub struct ReadmeMd {}
 pub struct Taskfile {}
 
 #[derive(Template)]
-#[template(path = ".devcontainer_devcontainer.json.jinja")]
+#[template(path = ".devcontainer/devcontainer.json.jinja")]
 pub struct DevcontainerJson {}
 
 #[derive(Template)]
-#[template(path = ".devcontainer_deps.sh.jinja")]
+#[template(path = ".devcontainer/deps.sh.jinja")]
 pub struct DevcontainerDeps {}
 
 #[derive(Template)]
-#[template(path = ".devcontainer_setup-git.sh.jinja")]
+#[template(path = ".devcontainer/setup-git.sh.jinja")]
 pub struct DevcontainerSetupGit {}
 
 #[derive(Template)]
-#[template(path = ".devcontainer_launch.json.jinja")]
+#[template(path = ".devcontainer/launch.json.jinja")]
 pub struct DevcontainerLaunchJsonExample {}
 
 #[derive(Template)]
-#[template(path = ".devcontainer_zshrc.jinja")]
+#[template(path = ".devcontainer/zshrc.jinja")]
 pub struct DevcontainerZshrc {}
 
 #[derive(Template)]
-#[template(path = ".cargo_config.toml.jinja")]
+#[template(path = ".cargo/config.toml.jinja")]
 pub struct CargoConfig {}
 
 #[derive(Template)]
-#[template(path = "k8s_operator_cargo.toml.jinja")]
+#[template(path = "operator/cargo.toml.jinja")]
 pub struct K8sOperatorCargoToml {}
 
 #[derive(Template)]
-#[template(path = "k8s_crdgen_cargo.toml.jinja")]
+#[template(path = "crdgen/cargo.toml.jinja")]
 pub struct K8sCrdgenCargoToml {}
 
 #[derive(Template)]
-#[template(path = "k8s_tests_cargo.toml.jinja")]
+#[template(path = "tests/cargo.toml.jinja")]
 pub struct K8sTestsCargoToml {}
 
 pub struct RoleTemplateIdentifiers {
@@ -112,7 +112,7 @@ pub struct RoleTemplateIdentifiers {
 }
 
 #[derive(Template)]
-#[template(path = "manifest_rbac_role.yaml.jinja")]
+#[template(path = "manifests/rbac_role.yaml.jinja")]
 pub struct RoleTemplate {
     pub identifiers: RoleTemplateIdentifiers,
 }
@@ -123,33 +123,33 @@ pub struct ClusterRoleTemplateIdentifiers {
 }
 
 #[derive(Template)]
-#[template(path = "manifest_rbac_cluster_role.yaml.jinja")]
+#[template(path = "manifests/rbac_cluster_role.yaml.jinja")]
 pub struct ClusterRoleTemplate {
     pub identifiers: ClusterRoleTemplateIdentifiers,
 }
 
 #[derive(Template)]
-#[template(path = "manifest_rbac_service_account.yaml.jinja")]
+#[template(path = "manifests/rbac_service_account.yaml.jinja")]
 pub struct ServiceAccountTemplate {}
 
 #[derive(Template)]
-#[template(path = "manifest_rbac_role_binding.yaml.jinja")]
+#[template(path = "manifests/rbac_role_binding.yaml.jinja")]
 pub struct RoleBindingTemplate {}
 
 #[derive(Template)]
-#[template(path = "manifest_rbac_cluster_role_binding.yaml.jinja")]
+#[template(path = "manifests/rbac_cluster_role_binding.yaml.jinja")]
 pub struct ClusterRoleBindingTemplate {}
 
 #[derive(Template)]
-#[template(path = "manifest_operator_deployment.yaml.jinja")]
+#[template(path = "manifests/operator_deployment.yaml.jinja")]
 pub struct OperatorDeploymentTemplate {}
 
 #[derive(Template)]
-#[template(path = "manifest_operator_secret.yaml.jinja")]
+#[template(path = "manifests/operator_secret.yaml.jinja")]
 pub struct OperatorSecretTemplate {}
 
 #[derive(Template, Deserialize, Serialize)]
-#[template(path = "manifest_example.yaml.jinja")]
+#[template(path = "manifests/example.yaml.jinja")]
 pub struct ExampleTemplate {
     pub resources: Vec<Resource>,
 }
@@ -169,7 +169,7 @@ pub struct Metadata {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_main.rs.jinja")]
+#[template(path = "operator/main.rs.jinja")]
 pub struct MainTemplate {
     pub api_group: String,
     pub api_version: String,
@@ -183,7 +183,7 @@ pub struct Field {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_controller.rs.jinja")]
+#[template(path = "operator/controller.rs.jinja")]
 pub struct ControllerTemplate {
     pub tag: String,
     pub arg_name: String,
@@ -197,7 +197,7 @@ pub struct ControllerTemplate {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_controller_action_delete.jinja")]
+#[template(path = "operator/controller_action_delete.jinja")]
 pub struct ControllerActionDeleteTemplate<'a> {
     pub arg_name: String,
     pub kind_struct: String,
@@ -206,7 +206,7 @@ pub struct ControllerActionDeleteTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_controller_action_update.jinja")]
+#[template(path = "operator/controller_action_update.jinja")]
 pub struct ControllerActionPutTemplate<'a> {
     pub arg_name: String,
     pub kind_struct: String,
@@ -215,7 +215,7 @@ pub struct ControllerActionPutTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_controller_action_create.jinja")]
+#[template(path = "operator/controller_action_create.jinja")]
 pub struct ControllerActionPostTemplate<'a> {
     pub arg_name: String,
     pub kind_struct: String,
@@ -230,7 +230,7 @@ pub struct ControllerAttributes {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_type.rs.jinja")]
+#[template(path = "operator/type.rs.jinja")]
 pub struct TypeTemplate {
     pub tag_name: String,
     pub type_name: String,
@@ -241,11 +241,11 @@ pub struct TypeTemplate {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_lib.rs.jinja")]
+#[template(path = "operator/lib.rs.jinja")]
 pub struct LibTemplate {}
 
 #[derive(Template)]
-#[template(path = "k8s_crdgen_main.rs.jinja")]
+#[template(path = "crdgen/main.rs.jinja")]
 pub struct CrdGenTemplate {
     pub resources: BTreeMap<String, String>,
 }
