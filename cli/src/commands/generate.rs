@@ -400,7 +400,7 @@ fn generate_controllers(
 
         if let Err(e) = upsert_line_to_file(
             format!("{}/.openapi-generator-ignore", working_dir).as_str(),
-            format!("operator/src/controller/{}.rs", tag.to_lowercase()).as_str(),
+            format!("operator/src/controllers/{}.rs", tag.to_lowercase()).as_str(),
         ) {
             error!(
                 "Failed to add controller to .openapi-generator-ignore file: {:?}",
