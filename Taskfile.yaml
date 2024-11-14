@@ -25,7 +25,7 @@ tasks:
   run:
     desc: Run the CLI
     cmds:
-      - cargo run --package kopgen {{.CLI_ARGS}}
+      - cargo run --package kopgen -- {{.CLI_ARGS}}
 
   test:
     desc: Test the project
