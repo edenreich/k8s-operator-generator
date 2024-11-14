@@ -111,7 +111,7 @@ fn init_creates_required_files() {
         ".gitignore",
         "Taskfile.yml",
         "README.md",
-        ".prettierrc",
+        ".prettierrc.yaml",
         ".rustfmt.toml",
         "Cluster.yaml",
         "Dockerfile",
