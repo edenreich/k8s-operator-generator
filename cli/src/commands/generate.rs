@@ -234,7 +234,7 @@ fn generate_rbac_files(
     Ok(())
 }
 
-/// Generates the operator deployment file based on the provided resources.
+/// Generates the operator deployment files.
 fn generate_operator_deployment_files(directory: &str) -> Result<(), AppError> {
     let base_path_operator = Path::new(directory);
 
