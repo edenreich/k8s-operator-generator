@@ -27,13 +27,22 @@ fn main() -> Result<(), AppError> {
         }
         Some(Commands::Generate {
             openapi_file,
+            path,
             all,
             lib,
             manifests,
             controllers,
             types,
         }) => {
-            commands::generate::execute(openapi_file, all, lib, manifests, controllers, types)?;
+            commands::generate::execute(
+                path,
+                openapi_file,
+                all,
+                lib,
+                manifests,
+                controllers,
+                types,
+            )?;
         }
         None => {
             info!("No command provided");

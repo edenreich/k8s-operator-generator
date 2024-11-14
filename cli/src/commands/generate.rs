@@ -23,16 +23,6 @@ use std::{
     path::Path,
 };
 
-const K8S_OPERATOR_DIR: &str = "operator";
-const K8S_CRDGEN_DIR: &str = "crdgen";
-
-const K8S_OPERATOR_TYPES_DIR: &str = "operator/src/types";
-const K8S_OPERATOR_CONTROLLERS_DIR: &str = "operator/src/controllers";
-
-const K8S_MANIFESTS_RBAC_DIR: &str = "manifests/rbac";
-const K8S_MANIFESTS_OPERATOR_DIR: &str = "manifests/operator";
-const K8S_MANIFESTS_EXAMPLES_DIR: &str = "manifests/examples";
-
 /// Executes the generation process based on the provided OpenAPI file and flags.
 ///
 /// This function generates various components of a Kubernetes operator project
@@ -58,6 +48,7 @@ const K8S_MANIFESTS_EXAMPLES_DIR: &str = "manifests/examples";
 /// This function will return an error if the OpenAPI file cannot be read or parsed,
 /// or if any of the generation steps fail.
 pub fn execute(
+    base_path: &String,
     openapi_file: &String,
     all: &bool,
     lib: &bool,
@@ -101,29 +92,46 @@ pub fn execute(
         schema_names.push(schema_name.to_lowercase().to_plural());
     }
 
+    let k8s_operator_dir = format!("{}/operator", base_path);
+    let k8s_crdgen_dir = format!("{}/crdgen", base_path);
+    let k8s_operator_types_dir = format!("{}/operator/src/types", base_path);
+    let k8s_operator_controllers_dir = format!("{}/operator/src/controllers", base_path);
+    let k8s_manifests_rbac_dir = format!("{}/manifests/rbac", base_path);
+    let k8s_manifests_operator_dir = format!("{}/manifests/operator", base_path);
+    let k8s_manifests_examples_dir = format!("{}/manifests/examples", base_path);
+
     if *all || (!*lib && !*manifests && !*controllers && !*types) {
         info!("Generating all...");
-        generate_lib()?;
+        generate_lib(&k8s_operator_dir)?;
         generate_types(
+            &k8s_operator_types_dir,
             schemas.clone(),
             &kubernetes_operator_resource_ref,
-            K8S_OPERATOR_TYPES_DIR,
         )?;
         let controllers = generate_controllers(
+            base_path,
+            &k8s_operator_controllers_dir,
             schemas.clone(),
             paths.clone(),
             kubernetes_operator_include_tags.clone(),
             kubernetes_operator_resource_ref.clone(),
         )?;
         generate_main_file(
+            &k8s_operator_dir,
             &kubernetes_operator_group,
             &kubernetes_operator_version,
             controllers,
             schema_names.clone(),
         )?;
-        generate_rbac_files(schema_names.clone(), &kubernetes_operator_group)?;
-        generate_crdgen_file(schema_names.clone())?;
+        generate_rbac_files(
+            &k8s_manifests_rbac_dir,
+            schema_names.clone(),
+            &kubernetes_operator_group,
+        )?;
+        generate_operator_deployment_files(&k8s_manifests_operator_dir)?;
+        generate_crdgen_file(&k8s_crdgen_dir, schema_names.clone())?;
         generate_examples(
+            &k8s_manifests_examples_dir,
             &kubernetes_operator_metadata_spec_field_name,
             components.examples.into_iter().collect(),
             &kubernetes_operator_group,
@@ -134,13 +142,18 @@ pub fn execute(
     }
     if *lib {
         info!("Generating lib...");
-        generate_lib()?;
+        generate_lib(&k8s_operator_dir)?;
     }
     if *manifests {
         info!("Generating manifests...");
-        generate_rbac_files(schema_names.clone(), &kubernetes_operator_group)?;
-        generate_crdgen_file(schema_names.clone())?;
+        generate_rbac_files(
+            &k8s_manifests_rbac_dir,
+            schema_names.clone(),
+            &kubernetes_operator_group,
+        )?;
+        generate_crdgen_file(&k8s_crdgen_dir, schema_names.clone())?;
         generate_examples(
+            &k8s_manifests_examples_dir,
             &kubernetes_operator_metadata_spec_field_name,
             components.examples.into_iter().collect(),
             &kubernetes_operator_group,
@@ -151,12 +164,15 @@ pub fn execute(
     if *controllers {
         info!("Generating controllers...");
         let controllers = generate_controllers(
+            base_path,
+            &k8s_operator_controllers_dir,
             schemas.clone(),
             paths.clone(),
             kubernetes_operator_include_tags.clone(),
             kubernetes_operator_resource_ref.clone(),
         )?;
         generate_main_file(
+            &k8s_operator_dir,
             &kubernetes_operator_group,
             &kubernetes_operator_version,
             controllers,
@@ -166,9 +182,9 @@ pub fn execute(
     if *types {
         info!("Generating the types...");
         generate_types(
+            &k8s_operator_types_dir,
             schemas.clone(),
             &kubernetes_operator_resource_ref,
-            K8S_OPERATOR_TYPES_DIR,
         )?;
     }
     Ok(())
@@ -176,11 +192,11 @@ pub fn execute(
 
 /// Generates RBAC files based on the provided resources and Kubernetes operator group.
 fn generate_rbac_files(
+    directory: &str,
     resources: Vec<String>,
     kubernetes_operator_group: &str,
 ) -> Result<(), AppError> {
-    let base_path_rbac = Path::new(K8S_MANIFESTS_RBAC_DIR);
-    let base_path_operator = Path::new(K8S_MANIFESTS_OPERATOR_DIR);
+    let base_path_rbac = Path::new(directory);
 
     generate_template_file(
         RoleTemplate {
@@ -213,6 +229,14 @@ fn generate_rbac_files(
         base_path_rbac,
         "clusterrolebinding.yaml",
     )?;
+
+    Ok(())
+}
+
+/// Generates the operator deployment file based on the provided resources.
+fn generate_operator_deployment_files(directory: &str) -> Result<(), AppError> {
+    let base_path_operator = Path::new(directory);
+
     generate_template_file(
         OperatorDeploymentTemplate {},
         base_path_operator,
@@ -225,12 +249,13 @@ fn generate_rbac_files(
 
 /// Generates the main file for the Kubernetes operator.
 fn generate_main_file(
+    directory: &str,
     api_group: &str,
     api_version: &str,
     mut controllers: Vec<String>,
     mut types: Vec<String>,
 ) -> Result<(), AppError> {
-    let base_path = &Path::new(K8S_OPERATOR_DIR).join("src");
+    let base_path = &Path::new(directory).join("src");
     let file_path = base_path.join("main.rs").to_string_lossy().to_string();
     if get_ignored_files()?.contains(&file_path) {
         return Ok(());
@@ -243,7 +268,7 @@ fn generate_main_file(
         .map(|name| name.to_singular())
         .collect::<Vec<String>>();
 
-    let base_path = &Path::new(K8S_OPERATOR_DIR).join("src");
+    let base_path = &Path::new(directory).join("src");
     let content: String = MainTemplate {
         api_group: api_group.into(),
         api_version: api_version.into(),
@@ -319,6 +344,8 @@ fn get_controller_attributes_for_operation(
 
 /// Generates controllers based on the provided schemas, paths, and tags.
 fn generate_controllers(
+    working_dir: &str,
+    directory: &str,
     schemas: HashMap<String, Schema>,
     paths: openapiv3::Paths,
     include_tags: Vec<String>,
@@ -364,6 +391,7 @@ fn generate_controllers(
 
     for (tag, controller_attributes) in &controllers {
         generate_controller(
+            directory,
             schemas.clone(),
             tag.clone(),
             controller_attributes,
@@ -371,8 +399,8 @@ fn generate_controllers(
         )?;
 
         if let Err(e) = upsert_line_to_file(
-            ".openapi-generator-ignore",
-            format!("{}/{}.rs", K8S_OPERATOR_CONTROLLERS_DIR, tag.to_lowercase()).as_str(),
+            format!("{}/.openapi-generator-ignore", working_dir).as_str(),
+            format!("operator/src/controller/{}.rs", tag.to_lowercase()).as_str(),
         ) {
             error!(
                 "Failed to add controller to .openapi-generator-ignore file: {:?}",
@@ -386,16 +414,13 @@ fn generate_controllers(
 
 /// Generates a controller based on the provided schemas, tag, and attributes.
 fn generate_controller(
+    directory: &str,
     schemas: HashMap<String, Schema>,
     tag: String,
     controller_attributes: &[ControllerAttributes],
     resource_remote_ref: String,
 ) -> Result<(), AppError> {
-    if get_ignored_files()?.contains(&format!(
-        "{}/{}.rs",
-        K8S_OPERATOR_CONTROLLERS_DIR,
-        tag.to_lowercase()
-    )) {
+    if get_ignored_files()?.contains(&format!("{}/{}.rs", directory, tag.to_lowercase())) {
         return Ok(());
     }
 
@@ -456,11 +481,11 @@ fn generate_controller(
     content.push_str(&content_action_put);
     content.push_str(&content_action_post);
 
-    let base_path: &Path = Path::new(K8S_OPERATOR_CONTROLLERS_DIR);
+    let base_path: &Path = Path::new(directory);
     let file_name: String = format!("{}.rs", tag.to_lowercase());
     write_to_file(base_path, &file_name, content)?;
     format_file(base_path.join(file_name).to_str().unwrap())?;
-    add_controller_to_modfile(&tag.to_lowercase())?;
+    add_controller_to_modfile(directory, &tag.to_lowercase())?;
     Ok(())
 }
 
@@ -517,9 +542,9 @@ fn get_fields_for_type(
 
 /// Generates types based on the provided schemas and operator resource reference.
 pub fn generate_types(
+    directory: &str,
     schemas: HashMap<String, Schema>,
     operator_resource_ref: &str,
-    directory: &str,
 ) -> Result<(), AppError> {
     for name in schemas.keys() {
         generate_type(
@@ -578,15 +603,15 @@ fn generate_type(
     format_file(base_path.join(file_name).to_str().unwrap())
 }
 
-fn generate_lib() -> Result<(), AppError> {
-    let file_path = format!("{}/src/lib.rs", K8S_OPERATOR_DIR);
+fn generate_lib(directory: &str) -> Result<(), AppError> {
+    let file_path = format!("{}/src/lib.rs", directory);
     if get_ignored_files()?.contains(&file_path) {
         return Ok(());
     }
 
     let content: String = LibTemplate {}.render().unwrap();
 
-    let base_path: &Path = &Path::new(K8S_OPERATOR_DIR).join("src");
+    let base_path: &Path = &Path::new(directory).join("src");
     let file_name: String = "lib.rs".to_string();
     write_to_file(base_path, &file_name, content)?;
     format_file(base_path.join(file_name).to_str().unwrap())
@@ -609,8 +634,8 @@ fn add_type_to_modfile(type_name: &str, directory: &str) -> Result<(), AppError>
 }
 
 /// Adds a controller to the module file.
-fn add_controller_to_modfile(controller_name: &str) -> Result<(), AppError> {
-    let file_path = format!("{}/mod.rs", K8S_OPERATOR_CONTROLLERS_DIR);
+fn add_controller_to_modfile(directory: &str, controller_name: &str) -> Result<(), AppError> {
+    let file_path = format!("{}/mod.rs", directory);
     match upsert_line_to_file(
         file_path.as_str(),
         format!("pub mod {};", controller_name.to_lowercase()).as_str(),
@@ -624,8 +649,8 @@ fn add_controller_to_modfile(controller_name: &str) -> Result<(), AppError> {
 }
 
 /// Generates the CRD generator main file based on the provided resources.
-fn generate_crdgen_file(resources: Vec<String>) -> Result<(), AppError> {
-    let base_path: &Path = &Path::new(K8S_CRDGEN_DIR).join("src");
+fn generate_crdgen_file(directory: &str, resources: Vec<String>) -> Result<(), AppError> {
+    let base_path: &Path = &Path::new(directory).join("src");
     let file_name = "main.rs".to_string();
 
     let resources: BTreeMap<String, String> = resources
@@ -646,6 +671,7 @@ fn generate_crdgen_file(resources: Vec<String>) -> Result<(), AppError> {
 
 /// Generates example manifests based on the provided examples.
 fn generate_examples(
+    directory: &str,
     kubernetes_operator_metadata_spec_field_name: &str,
     examples: std::collections::HashMap<String, ReferenceOr<openapiv3::Example>>,
     operator_group: &str,
@@ -661,6 +687,7 @@ fn generate_examples(
         .collect();
     for (name, example) in &examples_map {
         generate_manifest_from_example(
+            directory,
             kubernetes_operator_metadata_spec_field_name,
             name,
             example,
@@ -675,6 +702,7 @@ fn generate_examples(
 
 /// Generates a manifest from an example.
 fn generate_manifest_from_example(
+    directory: &str,
     kubernetes_operator_metadata_spec_field_name: &str,
     name: &str,
     example: &openapiv3::Example,
@@ -717,7 +745,7 @@ fn generate_manifest_from_example(
     }
 
     if !resources.is_empty() {
-        write_example_manifest(name, resources)?;
+        write_example_manifest(directory, name, resources)?;
     }
 
     Ok(())
@@ -780,9 +808,13 @@ fn generate_resource_from_map(
 }
 
 /// Writes the example manifest to a file.
-fn write_example_manifest(name: &str, resources: Vec<Resource>) -> Result<(), AppError> {
+fn write_example_manifest(
+    directory: &str,
+    name: &str,
+    resources: Vec<Resource>,
+) -> Result<(), AppError> {
     let template = ExampleTemplate { resources };
-    let base_path = Path::new(K8S_MANIFESTS_EXAMPLES_DIR);
+    let base_path = Path::new(directory);
     let content = template.render()?;
     write_to_file(base_path, &format!("{}.yaml", name.to_lowercase()), content)
 }

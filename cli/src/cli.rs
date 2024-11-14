@@ -49,6 +49,9 @@ pub enum Commands {
         /// Path to the OpenAPI specification file.
         #[arg(required = true, help = "Path to the OpenAPI specification file")]
         openapi_file: String,
+        /// Path to the project directory.
+        #[arg(required = true, help = "Path to the project directory")]
+        path: String,
         /// Generate all code.
         #[arg(short, long, help = "Generate all code")]
         all: bool,

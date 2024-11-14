@@ -22,9 +22,17 @@ components:
   schemas: {} 
 "#;
 
-    let (_dir, openapi_file) = create_temp_file("openapi.yaml", openapi_yaml);
+    let (dir, openapi_file) = create_temp_file("openapi.yaml", openapi_yaml);
 
-    let result = execute(&openapi_file, &false, &false, &false, &false, &false);
+    let result = execute(
+        &dir.path().to_string_lossy().to_string(),
+        &openapi_file,
+        &false,
+        &false,
+        &false,
+        &false,
+        &false,
+    );
 
     assert!(
         result.is_err(),
@@ -100,7 +108,8 @@ fn test_execute_missing_openapi_file() -> Result<(), AppError> {
     let types = false;
 
     let result = execute(
-        &openapi_file.to_str().unwrap().to_string(),
+        &dir.path().to_string_lossy().to_string(),
+        &openapi_file.to_string_lossy().to_string(),
         &all,
         &lib,
         &manifests,
@@ -118,7 +127,7 @@ fn test_execute_invalid_openapi_spec() -> Result<(), AppError> {
     let openapi_yaml = r#"---
 invalid_yaml: [unclosed_list
 "#;
-    let (_dir, openapi_file) = create_temp_file("invalid_openapi.yaml", openapi_yaml);
+    let (dir, openapi_file) = create_temp_file("invalid_openapi.yaml", openapi_yaml);
 
     let all = true;
     let lib = false;
@@ -126,7 +135,15 @@ invalid_yaml: [unclosed_list
     let controllers = false;
     let types = false;
 
-    let result = execute(&openapi_file, &all, &lib, &manifests, &controllers, &types);
+    let result = execute(
+        &dir.path().to_string_lossy().to_string(),
+        &openapi_file,
+        &all,
+        &lib,
+        &manifests,
+        &controllers,
+        &types,
+    );
 
     assert!(result.is_err());
 
@@ -140,6 +157,13 @@ openapi: 3.0.0
 info:
   title: Test API
   version: 1.0.0
+  x-kubernetes-operator-group: testgroup
+  x-kubernetes-operator-version: v1
+  x-kubernetes-operator-resource-ref: uuid
+  x-kubernetes-operator-status-ref: status
+  x-kubernetes-operator-include-tags:
+    - user
+  x-kubernetes-operator-example-metadata-spec-field-ref: metadata
 paths: {}
 components:
   schemas:
@@ -177,7 +201,7 @@ components:
         .to_str()
         .expect("Failed to convert output path to string");
 
-    let result = generate_types(schemas, &operator_resource_ref, types_directory);
+    let result = generate_types(types_directory, schemas, &operator_resource_ref);
 
     assert!(result.is_ok());
 
