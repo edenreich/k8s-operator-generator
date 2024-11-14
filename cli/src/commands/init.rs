@@ -1,5 +1,18 @@
 use crate::errors::AppError;
-use crate::templates::*;
+use crate::templates::general::{
+    CargoConfig, ClusterYaml, Dockerfile, Dockerignore, Editorconfig, EnvExample, GitAttributes,
+    GitIgnore, Prettierrc, ReadmeMd, RustfmtToml, Taskfile,
+};
+use crate::templates::tests::{TestsMain, TestsUtilsClient, TestsUtilsCluster, TestsUtilsOperator};
+use crate::templates::{
+    cargo::{CargoToml, K8sCrdgenCargoToml, K8sOperatorCargoToml},
+    devcontainer::{
+        DevcontainerDeps, DevcontainerJson, DevcontainerLaunchJsonExample, DevcontainerSetupGit,
+        DevcontainerZshrc,
+    },
+    general::OpenAPIGeneratorIgnore,
+    tests::K8sTestsCargoToml,
+};
 use crate::utils::{
     add_tests_util_to_modfile, create_directory_if_not_exists, create_file_if_not_exists,
     generate_template_file, set_executable_permission,

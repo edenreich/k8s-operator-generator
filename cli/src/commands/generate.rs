@@ -1,11 +1,17 @@
 use crate::errors::AppError;
+use crate::templates::crdgen::CrdGenTemplate;
 use crate::templates::{
-    ClusterRoleBindingTemplate, ClusterRoleTemplate, ClusterRoleTemplateIdentifiers,
-    ControllerActionDeleteTemplate, ControllerActionPostTemplate, ControllerActionPutTemplate,
-    ControllerAttributes, ControllerTemplate, CrdGenTemplate, ExampleTemplate, Field, LibTemplate,
-    MainTemplate, Metadata, OperatorDeploymentTemplate, OperatorSecretTemplate, Resource,
-    RoleBindingTemplate, RoleTemplate, RoleTemplateIdentifiers, ServiceAccountTemplate,
-    TypeTemplate,
+    manifests::{
+        ClusterRoleBindingTemplate, ClusterRoleTemplate, ExampleTemplate,
+        OperatorDeploymentTemplate, OperatorSecretTemplate, RoleBindingTemplate, RoleTemplate,
+        ServiceAccountTemplate,
+    },
+    operator::{
+        ControllerActionDeleteTemplate, ControllerActionPostTemplate, ControllerActionPutTemplate,
+        ControllerTemplate, LibTemplate, MainTemplate, TypeTemplate,
+    },
+    ClusterRoleTemplateIdentifiers, ControllerAttributes, Field, Metadata, Resource,
+    RoleTemplateIdentifiers,
 };
 use crate::utils::{
     extract_openapi_info, format_file, generate_template_file, get_ignored_files,
