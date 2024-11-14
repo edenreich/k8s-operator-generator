@@ -3,19 +3,19 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Template)]
-#[template(path = "k8s_tests_main.jinja")]
+#[template(path = "k8s_tests_main.rs.jinja")]
 pub struct TestsMain {}
 
 #[derive(Template)]
-#[template(path = "k8s_tests_utils_client.jinja")]
+#[template(path = "k8s_tests_utils_client.rs.jinja")]
 pub struct TestsUtilsClient {}
 
 #[derive(Template)]
-#[template(path = "k8s_tests_utils_operator.jinja")]
+#[template(path = "k8s_tests_utils_operator.rs.jinja")]
 pub struct TestsUtilsOperator {}
 
 #[derive(Template)]
-#[template(path = "k8s_tests_utils_cluster.jinja")]
+#[template(path = "k8s_tests_utils_cluster.rs.jinja")]
 pub struct TestsUtilsCluster {}
 
 #[derive(Template)]
@@ -43,7 +43,7 @@ pub struct GitIgnore {}
 pub struct OpenAPIGeneratorIgnore {}
 
 #[derive(Template)]
-#[template(path = ".prettierrc.jinja")]
+#[template(path = ".prettierrc.yaml.jinja")]
 pub struct Prettierrc {}
 
 #[derive(Template)]
@@ -67,7 +67,7 @@ pub struct Dockerfile {}
 pub struct ReadmeMd {}
 
 #[derive(Template)]
-#[template(path = "taskfile.jinja")]
+#[template(path = "taskfile.yml.jinja")]
 pub struct Taskfile {}
 
 #[derive(Template)]
@@ -112,7 +112,7 @@ pub struct RoleTemplateIdentifiers {
 }
 
 #[derive(Template)]
-#[template(path = "manifest_rbac_role.jinja")]
+#[template(path = "manifest_rbac_role.yaml.jinja")]
 pub struct RoleTemplate {
     pub identifiers: RoleTemplateIdentifiers,
 }
@@ -123,33 +123,33 @@ pub struct ClusterRoleTemplateIdentifiers {
 }
 
 #[derive(Template)]
-#[template(path = "manifest_rbac_cluster_role.jinja")]
+#[template(path = "manifest_rbac_cluster_role.yaml.jinja")]
 pub struct ClusterRoleTemplate {
     pub identifiers: ClusterRoleTemplateIdentifiers,
 }
 
 #[derive(Template)]
-#[template(path = "manifest_rbac_service_account.jinja")]
+#[template(path = "manifest_rbac_service_account.yaml.jinja")]
 pub struct ServiceAccountTemplate {}
 
 #[derive(Template)]
-#[template(path = "manifest_rbac_role_binding.jinja")]
+#[template(path = "manifest_rbac_role_binding.yaml.jinja")]
 pub struct RoleBindingTemplate {}
 
 #[derive(Template)]
-#[template(path = "manifest_rbac_cluster_role_binding.jinja")]
+#[template(path = "manifest_rbac_cluster_role_binding.yaml.jinja")]
 pub struct ClusterRoleBindingTemplate {}
 
 #[derive(Template)]
-#[template(path = "manifest_operator_deployment.jinja")]
+#[template(path = "manifest_operator_deployment.yaml.jinja")]
 pub struct OperatorDeploymentTemplate {}
 
 #[derive(Template)]
-#[template(path = "manifest_operator_secret.jinja")]
+#[template(path = "manifest_operator_secret.yaml.jinja")]
 pub struct OperatorSecretTemplate {}
 
 #[derive(Template, Deserialize, Serialize)]
-#[template(path = "manifest_example.jinja")]
+#[template(path = "manifest_example.yaml.jinja")]
 pub struct ExampleTemplate {
     pub resources: Vec<Resource>,
 }
@@ -169,7 +169,7 @@ pub struct Metadata {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_main.jinja")]
+#[template(path = "k8s_operator_main.rs.jinja")]
 pub struct MainTemplate {
     pub api_group: String,
     pub api_version: String,
@@ -183,7 +183,7 @@ pub struct Field {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_controller.jinja")]
+#[template(path = "k8s_operator_controller.rs.jinja")]
 pub struct ControllerTemplate {
     pub tag: String,
     pub arg_name: String,
@@ -230,7 +230,7 @@ pub struct ControllerAttributes {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_type.jinja")]
+#[template(path = "k8s_operator_type.rs.jinja")]
 pub struct TypeTemplate {
     pub tag_name: String,
     pub type_name: String,
@@ -241,11 +241,11 @@ pub struct TypeTemplate {
 }
 
 #[derive(Template)]
-#[template(path = "k8s_operator_lib.jinja")]
+#[template(path = "k8s_operator_lib.rs.jinja")]
 pub struct LibTemplate {}
 
 #[derive(Template)]
-#[template(path = "k8s_crdgen_main.jinja")]
+#[template(path = "k8s_crdgen_main.rs.jinja")]
 pub struct CrdGenTemplate {
     pub resources: BTreeMap<String, String>,
 }
