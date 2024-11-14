@@ -91,7 +91,7 @@ pub fn execute(path: &String) -> Result<(), AppError> {
     generate_template_file(GitIgnore {}, base_path, ".gitignore")?;
     generate_template_file(Taskfile {}, base_path, "Taskfile.yml")?;
     generate_template_file(ReadmeMd {}, base_path, "README.md")?;
-    generate_template_file(Prettierrc {}, base_path, ".prettierrc")?;
+    generate_template_file(Prettierrc {}, base_path, ".prettierrc.yaml")?;
     generate_template_file(RustfmtToml {}, base_path, ".rustfmt.toml")?;
     generate_template_file(ClusterYaml {}, base_path, "Cluster.yaml")?;
     generate_template_file(Dockerfile {}, base_path, "Dockerfile")?;
