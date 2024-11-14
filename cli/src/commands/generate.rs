@@ -32,6 +32,7 @@ use std::{
 ///
 /// # Arguments
 ///
+/// * `base_path` - A string slice that holds the base path for the project.
 /// * `openapi_file` - A string slice that holds the path to the OpenAPI file.
 /// * `all` - A boolean flag indicating whether to generate all components.
 /// * `lib` - A boolean flag indicating whether to generate the library files.
