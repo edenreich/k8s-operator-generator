@@ -610,7 +610,7 @@ fn generate_lib(directory: &str) -> Result<(), AppError> {
         return Ok(());
     }
 
-    let content: String = LibTemplate {}.render().unwrap();
+    let content: String = LibTemplate {}.render()?;
 
     let base_path: &Path = &Path::new(directory).join("src");
     let file_name: String = "lib.rs".to_string();
@@ -665,7 +665,7 @@ fn generate_crdgen_file(directory: &str, resources: Vec<String>) -> Result<(), A
         .collect();
 
     let template = CrdGenTemplate { resources };
-    let content = template.render().unwrap();
+    let content = template.render()?;
     write_to_file(base_path, &file_name, content)?;
     format_file(base_path.join(file_name).to_str().unwrap())
 }
