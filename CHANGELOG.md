@@ -1,3 +1,23 @@
+# [1.6.0](https://github.com/edenreich/kopgen/compare/v1.5.0...v1.6.0) (2024-11-14)
+
+
+### Bug Fixes
+
+* Correct file path for controller in .openapi-generator-ignore ([27fcf9a](https://github.com/edenreich/kopgen/commit/27fcf9a59bf14408bc499068edb9899491e40fef))
+* Correct typo in build task description for kopgen CLI ([fa190a6](https://github.com/edenreich/kopgen/commit/fa190a61a2fd0faadda096c7987e6c6b8ca25b0f))
+* Remove verbose flag from cargo build command in Taskfile.yaml ([90351b4](https://github.com/edenreich/kopgen/commit/90351b487252a9044aabf36e87804f0d2a0a5d77))
+* Replace error handling with expect for missing extensions validation ([b9b2a09](https://github.com/edenreich/kopgen/commit/b9b2a0936c1b423c863d3a01bf21f2e125520c82))
+* Simplify test command by removing verbose flag ([878296c](https://github.com/edenreich/kopgen/commit/878296c7662f152abbf967b3c6933f4475d2c153))
+* Update build task description and remove verbose flag from cargo build command for the generated Taskfile ([b99098d](https://github.com/edenreich/kopgen/commit/b99098d4bd1e8c9cd13b5d09b465981149c39313))
+* Update CLI run command to correctly pass arguments ([12b0888](https://github.com/edenreich/kopgen/commit/12b088889960913d464bae862d2f461786c78477))
+
+
+### Features
+
+* Add MissingRequiredExtension error and implement validation for Kubernetes extensions ([c35af2a](https://github.com/edenreich/kopgen/commit/c35af2a02847baa6699b14f00489b1da09cbd293))
+* Add project directory path argument to generate command and update related function calls ([6013b61](https://github.com/edenreich/kopgen/commit/6013b6193afd378899d2255ce4f5faf35fb4d9ef))
+* Introduce error handling with AppError and refactor related functions ([cfd8de7](https://github.com/edenreich/kopgen/commit/cfd8de7411ee4e9cbe91183d82ff09b78ddf7c94))
+
 # [1.5.0](https://github.com/edenreich/kopgen/compare/v1.4.1...v1.5.0) (2024-11-12)
 
 
