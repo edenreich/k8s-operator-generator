@@ -44,23 +44,19 @@ pub mod tests {
 
     #[derive(Template)]
     #[template(path = "tests/main.rs.jinja")]
-    pub struct TestsMain {}
+    pub struct Main {}
 
     #[derive(Template)]
     #[template(path = "tests/utils_client.rs.jinja")]
-    pub struct TestsUtilsClient {}
+    pub struct UtilsClient {}
 
     #[derive(Template)]
     #[template(path = "tests/utils_operator.rs.jinja")]
-    pub struct TestsUtilsOperator {}
+    pub struct UtilsOperator {}
 
     #[derive(Template)]
     #[template(path = "tests/utils_cluster.rs.jinja")]
-    pub struct TestsUtilsCluster {}
-
-    #[derive(Template)]
-    #[template(path = "tests/cargo.toml.jinja")]
-    pub struct K8sTestsCargoToml {}
+    pub struct UtilsCluster {}
 }
 
 // Devcontainer Templates
@@ -69,65 +65,75 @@ pub mod devcontainer {
 
     #[derive(Template)]
     #[template(path = ".devcontainer/devcontainer.json.jinja")]
-    pub struct DevcontainerJson {}
+    pub struct Json {}
 
     #[derive(Template)]
     #[template(path = ".devcontainer/deps.sh.jinja")]
-    pub struct DevcontainerDeps {}
+    pub struct Deps {}
 
     #[derive(Template)]
     #[template(path = ".devcontainer/setup-git.sh.jinja")]
-    pub struct DevcontainerSetupGit {}
+    pub struct SetupGit {}
 
     #[derive(Template)]
     #[template(path = ".devcontainer/launch.json.jinja")]
-    pub struct DevcontainerLaunchJsonExample {}
+    pub struct LaunchJsonExample {}
 
     #[derive(Template)]
     #[template(path = ".devcontainer/zshrc.jinja")]
-    pub struct DevcontainerZshrc {}
+    pub struct Zshrc {}
 }
 
 // Manifests Templates
 pub mod manifests {
     use super::*;
 
-    #[derive(Template)]
-    #[template(path = "manifests/rbac_role.yaml.jinja")]
-    pub struct RoleTemplate {
-        pub identifiers: RoleTemplateIdentifiers,
+    pub mod rbac {
+        use super::*;
+
+        #[derive(Template)]
+        #[template(path = "manifests/rbac_role.yaml.jinja")]
+        pub struct Role {
+            pub identifiers: RoleTemplateIdentifiers,
+        }
+
+        #[derive(Template)]
+        #[template(path = "manifests/rbac_cluster_role.yaml.jinja")]
+        pub struct ClusterRole {
+            pub identifiers: ClusterRoleTemplateIdentifiers,
+        }
+
+        #[derive(Template)]
+        #[template(path = "manifests/rbac_service_account.yaml.jinja")]
+        pub struct ServiceAccount {}
+
+        #[derive(Template)]
+        #[template(path = "manifests/rbac_role_binding.yaml.jinja")]
+        pub struct RoleBinding {}
+
+        #[derive(Template)]
+        #[template(path = "manifests/rbac_cluster_role_binding.yaml.jinja")]
+        pub struct ClusterRoleBinding {}
     }
 
-    #[derive(Template)]
-    #[template(path = "manifests/rbac_cluster_role.yaml.jinja")]
-    pub struct ClusterRoleTemplate {
-        pub identifiers: ClusterRoleTemplateIdentifiers,
+    pub mod operator {
+        use super::*;
+        #[derive(Template)]
+        #[template(path = "manifests/operator_deployment.yaml.jinja")]
+        pub struct Deployment {}
+
+        #[derive(Template)]
+        #[template(path = "manifests/operator_secret.yaml.jinja")]
+        pub struct Secret {}
     }
 
-    #[derive(Template)]
-    #[template(path = "manifests/rbac_service_account.yaml.jinja")]
-    pub struct ServiceAccountTemplate {}
-
-    #[derive(Template)]
-    #[template(path = "manifests/rbac_role_binding.yaml.jinja")]
-    pub struct RoleBindingTemplate {}
-
-    #[derive(Template)]
-    #[template(path = "manifests/rbac_cluster_role_binding.yaml.jinja")]
-    pub struct ClusterRoleBindingTemplate {}
-
-    #[derive(Template)]
-    #[template(path = "manifests/operator_deployment.yaml.jinja")]
-    pub struct OperatorDeploymentTemplate {}
-
-    #[derive(Template)]
-    #[template(path = "manifests/operator_secret.yaml.jinja")]
-    pub struct OperatorSecretTemplate {}
-
-    #[derive(Template, Deserialize, Serialize)]
-    #[template(path = "manifests/example.yaml.jinja")]
-    pub struct ExampleTemplate {
-        pub resources: Vec<Resource>,
+    pub mod examples {
+        use super::*;
+        #[derive(Template, Deserialize, Serialize)]
+        #[template(path = "manifests/example.yaml.jinja")]
+        pub struct Example {
+            pub resources: Vec<Resource>,
+        }
     }
 }
 
@@ -137,7 +143,7 @@ pub mod operator {
 
     #[derive(Template)]
     #[template(path = "operator/main.rs.jinja")]
-    pub struct MainTemplate {
+    pub struct Main {
         pub api_group: String,
         pub api_version: String,
         pub controllers: Vec<String>,
@@ -146,7 +152,7 @@ pub mod operator {
 
     #[derive(Template)]
     #[template(path = "operator/controller.rs.jinja")]
-    pub struct ControllerTemplate {
+    pub struct Controller {
         pub tag: String,
         pub arg_name: String,
         pub kind_struct: String,
@@ -160,7 +166,7 @@ pub mod operator {
 
     #[derive(Template)]
     #[template(path = "operator/controller_action_delete.jinja")]
-    pub struct ControllerActionDeleteTemplate<'a> {
+    pub struct ControllerActionDelete<'a> {
         pub arg_name: String,
         pub kind_struct: String,
         pub controllers: Vec<&'a ControllerAttributes>,
@@ -169,7 +175,7 @@ pub mod operator {
 
     #[derive(Template)]
     #[template(path = "operator/controller_action_update.jinja")]
-    pub struct ControllerActionPutTemplate<'a> {
+    pub struct ControllerActionPut<'a> {
         pub arg_name: String,
         pub kind_struct: String,
         pub controllers: Vec<&'a ControllerAttributes>,
@@ -178,7 +184,7 @@ pub mod operator {
 
     #[derive(Template)]
     #[template(path = "operator/controller_action_create.jinja")]
-    pub struct ControllerActionPostTemplate<'a> {
+    pub struct ControllerActionPost<'a> {
         pub arg_name: String,
         pub kind_struct: String,
         pub controllers: Vec<&'a ControllerAttributes>,
@@ -187,7 +193,7 @@ pub mod operator {
 
     #[derive(Template)]
     #[template(path = "operator/type.rs.jinja")]
-    pub struct TypeTemplate {
+    pub struct Type {
         pub tag_name: String,
         pub type_name: String,
         pub api_version: String,
@@ -198,7 +204,7 @@ pub mod operator {
 
     #[derive(Template)]
     #[template(path = "operator/lib.rs.jinja")]
-    pub struct LibTemplate {}
+    pub struct Lib {}
 }
 
 // Cargo Templates
@@ -211,11 +217,15 @@ pub mod cargo {
 
     #[derive(Template)]
     #[template(path = "operator/cargo.toml.jinja")]
-    pub struct K8sOperatorCargoToml {}
+    pub struct OperatorCargoToml {}
 
     #[derive(Template)]
     #[template(path = "crdgen/cargo.toml.jinja")]
-    pub struct K8sCrdgenCargoToml {}
+    pub struct CrdgenCargoToml {}
+
+    #[derive(Template)]
+    #[template(path = "tests/cargo.toml.jinja")]
+    pub struct TestsCargoToml {}
 }
 
 // Crdgen Templates
@@ -224,7 +234,7 @@ pub mod crdgen {
 
     #[derive(Template)]
     #[template(path = "crdgen/main.rs.jinja")]
-    pub struct CrdGenTemplate {
+    pub struct Main {
         pub resources: BTreeMap<String, String>,
     }
 }

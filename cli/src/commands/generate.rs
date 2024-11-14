@@ -1,14 +1,14 @@
 use crate::errors::AppError;
-use crate::templates::crdgen::CrdGenTemplate;
 use crate::templates::{
+    crdgen::Main as CrdGenTemplate,
     manifests::{
-        ClusterRoleBindingTemplate, ClusterRoleTemplate, ExampleTemplate,
-        OperatorDeploymentTemplate, OperatorSecretTemplate, RoleBindingTemplate, RoleTemplate,
-        ServiceAccountTemplate,
+        examples::Example,
+        operator::{Deployment, Secret},
+        rbac::{ClusterRole, ClusterRoleBinding, Role, RoleBinding, ServiceAccount},
     },
     operator::{
-        ControllerActionDeleteTemplate, ControllerActionPostTemplate, ControllerActionPutTemplate,
-        ControllerTemplate, LibTemplate, MainTemplate, TypeTemplate,
+        Controller, ControllerActionDelete, ControllerActionPost, ControllerActionPut, Lib, Main,
+        Type as TypeTemplate,
     },
     ClusterRoleTemplateIdentifiers, ControllerAttributes, Field, Metadata, Resource,
     RoleTemplateIdentifiers,
@@ -206,7 +206,7 @@ fn generate_rbac_files(
     let base_path_rbac = Path::new(directory);
 
     generate_template_file(
-        RoleTemplate {
+        Role {
             identifiers: RoleTemplateIdentifiers {
                 api_group: kubernetes_operator_group.to_string(),
                 resources: resources.clone(),
@@ -216,7 +216,7 @@ fn generate_rbac_files(
         "role.yaml",
     )?;
     generate_template_file(
-        ClusterRoleTemplate {
+        ClusterRole {
             identifiers: ClusterRoleTemplateIdentifiers {
                 api_group: kubernetes_operator_group.to_string(),
                 resources: resources.clone(),
@@ -225,14 +225,10 @@ fn generate_rbac_files(
         base_path_rbac,
         "clusterrole.yaml",
     )?;
+    generate_template_file(ServiceAccount {}, base_path_rbac, "serviceaccount.yaml")?;
+    generate_template_file(RoleBinding {}, base_path_rbac, "rolebinding.yaml")?;
     generate_template_file(
-        ServiceAccountTemplate {},
-        base_path_rbac,
-        "serviceaccount.yaml",
-    )?;
-    generate_template_file(RoleBindingTemplate {}, base_path_rbac, "rolebinding.yaml")?;
-    generate_template_file(
-        ClusterRoleBindingTemplate {},
+        ClusterRoleBinding {},
         base_path_rbac,
         "clusterrolebinding.yaml",
     )?;
@@ -244,12 +240,8 @@ fn generate_rbac_files(
 fn generate_operator_deployment_files(directory: &str) -> Result<(), AppError> {
     let base_path_operator = Path::new(directory);
 
-    generate_template_file(
-        OperatorDeploymentTemplate {},
-        base_path_operator,
-        "deployment.yaml",
-    )?;
-    generate_template_file(OperatorSecretTemplate {}, base_path_operator, "secret.yaml")?;
+    generate_template_file(Deployment {}, base_path_operator, "deployment.yaml")?;
+    generate_template_file(Secret {}, base_path_operator, "secret.yaml")?;
 
     Ok(())
 }
@@ -276,7 +268,7 @@ fn generate_main_file(
         .collect::<Vec<String>>();
 
     let base_path = &Path::new(directory).join("src");
-    let content: String = MainTemplate {
+    let content: String = Main {
         api_group: api_group.into(),
         api_version: api_version.into(),
         controllers,
@@ -447,7 +439,7 @@ fn generate_controller(
 
     let fields = get_fields_for_type(schemas, &type_name, &resource_remote_ref)?;
 
-    let mut content: String = ControllerTemplate {
+    let mut content: String = Controller {
         tag: tag.to_lowercase(),
         arg_name: tag.to_lowercase().to_singular(),
         kind_struct: type_name.clone(),
@@ -460,7 +452,7 @@ fn generate_controller(
     }
     .render()?;
 
-    let content_action_delete: String = ControllerActionDeleteTemplate {
+    let content_action_delete: String = ControllerActionDelete {
         arg_name: tag.to_lowercase().to_singular(),
         kind_struct: type_name.clone(),
         controllers: controller_attributes.iter().collect(),
@@ -468,7 +460,7 @@ fn generate_controller(
     }
     .render()?;
 
-    let content_action_put: String = ControllerActionPutTemplate {
+    let content_action_put: String = ControllerActionPut {
         arg_name: tag.to_lowercase().to_singular(),
         kind_struct: type_name.clone(),
         controllers: controller_attributes.iter().collect(),
@@ -476,7 +468,7 @@ fn generate_controller(
     }
     .render()?;
 
-    let content_action_post: String = ControllerActionPostTemplate {
+    let content_action_post: String = ControllerActionPost {
         arg_name: tag.to_lowercase().to_singular(),
         kind_struct: type_name,
         controllers: controller_attributes.iter().collect(),
@@ -616,7 +608,7 @@ fn generate_lib(directory: &str) -> Result<(), AppError> {
         return Ok(());
     }
 
-    let content: String = LibTemplate {}.render()?;
+    let content: String = Lib {}.render()?;
 
     let base_path: &Path = &Path::new(directory).join("src");
     let file_name: String = "lib.rs".to_string();
@@ -820,7 +812,7 @@ fn write_example_manifest(
     name: &str,
     resources: Vec<Resource>,
 ) -> Result<(), AppError> {
-    let template = ExampleTemplate { resources };
+    let template = Example { resources };
     let base_path = Path::new(directory);
     let content = template.render()?;
     write_to_file(base_path, &format!("{}.yaml", name.to_lowercase()), content)

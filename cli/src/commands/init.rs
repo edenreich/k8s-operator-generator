@@ -3,15 +3,11 @@ use crate::templates::general::{
     CargoConfig, ClusterYaml, Dockerfile, Dockerignore, Editorconfig, EnvExample, GitAttributes,
     GitIgnore, Prettierrc, ReadmeMd, RustfmtToml, Taskfile,
 };
-use crate::templates::tests::{TestsMain, TestsUtilsClient, TestsUtilsCluster, TestsUtilsOperator};
 use crate::templates::{
-    cargo::{CargoToml, K8sCrdgenCargoToml, K8sOperatorCargoToml},
-    devcontainer::{
-        DevcontainerDeps, DevcontainerJson, DevcontainerLaunchJsonExample, DevcontainerSetupGit,
-        DevcontainerZshrc,
-    },
+    cargo::{CargoToml, CrdgenCargoToml, OperatorCargoToml, TestsCargoToml},
+    devcontainer::{Deps, Json, LaunchJsonExample, SetupGit, Zshrc},
     general::OpenAPIGeneratorIgnore,
-    tests::K8sTestsCargoToml,
+    tests::{Main as TestsMain, UtilsClient, UtilsCluster, UtilsOperator},
 };
 use crate::utils::{
     add_tests_util_to_modfile, create_directory_if_not_exists, create_file_if_not_exists,
@@ -73,17 +69,17 @@ pub fn execute(path: &String) -> Result<(), AppError> {
 
     generate_template_file(CargoToml {}, base_path, "Cargo.toml")?;
     generate_template_file(
-        K8sOperatorCargoToml {},
+        OperatorCargoToml {},
         base_path.join(K8S_OPERATOR_DIR).as_path(),
         "Cargo.toml",
     )?;
     generate_template_file(
-        K8sCrdgenCargoToml {},
+        CrdgenCargoToml {},
         base_path.join(K8S_CRDGEN_DIR).as_path(),
         "Cargo.toml",
     )?;
     generate_template_file(
-        K8sTestsCargoToml {},
+        TestsCargoToml {},
         base_path.join(K8S_TESTS_DIR).as_path(),
         "Cargo.toml",
     )?;
@@ -101,27 +97,27 @@ pub fn execute(path: &String) -> Result<(), AppError> {
     generate_template_file(Dockerfile {}, base_path, "Dockerfile")?;
 
     generate_template_file(
-        DevcontainerJson {},
+        Json {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
         "devcontainer.json",
     )?;
     generate_template_file(
-        DevcontainerDeps {},
+        Deps {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
         "deps.sh",
     )?;
     generate_template_file(
-        DevcontainerSetupGit {},
+        SetupGit {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
         "setup-git.sh",
     )?;
     generate_template_file(
-        DevcontainerLaunchJsonExample {},
+        LaunchJsonExample {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
         "launch.json",
     )?;
     generate_template_file(
-        DevcontainerZshrc {},
+        Zshrc {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
         ".zshrc",
     )?;
@@ -145,9 +141,9 @@ pub fn execute(path: &String) -> Result<(), AppError> {
 
     let tests_utils_path_buf = base_path.join(K8S_TESTS_UTILS_DIR);
     let tests_utils_path: &Path = tests_utils_path_buf.as_path();
-    generate_template_file(TestsUtilsClient {}, tests_utils_path, "client.rs")?;
-    generate_template_file(TestsUtilsOperator {}, tests_utils_path, "operator.rs")?;
-    generate_template_file(TestsUtilsCluster {}, tests_utils_path, "cluster.rs")?;
+    generate_template_file(UtilsClient {}, tests_utils_path, "client.rs")?;
+    generate_template_file(UtilsOperator {}, tests_utils_path, "operator.rs")?;
+    generate_template_file(UtilsCluster {}, tests_utils_path, "cluster.rs")?;
 
     add_tests_util_to_modfile(base_path, "client");
     add_tests_util_to_modfile(base_path, "operator");
