@@ -201,7 +201,7 @@ components:
         .to_str()
         .expect("Failed to convert output path to string");
 
-    let result = generate_types(types_directory, schemas, &operator_resource_ref);
+    let result = generate_types(types_directory, &schemas, &operator_resource_ref);
 
     assert!(result.is_ok());
 

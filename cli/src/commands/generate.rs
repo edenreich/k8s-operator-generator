@@ -106,13 +106,13 @@ pub fn execute(
         generate_lib(&k8s_operator_dir)?;
         generate_types(
             &k8s_operator_types_dir,
-            schemas.clone(),
+            &schemas,
             &kubernetes_operator_resource_ref,
         )?;
         let controllers = generate_controllers(
             base_path,
             &k8s_operator_controllers_dir,
-            schemas.clone(),
+            &schemas,
             paths.clone(),
             kubernetes_operator_include_tags.clone(),
             kubernetes_operator_resource_ref.clone(),
@@ -167,7 +167,7 @@ pub fn execute(
         let controllers = generate_controllers(
             base_path,
             &k8s_operator_controllers_dir,
-            schemas.clone(),
+            &schemas,
             paths.clone(),
             kubernetes_operator_include_tags.clone(),
             kubernetes_operator_resource_ref.clone(),
@@ -184,7 +184,7 @@ pub fn execute(
         info!("Generating the types...");
         generate_types(
             &k8s_operator_types_dir,
-            schemas.clone(),
+            &schemas,
             &kubernetes_operator_resource_ref,
         )?;
     }
@@ -347,7 +347,7 @@ fn get_controller_attributes_for_operation(
 fn generate_controllers(
     working_dir: &str,
     directory: &str,
-    schemas: HashMap<String, Schema>,
+    schemas: &HashMap<String, Schema>,
     paths: openapiv3::Paths,
     include_tags: Vec<String>,
     kubernetes_operator_resource_ref: String,
@@ -393,7 +393,7 @@ fn generate_controllers(
     for (tag, controller_attributes) in &controllers {
         generate_controller(
             directory,
-            schemas.clone(),
+            schemas,
             tag.clone(),
             controller_attributes,
             kubernetes_operator_resource_ref.clone(),
@@ -416,7 +416,7 @@ fn generate_controllers(
 /// Generates a controller based on the provided schemas, tag, and attributes.
 fn generate_controller(
     directory: &str,
-    schemas: HashMap<String, Schema>,
+    schemas: &HashMap<String, Schema>,
     tag: String,
     controller_attributes: &[ControllerAttributes],
     resource_remote_ref: String,
@@ -439,7 +439,7 @@ fn generate_controller(
 
     let type_name = uppercase_first_letter(&tag.to_singular());
 
-    let fields = get_fields_for_type(&schemas, &type_name, &resource_remote_ref)?;
+    let fields = get_fields_for_type(schemas, &type_name, &resource_remote_ref)?;
 
     let mut content: String = ControllerTemplate {
         tag: tag.to_lowercase(),
@@ -544,12 +544,12 @@ fn get_fields_for_type(
 /// Generates types based on the provided schemas and operator resource reference.
 pub fn generate_types(
     directory: &str,
-    schemas: HashMap<String, Schema>,
+    schemas: &HashMap<String, Schema>,
     operator_resource_ref: &str,
 ) -> Result<(), AppError> {
     for name in schemas.keys() {
         generate_type(
-            schemas.clone(),
+            schemas,
             name,
             "example.com",
             "v1",
@@ -564,7 +564,7 @@ pub fn generate_types(
 
 /// Generates a type based on the provided schemas, name, and operator details.
 fn generate_type(
-    schemas: HashMap<String, Schema>,
+    schemas: &HashMap<String, Schema>,
     name: &str,
     operator_group: &str,
     operator_version: &str,
@@ -575,7 +575,7 @@ fn generate_type(
         return Ok(());
     }
 
-    let fields = match get_fields_for_type(&schemas, name, operator_resource_ref) {
+    let fields = match get_fields_for_type(schemas, name, operator_resource_ref) {
         Ok(fields) => fields,
         Err(e) => {
             error!("Failed to get fields for type: {:?}", e);
