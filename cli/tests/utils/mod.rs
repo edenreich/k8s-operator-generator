@@ -5,7 +5,6 @@ use std::io::Write;
 use tempfile::TempDir;
 
 // This function is used to create a temporary file with the provided content
-#[allow(dead_code)]
 pub fn create_temp_file(file_name: &str, content: &str) -> (TempDir, String) {
     let dir: TempDir = TempDir::new().unwrap();
     let file_path = dir.path().join(file_name);
