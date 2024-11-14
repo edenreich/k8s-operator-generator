@@ -52,10 +52,10 @@ tasks:
       - cargo clippy --all-targets --all-features -- -D warnings
 
   build:
-    desc: Build kopegen CLI
+    desc: Build the project
     cmds:
       - rustup target add {{"{{"}}.TARGET_ARCH{{"}}"}}
-      - cargo build --verbose {{"{{"}}if eq .RELEASE "true"{{"}}"}}--release {{"{{"}}end{{"}}"}}{{"{{"}}if .TARGET_ARCH{{"}}"}}--target {{"{{"}}.TARGET_ARCH{{"}}"}}{{"{{"}}end{{"}}"}}
+      - cargo build {{"{{"}}if eq .RELEASE "true"{{"}}"}}--release {{"{{"}}end{{"}}"}}{{"{{"}}if .TARGET_ARCH{{"}}"}}--target {{"{{"}}.TARGET_ARCH{{"}}"}}{{"{{"}}end{{"}}"}}
     requires:
       vars:
         - TARGET_ARCH
