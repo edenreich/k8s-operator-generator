@@ -30,7 +30,7 @@ tasks:
   test:
     desc: Test the project
     cmds:
-      - cargo test --all-features --verbose
+      - cargo test --all-features
 
   test-cli-output:
     desc: Test the CLI output
