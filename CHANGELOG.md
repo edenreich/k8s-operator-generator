@@ -1,20 +1,21 @@
 # [1.7.0](https://github.com/edenreich/kopgen/compare/v1.6.0...v1.7.0) (2024-11-15)
 
 
-### Bug Fixes
+### Improvements
 
-* Add documentation for base_path argument in generate command ([e2af8a4](https://github.com/edenreich/kopgen/commit/e2af8a4e83cd96e0634e9ad89c3512f07532c7f0))
-* Add missing tar package installation in CI workflow ([0732662](https://github.com/edenreich/kopgen/commit/07326628b921b02d01f970a3956ed8566b0a90cb))
 * Pass schemas by reference instead of cloning in generate functions ([3fd9cff](https://github.com/edenreich/kopgen/commit/3fd9cffd36aea5453bdd5584e735f76e0b571e54))
 * Replace unwrap with ? for error handling in generate_lib and generate_crdgen_file functions ([e501512](https://github.com/edenreich/kopgen/commit/e501512aca06d8cd2a7ad2571f7c595507b78681))
-* **tests:** Update .prettierrc file extension to .prettierrc.yaml ([84f397e](https://github.com/edenreich/kopgen/commit/84f397e5b20e29ab752f67c41e3780e1b1b93b69))
-* Update generated file headers to indicate they should not be edited manually ([836762a](https://github.com/edenreich/kopgen/commit/836762ad86c96ffcf2ec1d955fc3036c538c79a7))
-* Update path for devcontainer dependencies template in bump-version script ([639d38e](https://github.com/edenreich/kopgen/commit/639d38e6fa20e78e30a72cf3eae92d0ec3d61a6c))
-* Update path for devcontainer dependencies template in release configuration ([cf3d3ec](https://github.com/edenreich/kopgen/commit/cf3d3ecfb7b844b441e3df2618f9b9e81ab0cb1f))
-* Update Prettierrc file extension from .prettierrc to .prettierrc.yaml for consistency ([6684d81](https://github.com/edenreich/kopgen/commit/6684d81ac6ef69b8ba00e1498a328b203f509c33))
-* Update run command in taskfile to include 'run' argument for operator execution ([2dcd31c](https://github.com/edenreich/kopgen/commit/2dcd31ccddd8bfa34cd243de76d2ecdf46a96ef3))
 * Update template file extensions from .jinja to .yaml and .rs for consistency ([e081d5a](https://github.com/edenreich/kopgen/commit/e081d5a5bc02e0fe2e5da56cd440538fb1dad885))
 * Update template paths for consistency and organization ([2587a50](https://github.com/edenreich/kopgen/commit/2587a50d9db6a114dfb28a289bba082b8ee35965))
+* Update Prettierrc file extension from .prettierrc to .prettierrc.yaml for consistency ([6684d81](https://github.com/edenreich/kopgen/commit/6684d81ac6ef69b8ba00e1498a328b203f509c33))
+* Update generated file headers to indicate they should not be edited manually ([836762a](https://github.com/edenreich/kopgen/commit/836762ad86c96ffcf2ec1d955fc3036c538c79a7))
+
+### Bug Fixes
+
+* **tests:** Update .prettierrc file extension to .prettierrc.yaml ([84f397e](https://github.com/edenreich/kopgen/commit/84f397e5b20e29ab752f67c41e3780e1b1b93b69))
+* Update path for devcontainer dependencies template in bump-version script ([639d38e](https://github.com/edenreich/kopgen/commit/639d38e6fa20e78e30a72cf3eae92d0ec3d61a6c))
+* Update path for devcontainer dependencies template in release configuration ([cf3d3ec](https://github.com/edenreich/kopgen/commit/cf3d3ecfb7b844b441e3df2618f9b9e81ab0cb1f))
+* Update run command in taskfile to include 'run' argument for operator execution ([2dcd31c](https://github.com/edenreich/kopgen/commit/2dcd31ccddd8bfa34cd243de76d2ecdf46a96ef3))
 
 
 ### Features
@@ -23,7 +24,6 @@
 * Configure cross-compilation for Rust binaries with musl target ([b4bb987](https://github.com/edenreich/kopgen/commit/b4bb987f358ffc828d07b76ad861626b2e9677f1))
 * Enhance CI workflow for cross-compilation with musl targets ([c360dcd](https://github.com/edenreich/kopgen/commit/c360dcd37c552f9b727bbbac8423dbc3ec00d5ac))
 * Implement CLI for Kubernetes Operator with command handling and CRD installation option ([e4d6ca4](https://github.com/edenreich/kopgen/commit/e4d6ca4642ce900c5b0d18884e57eb0871ea8ceb))
-
 # [1.6.0](https://github.com/edenreich/kopgen/compare/v1.5.0...v1.6.0) (2024-11-14)
 
 
