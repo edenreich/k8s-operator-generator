@@ -46,8 +46,8 @@ jobs:
         target:
           - aarch64-unknown-linux-musl
           - x86_64-unknown-linux-musl
-    env:
-      PATH: /opt/aarch64-linux-musl-cross/bin:/opt/x86_64-linux-musl-cross/bin:$PATH
+    # env:
+    #   PATH: /opt/aarch64-linux-musl-cross/bin:/opt/x86_64-linux-musl-cross/bin:$PATH
     steps:
       - uses: actions/checkout@v4
 
