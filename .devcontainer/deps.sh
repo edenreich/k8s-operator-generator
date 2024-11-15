@@ -9,9 +9,29 @@ if [ "$architecture" = "x86_64" ]; then
   architecture_pretty="amd64"
 fi
 
-cd $HOME
+# Change directory to home
+cd
 
-sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev gcc-x86-64-linux-gnu
+# For cross-compiling and statically linking Rust binaries
+sudo apt-get update && \
+    sudo apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    musl-tools
+
+rustup target add \
+    aarch64-unknown-linux-musl \
+    x86_64-unknown-linux-musl
+
+wget https://musl.cc/aarch64-linux-musl-cross.tgz && \
+tar -xzf aarch64-linux-musl-cross.tgz && \
+sudo mv aarch64-linux-musl-cross /opt/ && \
+rm -rf aarch64-linux-musl-cross.tgz
+
+wget https://musl.cc/x86_64-linux-musl-cross.tgz && \
+tar -xzf x86_64-linux-musl-cross.tgz && \
+sudo mv x86_64-linux-musl-cross /opt/ &&
+rm -rf x86_64-linux-musl-cross.tgz
 
 # Install NVM and NodeJS
 echo "==> Installing NVM and NodeJS"
@@ -69,23 +89,3 @@ curl -sSL https://github.com/badboy/mdbook-mermaid/releases/download/$MDBOOK_MER
 tar -xzf mdbook-mermaid.tar.gz
 chmod +x mdbook-mermaid
 sudo mv mdbook-mermaid /usr/local/bin/mdbook-mermaid
-
-# For cross-compiling and statically linking Rust binaries
-sudo apt-get update && \
-    sudo apt-get install -y \
-    pkg-config \
-    libssl-dev \
-    musl-tools
-rustup target add \
-    aarch64-unknown-linux-musl \
-    x86_64-unknown-linux-musl
-cd && \
-    wget https://musl.cc/aarch64-linux-musl-cross.tgz && \
-    tar -xzf aarch64-linux-musl-cross.tgz && \
-    sudo mv aarch64-linux-musl-cross /opt/ && \
-    rm -rf aarch64-linux-musl-cross.tgz
-cd && \
-    wget https://musl.cc/x86_64-linux-musl-cross.tgz && \
-    tar -xzf x86_64-linux-musl-cross.tgz && \
-    sudo mv x86_64-linux-musl-cross /opt/ &&
-    rm -rf x86_64-linux-musl-cross.tgz
