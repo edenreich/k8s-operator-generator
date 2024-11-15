@@ -46,7 +46,7 @@ npm install -g prettier
 
 # Install semantic-release
 echo "==> Installing semantic-release"
-npm install -g semantic-release @semantic-release/changelog @semantic-release/exec @semantic-release/git @semantic-release/github
+npm install -g semantic-release @semantic-release/changelog @semantic-release/exec @semantic-release/git @semantic-release/github conventional-changelog-conventionalcommits
 
 # Install favorite prompt theme
 echo "==> Installing powerlevel10k"
