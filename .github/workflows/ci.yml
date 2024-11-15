@@ -64,6 +64,7 @@ jobs:
 
       - name: Add tools for cross-compiling
         run: |
+          echo $PATH
           sudo apt-get update
           sudo apt-get install -y \
           tar \
