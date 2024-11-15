@@ -46,8 +46,6 @@ jobs:
         target:
           - aarch64-unknown-linux-musl
           - x86_64-unknown-linux-musl
-    env:
-      PATH: /opt/aarch64-linux-musl-cross/bin:/opt/x86_64-linux-musl-cross/bin:${{ github.env.PATH }}
     steps:
       - uses: actions/checkout@v4
 
@@ -64,7 +62,6 @@ jobs:
 
       - name: Add tools for cross-compiling
         run: |
-          echo $PATH
           sudo apt-get update
           sudo apt-get install -y \
           tar \
@@ -84,9 +81,12 @@ jobs:
               tar -xzf x86_64-linux-musl-cross.tgz && \
               sudo mv x86_64-linux-musl-cross /opt/ &&
               rm -rf x86_64-linux-musl-cross.tgz
+          echo "PATH=/opt/aarch64-linux-musl-cross/bin:/opt/x86_64-linux-musl-cross/bin:$PATH" >> $GITHUB_ENV
 
       - name: Build
-        run: RELEASE=true TARGET_ARCH=${{ matrix.target }} task build
+        run: |
+          echo $PATH
+          RELEASE=true TARGET_ARCH=${{ matrix.target }} task build
 
   test:
     name: Test code
