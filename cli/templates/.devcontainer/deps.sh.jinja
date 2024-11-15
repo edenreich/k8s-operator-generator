@@ -2,7 +2,29 @@
 
 set -e
 
-sudo apt-get update
+# Change directory to home
+cd
+
+# For cross-compiling and statically linking Rust binaries
+sudo apt-get update && \
+    sudo apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    musl-tools
+
+rustup target add \
+    aarch64-unknown-linux-musl \
+    x86_64-unknown-linux-musl
+
+wget https://musl.cc/aarch64-linux-musl-cross.tgz && \
+tar -xzf aarch64-linux-musl-cross.tgz && \
+sudo mv aarch64-linux-musl-cross /opt/ && \
+rm -rf aarch64-linux-musl-cross.tgz
+
+wget https://musl.cc/x86_64-linux-musl-cross.tgz && \
+tar -xzf x86_64-linux-musl-cross.tgz && \
+sudo mv x86_64-linux-musl-cross /opt/ &&
+rm -rf x86_64-linux-musl-cross.tgz
 
 # Install kopgen CLI
 curl -sSL https://github.com/edenreich/kopgen/releases/download/v1.6.0/kopgen_$(uname -m)-unknown-linux-musl -o kopgen
@@ -39,27 +61,3 @@ sudo mv ~/kubectl /usr/local/bin/kubectl
 
 # Install mdbook
 cargo install mdbook
-
-# For cross-compiling and statically linking Rust binaries
-sudo apt-get update && \
-    sudo apt-get install -y \
-    gcc-aarch64-linux-gnu \
-    gcc-x86-64-linux-gnu \
-    g++-aarch64-linux-gnu \
-    g++-x86-64-linux-gnu \
-    pkg-config \
-    libssl-dev \
-    musl-tools
-rustup target add \
-    aarch64-unknown-linux-musl \
-    x86_64-unknown-linux-musl
-cd && \
-    wget https://musl.cc/aarch64-linux-musl-cross.tgz && \
-    tar -xzf aarch64-linux-musl-cross.tgz && \
-    sudo mv aarch64-linux-musl-cross /opt/ && \
-    rm -rf aarch64-linux-musl-cross.tgz
-cd && \
-    wget https://musl.cc/x86_64-linux-musl-cross.tgz && \
-    tar -xzf x86_64-linux-musl-cross.tgz && \
-    sudo mv x86_64-linux-musl-cross /opt/ &&
-    rm -rf x86_64-linux-musl-cross.tgz
