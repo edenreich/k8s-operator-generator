@@ -69,3 +69,23 @@ curl -sSL https://github.com/badboy/mdbook-mermaid/releases/download/$MDBOOK_MER
 tar -xzf mdbook-mermaid.tar.gz
 chmod +x mdbook-mermaid
 sudo mv mdbook-mermaid /usr/local/bin/mdbook-mermaid
+
+# For cross-compiling and statically linking Rust binaries
+sudo apt-get update && \
+    sudo apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    musl-tools
+rustup target add \
+    aarch64-unknown-linux-musl \
+    x86_64-unknown-linux-musl
+cd && \
+    wget https://musl.cc/aarch64-linux-musl-cross.tgz && \
+    tar -xzf aarch64-linux-musl-cross.tgz && \
+    sudo mv aarch64-linux-musl-cross /opt/ && \
+    rm -rf aarch64-linux-musl-cross.tgz
+cd && \
+    wget https://musl.cc/x86_64-linux-musl-cross.tgz && \
+    tar -xzf x86_64-linux-musl-cross.tgz && \
+    sudo mv x86_64-linux-musl-cross /opt/ &&
+    rm -rf x86_64-linux-musl-cross.tgz

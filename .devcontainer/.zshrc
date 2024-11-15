@@ -1,5 +1,5 @@
 # If you come from bash you might have to change your $PATH.
-# export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:$PATH
+export PATH=$HOME/bin:$HOME/.local/bin:/usr/local/bin:/opt/aarch64-linux-musl-cross/bin:/opt/x86_64-linux-musl-cross/bin:$PATH
 
 # Path to your Oh My Zsh installation.
 export ZSH=$HOME/.oh-my-zsh
@@ -111,3 +111,13 @@ POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+# For cross-compiling and statically linking Rust binaries
+export OPENSSL_DIR=/usr
+export OPENSSL_LIB_DIR=/usr/lib
+export OPENSSL_INCLUDE_DIR=/usr/include
+export CC_aarch64_unknown_linux_musl=aarch64-linux-musl-gcc
+export CXX_aarch64_unknown_linux_musl=aarch64-linux-musl-g++
+export CC_x86_64_unknown_linux_musl=x86_64-linux-musl-gcc
+export CXX_x86_64_unknown_linux_musl=x86_64-linux-musl-g++
+export PKG_CONFIG_ALLOW_CROSS=1
