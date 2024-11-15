@@ -21,7 +21,7 @@ plugins:
             'Cargo.lock',
             'cli/Cargo.toml',
             'cli/src/cli.rs',
-            'cli/templates/.devcontainer_deps.sh.jinja',
+            'cli/templates/.devcontainer/deps.sh.jinja',
             'cli/templates/readme.md.jinja',
           ],
       },
