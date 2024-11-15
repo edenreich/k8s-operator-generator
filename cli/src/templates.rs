@@ -151,6 +151,14 @@ pub mod operator {
     }
 
     #[derive(Template)]
+    #[template(path = "operator/cli.rs.jinja")]
+    pub struct Cli {
+        pub project_name: String,
+        pub version: String,
+        pub author: String,
+    }
+
+    #[derive(Template)]
     #[template(path = "operator/controller.rs.jinja")]
     pub struct Controller {
         pub tag: String,

@@ -3,10 +3,13 @@ use crate::templates::general::{
     CargoConfig, ClusterYaml, Dockerfile, Dockerignore, Editorconfig, EnvExample, GitAttributes,
     GitIgnore, Prettierrc, ReadmeMd, RustfmtToml, Taskfile,
 };
+use crate::templates::operator::Cli;
 use crate::templates::{
     cargo::{CargoToml, CrdgenCargoToml, OperatorCargoToml, TestsCargoToml},
+    crdgen::Main as CrdgenMain,
     devcontainer::{Deps, Json, LaunchJsonExample, SetupGit, Zshrc},
     general::OpenAPIGeneratorIgnore,
+    operator::Main as OperatorMain,
     tests::{Main as TestsMain, UtilsClient, UtilsCluster, UtilsOperator},
 };
 use crate::utils::{
@@ -14,6 +17,7 @@ use crate::utils::{
     generate_template_file, set_executable_permission,
 };
 use log::{info, warn};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
@@ -59,13 +63,20 @@ pub fn execute(path: &String) -> Result<(), AppError> {
         ".openapi-generator-ignore",
     )?;
 
+    // Create directories
     create_directory_if_not_exists(base_path.join(CARGO_DIR).as_path());
     create_directory_if_not_exists(base_path.join(DEVCONTAINER_DIR).as_path());
-
     create_directory_if_not_exists(base_path.join(K8S_OPERATOR_DIR).as_path());
     create_directory_if_not_exists(base_path.join(K8S_CRDGEN_DIR).as_path());
     create_directory_if_not_exists(base_path.join(K8S_CRDGEN_DIR).join("src").as_path());
     create_directory_if_not_exists(base_path.join(K8S_TESTS_DIR).as_path());
+    create_directory_if_not_exists(&base_path.join(K8S_OPERATOR_CONTROLLERS_DIR));
+    create_directory_if_not_exists(&base_path.join(K8S_OPERATOR_TYPES_DIR));
+    create_directory_if_not_exists(&base_path.join(K8S_TESTS_UTILS_DIR));
+    create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_CRDS_DIR).as_path());
+    create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_RBAC_DIR).as_path());
+    create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_OPERATOR_DIR).as_path());
+    create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_EXAMPLES_DIR).as_path());
 
     generate_template_file(CargoToml {}, base_path, "Cargo.toml")?;
     generate_template_file(
@@ -84,6 +95,42 @@ pub fn execute(path: &String) -> Result<(), AppError> {
         "Cargo.toml",
     )?;
 
+    // Generate main files
+    generate_template_file(
+        OperatorMain {
+            api_group: "example.com".to_string(),
+            api_version: "v1".to_string(),
+            controllers: vec![],
+            types: vec![],
+        },
+        base_path.join(K8S_OPERATOR_DIR).join("src").as_path(),
+        "main.rs",
+    )?;
+    generate_template_file(
+        CrdgenMain {
+            resources: BTreeMap::new(),
+        },
+        base_path.join(K8S_CRDGEN_DIR).join("src").as_path(),
+        "main.rs",
+    )?;
+    generate_template_file(
+        TestsMain {},
+        base_path.join(K8S_TESTS_DIR).as_path(),
+        "main.rs",
+    )?;
+
+    // Generate operator files
+    generate_template_file(
+        Cli {
+            project_name: "example".to_string(),
+            version: "0.1.0".to_string(),
+            author: "example".to_string(),
+        },
+        base_path.join(K8S_OPERATOR_DIR).join("src").as_path(),
+        "cli.rs",
+    )?;
+
+    // Generate root files
     generate_template_file(Dockerignore {}, base_path, ".dockerignore")?;
     generate_template_file(Editorconfig {}, base_path, ".editorconfig")?;
     generate_template_file(EnvExample {}, base_path, ".env.example")?;
@@ -96,6 +143,7 @@ pub fn execute(path: &String) -> Result<(), AppError> {
     generate_template_file(ClusterYaml {}, base_path, "Cluster.yaml")?;
     generate_template_file(Dockerfile {}, base_path, "Dockerfile")?;
 
+    // Generate devcontainer files
     generate_template_file(
         Json {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
@@ -128,10 +176,6 @@ pub fn execute(path: &String) -> Result<(), AppError> {
         "config.toml",
     )?;
 
-    create_directory_if_not_exists(&base_path.join(K8S_OPERATOR_CONTROLLERS_DIR));
-    create_directory_if_not_exists(&base_path.join(K8S_OPERATOR_TYPES_DIR));
-    create_directory_if_not_exists(&base_path.join(K8S_TESTS_UTILS_DIR));
-
     create_file_if_not_exists(
         base_path.join(K8S_OPERATOR_CONTROLLERS_DIR).as_path(),
         "mod.rs",
@@ -149,18 +193,6 @@ pub fn execute(path: &String) -> Result<(), AppError> {
     add_tests_util_to_modfile(base_path, "operator");
     add_tests_util_to_modfile(base_path, "cluster");
 
-    // TODO - make the tests generated dynamically based on the defined API controllers and types.
-    generate_template_file(
-        TestsMain {},
-        base_path.join(K8S_TESTS_DIR).as_path(),
-        "main.rs",
-    )?;
-
-    create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_CRDS_DIR).as_path());
-    create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_RBAC_DIR).as_path());
-    create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_OPERATOR_DIR).as_path());
-    create_directory_if_not_exists(base_path.join(K8S_MANIFESTS_EXAMPLES_DIR).as_path());
-
     set_executable_permission(base_path.join(DEVCONTAINER_DIR).join("deps.sh").as_path());
     set_executable_permission(
         base_path
@@ -168,6 +200,6 @@ pub fn execute(path: &String) -> Result<(), AppError> {
             .join("setup-git.sh")
             .as_path(),
     );
-    println!("Initialized project at {}", path.display());
+    info!("Initialized project at {}", path.display());
     Ok(())
 }

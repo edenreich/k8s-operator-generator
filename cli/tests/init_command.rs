@@ -57,10 +57,10 @@ fn init_creates_required_directories() {
     Command::cargo_bin("kopgen")
         .unwrap()
         .arg("init")
-        .arg(path)
+        .arg(path.to_str().unwrap())
         .assert()
         .success()
-        .stdout(predicate::str::contains("Initialized project at"));
+        .stderr(predicate::str::contains("Initialized project at")); // TODO - investigate why the env_logger by default all goes to stderr, it's weird.
 
     // Check the expected directories exist
     let expected_dirs = [
@@ -124,6 +124,8 @@ fn init_creates_required_files() {
         ".devcontainer/launch.json",
         ".devcontainer/.zshrc",
         ".cargo/config.toml",
+        "operator/src/main.rs",
+        "operator/src/cli.rs",
         "operator/src/controllers/mod.rs",
         "operator/src/types/mod.rs",
         "tests/src/utils/mod.rs",

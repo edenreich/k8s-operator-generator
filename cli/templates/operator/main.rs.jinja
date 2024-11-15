@@ -6,9 +6,11 @@ use kube::{
     runtime::wait::{await_condition, conditions},
     Client as KubeClient, CustomResourceExt,
 };
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use tokio::time::timeout;
 use warp::Filter;
+use clap::Parser;
+use operator::cli::{Cli, Commands};
 
 {% if controllers.len() > 0 %}
 use operator::controllers::{{"{"}}
@@ -78,60 +80,75 @@ async fn wait_for_crd(kube_client: Api<CustomResourceDefinition>, crd_name: &str
 async fn main() -> anyhow::Result<()> {
     env_logger::init();
 
-    info!("Starting operator...");
+    let cli = Cli::parse();
 
-    let kube_client = KubeClient::try_default().await?;
-    let kube_client_api: Api<CustomResourceDefinition> = Api::all(kube_client.clone());
+    debug!("Log level: {}", cli.verbosity);
 
-    if std::env::var("INSTALL_CRDS")
-        .unwrap_or_default()
-        .to_lowercase()
-        == "true"
-    {
-        info!("INSTALL_CRDS is set to true. Deploying CRDs...");
+    match cli.command {
+        Some(Commands::Run { install_crds }) => {
+            info!("Starting operator...");
+            debug!("CRD's will be installed automatically: {}", install_crds);
 
-        let crds = vec![
-            {% for type in types -%}
-            {{ type|capitalize }}::crd(),
-            {%- endfor %}
-        ];
+            let kube_client = KubeClient::try_default().await?;
+            let kube_client_api: Api<CustomResourceDefinition> = Api::all(kube_client.clone());
 
-        for crd in crds {
-            deploy_crd(kube_client_api.clone(), crd).await?;
+            if install_crds {
+                info!("Deploying CRDs...");
+
+                let crds = vec![
+                    {% for type in types -%}
+                    {{ type|capitalize }}::crd(),
+                    {%- endfor %}
+                ];
+
+                for crd in crds {
+                    deploy_crd(kube_client_api.clone(), crd).await?;
+                }
+            }
+
+            let controllers_crds = vec![
+                {% for controller in controllers -%}
+                format!("{{ controller }}.{{ api_group}}"),
+                {%- endfor %}
+            ];
+            for controller_crd in controllers_crds {
+                if let Err(e) = wait_for_crd(kube_client_api.clone(), &controller_crd).await {
+                    error!("Error waiting for CRD {}: {}", &controller_crd, e);
+                }
+            }
+
+            {% for controller in controllers %}
+            // Start the {{ controller }} controller for the {{ controller }}.{{ api_group }}/{{ api_version }} API group
+            let {{ controller }}_client = Api::namespaced(kube_client.clone(), "default");
+            tokio::spawn(async {
+                let _{{ controller }}_controller = {{ controller }}::handle({{ controller }}_client).await;
+            });
+            {% endfor %}
+
+
+            tokio::spawn(async {
+                let liveness_route = warp::path!("healthz")
+                    .map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));
+
+                let readiness_route = warp::path!("readyz")
+                    .map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));
+
+                let health_routes = liveness_route.or(readiness_route);
+
+                warp::serve(health_routes).run(([0, 0, 0, 0], 8000)).await;
+            });
+        }
+        Some(Commands::Version) => {
+            println!("Operator version: {}", env!("CARGO_PKG_VERSION"));
+            return Ok(());
+        }
+        None => {
+            error!("No command provided. Use --help for more information.");
+            return Err(anyhow::anyhow!(
+                "No command provided. Use --help for more information."
+            ));
         }
     }
-
-    let controllers_crds = vec![
-        {% for controller in controllers -%}
-        format!("{{ controller }}.{{ api_group}}"),
-        {%- endfor %}
-    ];
-    for controller_crd in controllers_crds {
-        if let Err(e) = wait_for_crd(kube_client_api.clone(), &controller_crd).await {
-            error!("Error waiting for CRD {}: {}", &controller_crd, e);
-        }
-    }
-
-    {% for controller in controllers %}
-    // Start the {{ controller }} controller for the {{ controller }}.{{ api_group }}/{{ api_version }} API group
-    let {{ controller }}_client = Api::namespaced(kube_client.clone(), "default");
-    tokio::spawn(async {
-        let _{{ controller }}_controller = {{ controller }}::handle({{ controller }}_client).await;
-    });
-    {% endfor %}
-
-
-    tokio::spawn(async {
-        let liveness_route = warp::path!("healthz")
-            .map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));
-
-        let readiness_route = warp::path!("readyz")
-            .map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));
-
-        let health_routes = liveness_route.or(readiness_route);
-
-        warp::serve(health_routes).run(([0, 0, 0, 0], 8000)).await;
-    });
 
     tokio::signal::ctrl_c()
         .await

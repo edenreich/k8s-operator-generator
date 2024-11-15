@@ -20,4 +20,4 @@ FROM gcr.io/distroless/static:nonroot
 ARG TARGET_ARCH
 COPY --from=build /app/operator/target/${TARGET_ARCH}/release/operator /operator
 USER nonroot:nonroot
-ENTRYPOINT [ "/operator" ]
+ENTRYPOINT [ "/operator", "run", "--install-crds" ]
