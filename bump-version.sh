@@ -21,5 +21,5 @@ sed -i "s/version = \"v[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}\(-rc\.[1-9]\{1,1
 sed -i "s/v[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}\(-rc\.[0-9]\{1,1\}\)\?/v${VERSION}/g" README.md
 
 # Bump jinja templates version
-sed -i "s/\/releases\/download\/v[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}\(-rc\.[0-9]\{1,1\}\)\?/\/releases\/download\/v${VERSION}/g" cli/templates/.devcontainer_deps.sh.jinja
+sed -i "s/\/releases\/download\/v[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}\(-rc\.[0-9]\{1,1\}\)\?/\/releases\/download\/v${VERSION}/g" cli/templates/.devcontainer/deps.sh.jinja
 sed -i "s/\/releases\/download\/v[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}\(-rc\.[0-9]\{1,1\}\)\?/\/releases\/download\/v${VERSION}/g" cli/templates/readme.md.jinja
