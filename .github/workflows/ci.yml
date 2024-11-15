@@ -85,7 +85,6 @@ jobs:
 
       - name: Build
         run: |
-          echo $PATH
           RELEASE=true TARGET_ARCH=${{ matrix.target }} task build
 
   test:
