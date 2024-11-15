@@ -1,3 +1,14 @@
+## [1.7.1](https://github.com/edenreich/kopgen/compare/v1.7.0...v1.7.1) (2024-11-15)
+
+### Bug Fixes
+
+* Update PATH in zshrc template to include cross-compilation toolchains ([fb20f50](https://github.com/edenreich/kopgen/commit/fb20f50202151103870e86c39a3bd4f3df45ff3a))
+
+### Miscellaneous
+
+* Add explicit mapping for conventional commits ([b8b161d](https://github.com/edenreich/kopgen/commit/b8b161d0bb077b32acf56c9b785e66e8c5e0265e))
+* Update changelog ([5d305b1](https://github.com/edenreich/kopgen/commit/5d305b18f4983cc9fe18f131999cc8d2a1d705a4))
+
 # [1.7.0](https://github.com/edenreich/kopgen/compare/v1.6.0...v1.7.0) (2024-11-15)
 
 
