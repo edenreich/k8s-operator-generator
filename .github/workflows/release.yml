@@ -31,10 +31,26 @@ jobs:
         with:
           version: 3.x
 
-      - name: Add the linker for aarch64-linux-gnu-gcc
+      - name: Add tools for cross-compiling
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+          sudo apt-get install -y --no-install-recommends \
+          pkg-config \
+          musl-tools
+          rustup target add \
+              aarch64-unknown-linux-musl \
+              x86_64-unknown-linux-musl
+          cd && \
+              wget https://musl.cc/aarch64-linux-musl-cross.tgz && \
+              tar -xzf aarch64-linux-musl-cross.tgz && \
+              sudo mv aarch64-linux-musl-cross /opt/ && \
+              rm -rf aarch64-linux-musl-cross.tgz
+          cd && \
+              wget https://musl.cc/x86_64-linux-musl-cross.tgz && \
+              tar -xzf x86_64-linux-musl-cross.tgz && \
+              sudo mv x86_64-linux-musl-cross /opt/ &&
+              rm -rf x86_64-linux-musl-cross.tgz
+          echo "PATH=/opt/aarch64-linux-musl-cross/bin:/opt/x86_64-linux-musl-cross/bin:$PATH" >> $GITHUB_ENV
 
       - name: Build the CLI
         run: |
