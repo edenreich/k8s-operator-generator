@@ -1,3 +1,14 @@
+## [1.8.0](https://github.com/edenreich/kopgen/compare/v1.7.1...v1.8.0) (2024-11-16)
+
+### Features
+
+* Add shell installation script ([#17](https://github.com/edenreich/kopgen/issues/17)) ([eab552e](https://github.com/edenreich/kopgen/commit/eab552e994fcc2630608e3955b4bd266657d52a8))
+
+### Documentation
+
+* **fix:** Update installation script URL in README to use raw content ([ba41961](https://github.com/edenreich/kopgen/commit/ba41961f60c273c167f778f478b9398ba182cfb7))
+* **fix:** Update references from "Kubernetes Operator Codegen" to "Kubernetes Operator Generator (kopgen)" in CLI and configuration files ([7ae907a](https://github.com/edenreich/kopgen/commit/7ae907a900057bfe0333fa723ddae908d6dcf780))
+
 ## [1.7.1](https://github.com/edenreich/kopgen/compare/v1.7.0...v1.7.1) (2024-11-15)
 
 ### Bug Fixes
