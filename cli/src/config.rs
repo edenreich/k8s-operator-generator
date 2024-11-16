@@ -1,7 +1,7 @@
 use dotenv::dotenv;
 use std::env;
 
-/// Configuration for the Kubernetes Operator Codegen tool.
+/// Configuration for the Kubernetes Operator Generator tool.
 ///
 /// This struct holds the configuration values required for the tool, which are
 /// typically loaded from environment variables.

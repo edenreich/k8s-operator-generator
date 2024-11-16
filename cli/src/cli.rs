@@ -1,11 +1,11 @@
 use clap::{Parser, Subcommand};
 
-/// Command-line interface for the Kubernetes Operator Codegen tool.
+/// Command-line interface for the Kubernetes Operator Generator tool.
 ///
 /// This struct defines the CLI structure and available commands for the tool.
 #[derive(Parser)]
 #[command(
-    name = "Kubernetes Operator Codegen",
+    name = "Kubernetes Operator Generator (kopgen)",
     version = "v1.7.1",
     author = "Eden Reich <eden.reich@gmail.com>",
     arg_required_else_help = true
@@ -16,7 +16,7 @@ pub struct Cli {
     pub command: Option<Commands>,
 }
 
-/// Available commands for the Kubernetes Operator Codegen tool.
+/// Available commands for the Kubernetes Operator Generator tool.
 #[derive(Subcommand)]
 pub enum Commands {
     /// Initialize a new operator project.
