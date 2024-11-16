@@ -42,16 +42,8 @@ Before you proceed, ensure that [Docker](https://docs.docker.com/engine/install/
 
 Download and install the latest `kopgen CLI` [for ARM64](https://github.com/edenreich/kopgen/releases/download/latest/kopgen_aarch64-unknown-linux-musl) or [for x86_64 Intel](https://github.com/edenreich/kopgen/releases/download/v1.7.1/kopgen_x86_64-unknown-linux-musl).
 
-```bash
-# For Mac users with ARM CPU
-curl -sSL https://github.com/edenreich/kopgen/releases/download/latest/kopgen_aarch64-unknown-linux-musl -o kopgen
-chmod +x kopgen
-mv kopgen /usr/local/bin/
-
-# For all the other users running on intel
-curl -sSL https://github.com/edenreich/kopgen/releases/download/latest/kopgen_x86_64-unknown-linux-musl -o kopgen
-chmod +x kopgen
-mv kopgen /usr/local/bin/
+```sh
+curl -sSL https://github.com/edenreich/kopgen/blob/main/install.sh | sh
 ```
 
 Start a new project in an empty folder:
