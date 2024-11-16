@@ -60,13 +60,13 @@ A Dev Container is essentially an encapsulate environment with all the necessary
 
 To get started, follow these steps:
 
-1. Make sure you have Docker and VSCode installed
-2. Run: `kopgen init <directory>`
-3. Open the directory in vscode: `code <directory>`
-4. You supposed to be prompted to open DevContainer, click on "Reopen in Container"
-5. Configure: `cp .env.example .env`
-6. Generate the operator including all of its dependencies, run: `task generate`
-7. Run the operator: `task run`
+1. Make sure you have Docker and VSCode installed.
+2. Run: `kopgen init <directory>`.
+3. Open the directory in vscode: `code <directory>`.
+4. You supposed to be prompted to open DevContainer, click on "Reopen in Container".
+5. Configure: `cp .env.example .env`.
+6. Generate the operator including all of its dependencies, run: `task generate`.
+7. Run the operator: `task run`.
 
 ## Need Help?
 
