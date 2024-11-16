@@ -40,18 +40,10 @@ task docs
 
 Before you proceed, ensure that [Docker](https://docs.docker.com/engine/install/) is installed on your system.
 
-Download and install the latest `kopgen CLI` [for ARM64](https://github.com/edenreich/kopgen/releases/download/latest/kopgen_aarch64-unknown-linux-musl) or [for x86_64 Intel](https://github.com/edenreich/kopgen/releases/download/v1.7.1/kopgen_x86_64-unknown-linux-musl).
+Download and install the latest kopgen CLI:
 
-```bash
-# For Mac users with ARM CPU
-curl -sSL https://github.com/edenreich/kopgen/releases/download/latest/kopgen_aarch64-unknown-linux-musl -o kopgen
-chmod +x kopgen
-mv kopgen /usr/local/bin/
-
-# For all the other users running on intel
-curl -sSL https://github.com/edenreich/kopgen/releases/download/latest/kopgen_x86_64-unknown-linux-musl -o kopgen
-chmod +x kopgen
-mv kopgen /usr/local/bin/
+```sh
+curl -sSL https://github.com/edenreich/kopgen/blob/main/install.sh | sh
 ```
 
 Start a new project in an empty folder:
@@ -68,12 +60,13 @@ A Dev Container is essentially an encapsulate environment with all the necessary
 
 To get started, follow these steps:
 
-1. **Configure**: Run `cp .env.example .env` to let the Taskfile know what environment variables you would like to use - you can keep it as is, because it's by default set to local environment.
-2. **Generate the code**: Use `task generate` to create the necessary types and controllers.
-3. **Create a development cluster**: Use `task cluster-create` to set up your local Kubernetes cluster.
-4. **Deploy the CRDs (or set INSTALL_CRDS environment variable to true)**: Run `task deploy-crds` to deploy the Custom Resource Definitions to your cluster.
-5. **Run the operator**: Start your operator with `task run`.
-6. **Test it out**: Apply the example manifests with `kubectl apply -f manifests/examples/` and see your operator in action!
+1. Make sure you have Docker and VSCode installed.
+2. Run: `kopgen init <directory>`.
+3. Open the directory in vscode: `code <directory>`.
+4. You supposed to be prompted to open DevContainer, click on "Reopen in Container".
+5. Configure: `cp .env.example .env`.
+6. Generate the operator including all of its dependencies, run: `task generate`.
+7. Run the operator: `task run`.
 
 ## Need Help?
 
