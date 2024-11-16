@@ -43,7 +43,7 @@ Before you proceed, ensure that [Docker](https://docs.docker.com/engine/install/
 Download and install the latest kopgen CLI:
 
 ```sh
-curl -sSL https://github.com/edenreich/kopgen/blob/main/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/edenreich/kopgen/refs/heads/main/install.sh | sh
 ```
 
 Start a new project in an empty folder:
