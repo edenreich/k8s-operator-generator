@@ -119,10 +119,12 @@ pub fn execute(path: &String) -> Result<(), AppError> {
         "main.rs",
     )?;
 
+    let project_name: String = "Example Operator Project".to_string();
+
     // Generate operator files
     generate_template_file(
         Cli {
-            project_name: "example".to_string(),
+            project_name: project_name.clone(),
             version: "0.1.0".to_string(),
             author: "example".to_string(),
         },
@@ -137,11 +139,11 @@ pub fn execute(path: &String) -> Result<(), AppError> {
     generate_template_file(GitAttributes {}, base_path, ".gitattributes")?;
     generate_template_file(GitIgnore {}, base_path, ".gitignore")?;
     generate_template_file(Taskfile {}, base_path, "Taskfile.yml")?;
-    generate_template_file(ReadmeMd {}, base_path, "README.md")?;
     generate_template_file(Prettierrc {}, base_path, ".prettierrc.yaml")?;
     generate_template_file(RustfmtToml {}, base_path, ".rustfmt.toml")?;
     generate_template_file(ClusterYaml {}, base_path, "Cluster.yaml")?;
     generate_template_file(Dockerfile {}, base_path, "Dockerfile")?;
+    generate_template_file(ReadmeMd { project_name }, base_path, "README.md")?;
 
     // Generate devcontainer files
     generate_template_file(

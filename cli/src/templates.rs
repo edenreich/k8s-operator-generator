@@ -2,6 +2,16 @@ use askama::Template;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+mod filters {
+    pub fn dashcase<T: std::fmt::Display>(s: T) -> ::askama::Result<String> {
+        Ok(s.to_string()
+            .split_whitespace()
+            .collect::<Vec<&str>>()
+            .join("-")
+            .to_lowercase())
+    }
+}
+
 // Common Identifiers and Structs
 pub struct RoleTemplateIdentifiers {
     pub api_group: String,
@@ -293,7 +303,9 @@ pub mod general {
 
     #[derive(Template)]
     #[template(path = "readme.md.jinja")]
-    pub struct ReadmeMd {}
+    pub struct ReadmeMd {
+        pub project_name: String,
+    }
 
     #[derive(Template)]
     #[template(path = "taskfile.yml.jinja")]
