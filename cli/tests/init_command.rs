@@ -2,6 +2,7 @@
 /// Tests for the `init` command of the `kopgen` CLI.
 mod tests {
     use assert_cmd::Command;
+    use kopgen::errors::AppError;
     use predicates::prelude::*;
     use serial_test::serial;
     use std::{env, fs};
@@ -35,7 +36,7 @@ mod tests {
     /// Tests that the `init` command creates all required directories.
     #[test]
     #[serial]
-    fn init_creates_required_directories() {
+    fn init_creates_required_directories() -> Result<(), AppError> {
         setup_env();
 
         let temp_dir = tempdir().unwrap();
@@ -70,12 +71,13 @@ mod tests {
         for dir in &expected_dirs {
             assert!(path.join(dir).exists(), "Directory {} was not created", dir);
         }
+        Ok(())
     }
 
     /// Tests that the `init` command creates all required files.
     #[test]
     #[serial]
-    fn init_creates_required_files() {
+    fn init_creates_required_files() -> Result<(), AppError> {
         setup_env();
 
         let temp_dir = tempdir().unwrap();
@@ -134,12 +136,13 @@ mod tests {
         }
 
         clear_env();
+        Ok(())
     }
 
     /// Tests that the `init` command skips initialization if the directory already exists and is not empty.
     #[test]
     #[serial]
-    fn init_skips_existing_directory() {
+    fn init_skips_existing_directory() -> Result<(), AppError> {
         setup_env();
 
         let temp_dir = tempdir().unwrap();
@@ -166,5 +169,6 @@ mod tests {
         assert_eq!(fs::read_dir(path).unwrap().count(), 1);
 
         clear_env();
+        Ok(())
     }
 }
