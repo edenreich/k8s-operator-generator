@@ -1,5 +1,4 @@
 use kopgen::errors::AppError;
-use serde_yaml::Error;
 use serde_yaml::Value as YamlValue;
 use std::fs::File;
 use std::io::Write;
