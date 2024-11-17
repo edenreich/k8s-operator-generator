@@ -1,7 +1,7 @@
 mod utils;
 
 #[cfg(test)]
-/// Tests for the `generate` command of the `kopgen` CLI.
+/// Tests for the [`kopgen::commands::generate`](cli/src/commands/generate_command.rs) of the `kopgen` CLI.
 mod tests {
     use super::*;
     use kopgen::{
@@ -9,14 +9,19 @@ mod tests {
         errors::AppError,
         utils::read_openapi_spec,
     };
-    use openapiv3::{OpenAPI, Schema};
+    use openapiv3::Schema;
     use std::{collections::HashMap, fs};
     use tempfile::tempdir;
     use utils::create_temp_file;
 
+    /// Helper function to set common parameters for `execute`.
+    fn default_params() -> (bool, bool, bool, bool, bool) {
+        (true, false, false, false, false)
+    }
+
     /// Tests that `execute` fails when the Kubernetes extension is missing from the OpenAPI spec.
     #[test]
-    fn test_execute_fails_because_of_missing_kubernetes_extension() -> Result<(), AppError> {
+    fn test_execute_fails_missing_kubernetes_extension() -> Result<(), AppError> {
         let openapi_yaml = r#"---
 openapi: 3.0.0
 info:
@@ -28,15 +33,16 @@ components:
 "#;
 
         let (dir, openapi_file) = create_temp_file("openapi.yaml", openapi_yaml);
+        let (all, lib, manifests, controllers, types) = default_params();
 
         let result = execute(
             &dir.path().to_string_lossy().to_string(),
             &openapi_file,
-            &false,
-            &false,
-            &false,
-            &false,
-            &false,
+            &all,
+            &lib,
+            &manifests,
+            &controllers,
+            &types,
         );
 
         assert!(
@@ -44,21 +50,13 @@ components:
             "Expected execution to fail due to missing Kubernetes extension."
         );
 
-        match result {
-            Err(AppError::MissingRequiredExtension(ref key)) => {
-                assert_eq!(
-                    key, "x-kubernetes-operator-group",
-                    "Expected missing extension key to be 'x-kubernetes-operator-group'."
-                );
-            }
-            Err(e) => {
-                panic!("Expected MissingRequiredExtension error, but got: {:?}", e);
-            }
-            Ok(_) => {
-                panic!(
-                "Expected execution to fail due to missing Kubernetes extension, but it succeeded."
+        if let Err(AppError::MissingRequiredExtension(ref key)) = result {
+            assert_eq!(
+                key, "x-kubernetes-operator-group",
+                "Expected missing extension key to be 'x-kubernetes-operator-group'."
             );
-            }
+        } else {
+            panic!("Expected MissingRequiredExtension error.");
         }
 
         Ok(())
@@ -67,16 +65,10 @@ components:
     /// Tests that `execute` returns an error when the OpenAPI file is missing.
     #[test]
     fn test_execute_missing_openapi_file() -> Result<(), AppError> {
-        let dir = tempdir().unwrap();
+        let dir = tempdir()?;
         let openapi_file = dir.path().join("missing_openapi.yaml");
 
-        // Never actually creating the file
-
-        let all = true;
-        let lib = false;
-        let manifests = false;
-        let controllers = false;
-        let types = false;
+        let (all, lib, manifests, controllers, types) = default_params();
 
         let result = execute(
             &dir.path().to_string_lossy().to_string(),
@@ -88,7 +80,10 @@ components:
             &types,
         );
 
-        assert!(result.is_err());
+        assert!(
+            result.is_err(),
+            "Expected error due to missing OpenAPI file."
+        );
 
         Ok(())
     }
@@ -100,12 +95,7 @@ components:
 invalid_yaml: [unclosed_list
 "#;
         let (dir, openapi_file) = create_temp_file("invalid_openapi.yaml", openapi_yaml);
-
-        let all = true;
-        let lib = false;
-        let manifests = false;
-        let controllers = false;
-        let types = false;
+        let (all, lib, manifests, controllers, types) = default_params();
 
         let result = execute(
             &dir.path().to_string_lossy().to_string(),
@@ -117,14 +107,17 @@ invalid_yaml: [unclosed_list
             &types,
         );
 
-        assert!(result.is_err());
+        assert!(
+            result.is_err(),
+            "Expected execution to fail due to invalid OpenAPI spec."
+        );
 
         Ok(())
     }
 
     /// Tests that `generate_types` successfully generates type files from a valid OpenAPI spec.
     #[test]
-    fn test_generate_types() -> Result<(), AppError> {
+    fn test_generate_types_success() -> Result<(), AppError> {
         let openapi_yaml = r#"
 openapi: 3.0.0
 info:
@@ -153,11 +146,10 @@ components:
 "#;
 
         let (dir, openapi_file_path) = create_temp_file("openapi.yaml", openapi_yaml);
-        let output_path: std::path::PathBuf = dir.path().join("src").join("types");
-        fs::create_dir_all(&output_path).unwrap();
+        let output_path = dir.path().join("src").join("types");
+        fs::create_dir_all(&output_path)?;
 
-        let openapi: OpenAPI = read_openapi_spec(openapi_file_path.as_str())?;
-
+        let openapi = read_openapi_spec(openapi_file_path.as_str())?;
         let schemas: HashMap<String, Schema> = openapi
             .components
             .ok_or_else(|| AppError::Other("No components found in OpenAPI spec".to_string()))?
@@ -174,21 +166,17 @@ components:
             .to_str()
             .expect("Failed to convert output path to string");
 
-        let result = generate_types(types_directory, &schemas, &operator_resource_ref);
-
-        assert!(result.is_ok());
+        generate_types(types_directory, &schemas, &operator_resource_ref)?;
 
         let type_file = output_path.join("user.rs");
-
-        assert!(type_file.exists(), "Type file was not created");
+        assert!(type_file.exists(), "Type file was not created.");
 
         let generated_content = fs::read_to_string(&type_file)?;
         assert!(
             generated_content.contains("struct User"),
-            "Generated content does not contain expected struct"
+            "Generated content does not contain expected struct."
         );
 
-        dir.close()?;
         Ok(())
     }
 }
