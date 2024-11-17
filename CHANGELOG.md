@@ -1,3 +1,38 @@
+## [1.9.0](https://github.com/edenreich/kopgen/compare/v1.8.0...v1.9.0) (2024-11-17)
+
+### Features
+
+* **ci:** Add linting job to CI workflow and define lint task in Taskfile ([a7017b3](https://github.com/edenreich/kopgen/commit/a7017b3eee81626bc5d911979ffa6350a9d83247))
+* **refactor:** Relying now on the CLI to pass the default values if not specified by the user via flags or environment variables ([fe887ab](https://github.com/edenreich/kopgen/commit/fe887ab9772eac924d6381b157edf8b2f7c1d913))
+
+### Improvements
+
+* Add 'markdown-all-in-one' extension to devcontainer configuration ([dcfd7af](https://github.com/edenreich/kopgen/commit/dcfd7af97feaaadc67f00ac4217b006ede112244))
+* **cli:** Change log level for configuration output from info to debug ([b9e6075](https://github.com/edenreich/kopgen/commit/b9e60756274d499859df482f6d798f91e1fc146d))
+* **cli:** Use operator_name from config for project name in init command ([4396029](https://github.com/edenreich/kopgen/commit/43960294919289bfcfcd6b53fffab1a872447449))
+* **tests:** Add serial execution to generate command tests for improved reliability ([5a6022b](https://github.com/edenreich/kopgen/commit/5a6022b2573d7c863ff8148e6737c5cbc7f2b35e))
+* **tests:** Enhance test descriptions and simplify parameter handling in generate command tests ([b808225](https://github.com/edenreich/kopgen/commit/b808225b66de18ecfed94b14170d9bce0d46830f))
+* **tests:** Remove unused import of `serde_yaml::Error` in utils module ([690eaa7](https://github.com/edenreich/kopgen/commit/690eaa7ea20899b183540ba7ee3a1dcc94161eec))
+* **tests:** Set and clear RUST_LOG environment variable in init command tests ([6def5b3](https://github.com/edenreich/kopgen/commit/6def5b3d0a3cff9835fb8eeba224dfb203efd623))
+* **tests:** Simplify `init` command tests by extracting common assertions into helper functions ([3a60952](https://github.com/edenreich/kopgen/commit/3a6095202963a74d45bd67bf20cf924b6fd33b8e))
+* **tests:** Simplify environment variable setup for Kubernetes operator tests ([fa0547c](https://github.com/edenreich/kopgen/commit/fa0547c2a960f7af742040c73605e2829f9c1fef))
+* **tests:** Update `init` command tests to return Result and handle AppError ([3f7b856](https://github.com/edenreich/kopgen/commit/3f7b8562d13ee19c68190a082b61be34c82b628f))
+* **tests:** Update CLI config tests to return Result and improve error handling ([90ae6ab](https://github.com/edenreich/kopgen/commit/90ae6ab51120c518770d2f146596951d42e0b633))
+* **tests:** Update read_temp_file to use ? operator for error handling ([a7c8ea1](https://github.com/edenreich/kopgen/commit/a7c8ea15ac3a21786e251ee90b35f5ba80ef4500))
+
+### Bug Fixes
+
+* Generated project devcontainer - update kopgen CLI installation method to use raw content script ([b3d0ddf](https://github.com/edenreich/kopgen/commit/b3d0ddf05333ee0329c3eae946ca7440867d609a))
+
+### Documentation
+
+* Update README template to include project name ([3a0232b](https://github.com/edenreich/kopgen/commit/3a0232b7f1b6ee0d4f3f6e9696a6bd413caa431d))
+
+### Miscellaneous
+
+* Add descriptive comments for CLI command tests in the `kopgen` module ([25d6a71](https://github.com/edenreich/kopgen/commit/25d6a71bb518aa3edc83f4c3dcad06d43874994b))
+* Refactor tests, ecapsulate them into their own module ([7d03d8c](https://github.com/edenreich/kopgen/commit/7d03d8c13be7c6f71c84d8fe36da228a93a53a6c))
+
 ## [1.8.0](https://github.com/edenreich/kopgen/compare/v1.7.1...v1.8.0) (2024-11-16)
 
 ### Features
