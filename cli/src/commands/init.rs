@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::errors::AppError;
 use crate::templates::general::{
     CargoConfig, ClusterYaml, Dockerfile, Dockerignore, Editorconfig, EnvExample, GitAttributes,
@@ -46,9 +47,8 @@ const K8S_MANIFESTS_EXAMPLES_DIR: &str = "manifests/examples";
 /// # Returns
 ///
 /// This function returns a `Result` indicating the success or failure of the operation.
-pub fn execute(path: &String) -> Result<(), AppError> {
+pub fn execute(conf: Config, path: &String) -> Result<(), AppError> {
     info!("Initializing directory structure in {}...", path);
-    let path = Path::new(&path);
     let base_path = Path::new(path);
     if base_path.exists() && fs::read_dir(base_path)?.next().is_some() {
         warn!("Directory already exists and is not empty. Skipping initialization...");
@@ -98,8 +98,8 @@ pub fn execute(path: &String) -> Result<(), AppError> {
     // Generate main files
     generate_template_file(
         OperatorMain {
-            api_group: "example.com".to_string(),
-            api_version: "v1".to_string(),
+            api_group: conf.api_group,
+            api_version: conf.api_version,
             controllers: vec![],
             types: vec![],
         },
@@ -124,9 +124,9 @@ pub fn execute(path: &String) -> Result<(), AppError> {
     // Generate operator files
     generate_template_file(
         Cli {
-            project_name: project_name.clone(),
+            project_name: conf.operator_name,
             version: "0.1.0".to_string(),
-            author: "example".to_string(),
+            author: conf.operator_author,
         },
         base_path.join(K8S_OPERATOR_DIR).join("src").as_path(),
         "cli.rs",
@@ -202,6 +202,6 @@ pub fn execute(path: &String) -> Result<(), AppError> {
             .join("setup-git.sh")
             .as_path(),
     );
-    info!("Initialized project at {}", path.display());
+    info!("Initialized project at {}", base_path.display());
     Ok(())
 }

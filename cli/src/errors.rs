@@ -4,8 +4,11 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum AppError {
-    #[error("Failed to load environment variables")]
-    ConfigError(#[from] std::env::VarError),
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
+
+    #[error("Command error: {0}")]
+    CommandError(String),
 
     #[error("Missing required extension: {0}")]
     MissingRequiredExtension(String),

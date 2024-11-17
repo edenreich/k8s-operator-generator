@@ -14,6 +14,85 @@ pub struct Cli {
     /// The command to execute.
     #[command(subcommand)]
     pub command: Option<Commands>,
+
+    /// The name of the kubernetes operator.
+    /// Example: Cats Operator
+    /// Default: Example Operator
+    #[arg(
+        long,
+        env = "KUBERNETES_OPERATOR_NAME",
+        help = "The name of the kubernetes operator",
+        default_value = "Example Operator"
+    )]
+    pub kubernetes_operator_name: String,
+
+    /// The author of the kubernetes operator.
+    /// Example: John Doe
+    /// Default: Unknown
+    #[arg(
+        long,
+        env = "KUBERNETES_OPERATOR_AUTHOR",
+        help = "The author of the kubernetes operator",
+        default_value = "Unknown"
+    )]
+    pub kubernetes_operator_author: String,
+
+    /// The API group of the kubernetes operator.
+    /// Example: cats.example.com
+    /// Default: example.com
+    #[arg(
+        long,
+        env = "KUBERNETES_OPERATOR_API_GROUP",
+        default_value = "example.com",
+        help = "The API group of the kubernetes operator"
+    )]
+    pub kubernetes_operator_api_group: String,
+
+    /// The API version of the operator.
+    /// Example: v1alpha1
+    /// Default: v1
+    #[arg(
+        long,
+        env = "KUBERNETES_OPERATOR_API_VERSION",
+        default_value = "v1",
+        help = "The API version of the kubernetes operator"
+    )]
+    pub kubernetes_operator_api_version: String,
+
+    /// The resource reference of the operator.
+    /// Example: uuid
+    /// Default: uuid
+    #[arg(
+        long,
+        env = "KUBERNETES_OPERATOR_RESOURCE_REF",
+        default_value = "uuid",
+        help = "The resource reference the operator will use to track resources"
+    )]
+    pub kubernetes_operator_resource_ref: String,
+
+    /// The example metadata spec field reference.
+    /// Example: name
+    /// Default: name
+    /// This is the field in the example of OAS that will be used as the resource metadata name.
+    #[arg(
+        long,
+        env = "KUBERNETES_OPERATOR_EXAMPLE_METADATA_SPEC_FIELD_REF",
+        default_value = "name",
+        help = "The example metadata spec field reference"
+    )]
+    pub kubernetes_operator_example_metadata_spec_field_ref: String,
+
+    /// The tags to include in the operator.
+    /// Example: cats, dogs, birds
+    /// Default: ""
+    /// This is a comma-separated list of tags to include in the operator code generation.
+    #[arg(
+        long,
+        env = "KUBERNETES_OPERATOR_INCLUDE_TAGS",
+        default_value = "",
+        help = "The tags to include in the operator"
+    )]
+    pub kubernetes_operator_include_tags: Vec<String>,
 }
 
 /// Available commands for the Kubernetes Operator Generator tool.
@@ -26,6 +105,7 @@ pub enum Commands {
     #[command(about = "Initialize a new operator project")]
     Init {
         /// Path to initialize the project.
+        /// Example: /path/to/project
         #[arg(required = true, help = "Path to initialize the project")]
         path: String,
     },
