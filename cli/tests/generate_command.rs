@@ -62,43 +62,6 @@ components:
         Ok(())
     }
 
-    /// This test need to be fixed.
-
-    // #[test]
-    // fn test_execute_success() -> Result<(), AppError> {
-    //     let openapi_yaml = r#"---
-    // openapi: 3.0.0
-    // info:
-    //   title: Test API
-    //   version: 1.0.0
-    //   x-kubernetes-operator-group: testgroup
-    //   x-kubernetes-operator-version: v1
-    //   x-kubernetes-operator-resource-ref: uuid
-    //   x-kubernetes-operator-status-ref: status
-    //   x-kubernetes-operator-include-tags:
-    //     - test
-    //     - example
-    //   x-kubernetes-operator-example-metadata-spec-field-ref: metadata
-    // paths: {}
-    // components:
-    //   schemas: {}
-    // "#;
-    //     let (_dir, openapi_file) = create_temp_file("openapi.yaml", openapi_yaml);
-
-    //     let all = true;
-    //     let lib = false;
-    //     let manifests = false;
-    //     let controllers = false;
-    //     let types = false;
-
-    //     // TODO - pass to this function a base directory to write the generated files and use relative paths
-    //     let result = execute(&openapi_file, &all, &lib, &manifests, &controllers, &types)?;
-
-    //     // assert!(result.is_ok());
-
-    //     Ok(())
-    // }
-
     #[test]
     fn test_execute_missing_openapi_file() -> Result<(), AppError> {
         let dir = tempdir().unwrap();
