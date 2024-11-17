@@ -1,5 +1,5 @@
 #[cfg(test)]
-/// Tests for the `init` command of the `kopgen` CLI.
+/// Tests for the [`kopgen::commands::init`](cli/src/commands/init_command.rs) of the `kopgen` CLI.
 mod tests {
     use assert_cmd::Command;
     use kopgen::errors::AppError;
@@ -33,6 +33,36 @@ mod tests {
         env::remove_var("KUBERNETES_OPERATOR_EXAMPLE_METADATA_SPEC_FIELD_REF");
     }
 
+    /// Runs the `init` command and asserts success.
+    fn run_init_command(path: &str) {
+        Command::cargo_bin("kopgen")
+            .unwrap()
+            .arg("init")
+            .arg(path)
+            .assert()
+            .success()
+            .stderr(predicate::str::contains("Initialized project at"));
+    }
+
+    /// Checks if the specified directories exist.
+    fn assert_directories_exist(path: &std::path::Path, dirs: &[&str]) {
+        for dir in dirs {
+            assert!(path.join(dir).exists(), "Directory {} was not created", dir);
+        }
+    }
+
+    /// Checks if the specified files exist.
+    fn assert_files_exist(path: &std::path::Path, files: &[&str]) {
+        for file in files {
+            let file_path = path.join(file);
+            assert!(
+                file_path.exists(),
+                "File {} was not created",
+                file_path.display()
+            );
+        }
+    }
+
     /// Tests that the `init` command creates all required directories.
     #[test]
     #[serial]
@@ -42,16 +72,8 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let path = temp_dir.path();
 
-        // Run the `init` command using the CLI
-        Command::cargo_bin("kopgen")
-            .unwrap()
-            .arg("init")
-            .arg(path.to_str().unwrap())
-            .assert()
-            .success()
-            .stderr(predicate::str::contains("Initialized project at")); // TODO - investigate why the env_logger by default all goes to stderr, it's weird.
+        run_init_command(path.to_str().unwrap());
 
-        // Check the expected directories exist
         let expected_dirs = [
             ".cargo",
             ".devcontainer",
@@ -68,9 +90,7 @@ mod tests {
             "manifests/examples",
         ];
 
-        for dir in &expected_dirs {
-            assert!(path.join(dir).exists(), "Directory {} was not created", dir);
-        }
+        assert_directories_exist(path, &expected_dirs);
         Ok(())
     }
 
@@ -83,15 +103,8 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let path = temp_dir.path();
 
-        // Run the `init` command
-        Command::cargo_bin("kopgen")
-            .unwrap()
-            .arg("init")
-            .arg(path)
-            .assert()
-            .success();
+        run_init_command(path.to_str().unwrap());
 
-        // Check the expected files exist
         let expected_files = [
             ".openapi-generator-ignore",
             "Cargo.toml",
@@ -126,14 +139,7 @@ mod tests {
             "tests/main.rs",
         ];
 
-        for file in expected_files {
-            let file_path = path.join(file);
-            assert!(
-                file_path.exists(),
-                "File {} was not created",
-                file_path.display()
-            );
-        }
+        assert_files_exist(path, &expected_files);
 
         clear_env();
         Ok(())
