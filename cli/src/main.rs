@@ -11,7 +11,7 @@ use crate::{
     errors::AppError,
 };
 use clap::Parser;
-use log::info;
+use log::{debug, info};
 
 fn main() -> Result<(), AppError> {
     dotenv::dotenv().ok();
@@ -20,7 +20,7 @@ fn main() -> Result<(), AppError> {
     let cli = Cli::parse();
     let conf = Config::load_from_cli(&cli)?;
 
-    println!("{:?}", conf);
+    debug!("{:?}", conf);
 
     match &cli.command {
         Some(Commands::Init { path }) => {
