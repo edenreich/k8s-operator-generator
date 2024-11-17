@@ -10,6 +10,7 @@ mod tests {
 
     /// Sets up the necessary environment variables for testing.
     fn setup_env() {
+        env::set_var("RUST_LOG", "info");
         env::set_var("KUBERNETES_OPERATOR_NAME", "Custom Operator Name");
         env::set_var("KUBERNETES_OPERATOR_AUTHOR", "Custom Author");
         env::set_var("KUBERNETES_OPERATOR_GROUP", "test-group");
@@ -24,6 +25,7 @@ mod tests {
 
     /// Clears the environment variables set for testing.
     fn clear_env() {
+        env::remove_var("RUST_LOG");
         env::remove_var("KUBERNETES_OPERATOR_NAME");
         env::remove_var("KUBERNETES_OPERATOR_AUTHOR");
         env::remove_var("KUBERNETES_OPERATOR_GROUP");
