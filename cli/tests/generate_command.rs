@@ -1,6 +1,7 @@
 mod utils;
 
 #[cfg(test)]
+/// Tests for the `generate` command of the `kopgen` CLI.
 mod tests {
     use super::*;
     use kopgen::{
@@ -13,6 +14,7 @@ mod tests {
     use tempfile::tempdir;
     use utils::create_temp_file;
 
+    /// Tests that `execute` fails when the Kubernetes extension is missing from the OpenAPI spec.
     #[test]
     fn test_execute_fails_because_of_missing_kubernetes_extension() -> Result<(), AppError> {
         let openapi_yaml = r#"---
@@ -62,10 +64,13 @@ components:
         Ok(())
     }
 
+    /// Tests that `execute` returns an error when the OpenAPI file is missing.
     #[test]
     fn test_execute_missing_openapi_file() -> Result<(), AppError> {
         let dir = tempdir().unwrap();
         let openapi_file = dir.path().join("missing_openapi.yaml");
+
+        // Never actually creating the file
 
         let all = true;
         let lib = false;
@@ -88,6 +93,7 @@ components:
         Ok(())
     }
 
+    /// Tests that `execute` returns an error when the OpenAPI spec is invalid.
     #[test]
     fn test_execute_invalid_openapi_spec() -> Result<(), AppError> {
         let openapi_yaml = r#"---
@@ -116,6 +122,7 @@ invalid_yaml: [unclosed_list
         Ok(())
     }
 
+    /// Tests that `generate_types` successfully generates type files from a valid OpenAPI spec.
     #[test]
     fn test_generate_types() -> Result<(), AppError> {
         let openapi_yaml = r#"

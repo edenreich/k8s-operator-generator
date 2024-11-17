@@ -1,4 +1,5 @@
 #[cfg(test)]
+/// Tests for the `init` command of the `kopgen` CLI.
 mod tests {
     use assert_cmd::Command;
     use predicates::prelude::*;
@@ -6,6 +7,7 @@ mod tests {
     use std::{env, fs};
     use tempfile::tempdir;
 
+    /// Sets up the necessary environment variables for testing.
     fn setup_env() {
         env::set_var("KUBERNETES_OPERATOR_NAME", "Custom Operator Name");
         env::set_var("KUBERNETES_OPERATOR_AUTHOR", "Custom Author");
@@ -19,6 +21,7 @@ mod tests {
         );
     }
 
+    /// Clears the environment variables set for testing.
     fn clear_env() {
         env::remove_var("KUBERNETES_OPERATOR_NAME");
         env::remove_var("KUBERNETES_OPERATOR_AUTHOR");
@@ -29,6 +32,7 @@ mod tests {
         env::remove_var("KUBERNETES_OPERATOR_EXAMPLE_METADATA_SPEC_FIELD_REF");
     }
 
+    /// Tests that the `init` command creates all required directories.
     #[test]
     #[serial]
     fn init_creates_required_directories() {
@@ -68,6 +72,7 @@ mod tests {
         }
     }
 
+    /// Tests that the `init` command creates all required files.
     #[test]
     #[serial]
     fn init_creates_required_files() {
@@ -131,6 +136,7 @@ mod tests {
         clear_env();
     }
 
+    /// Tests that the `init` command skips initialization if the directory already exists and is not empty.
     #[test]
     #[serial]
     fn init_skips_existing_directory() {

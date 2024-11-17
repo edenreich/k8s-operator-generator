@@ -1,4 +1,5 @@
 #[cfg(test)]
+/// Tests for the config of the `kopgen` CLI.
 mod tests {
     use kopgen::config::{Config, ConfigProvider};
     use serial_test::serial;

@@ -1,6 +1,7 @@
 mod utils;
 
 #[cfg(test)]
+/// Tests for the `hydrate` command of the `kopgen` CLI.
 mod tests {
     use super::*;
     use kopgen::{
@@ -13,6 +14,7 @@ mod tests {
     use std::env;
     use utils::{create_temp_file, read_temp_file};
 
+    /// Sets up the necessary environment variables for testing.
     fn setup_env() {
         env::set_var("KUBERNETES_OPERATOR_NAME", "Custom Operator Name");
         env::set_var("KUBERNETES_OPERATOR_AUTHOR", "Custom Author");
@@ -26,6 +28,7 @@ mod tests {
         );
     }
 
+    /// Clears the environment variables set for testing.
     fn clear_env() {
         env::remove_var("KUBERNETES_OPERATOR_NAME");
         env::remove_var("KUBERNETES_OPERATOR_AUTHOR");
@@ -58,7 +61,7 @@ info:
         commands::hydrate::execute(config, &file_path)?;
 
         // Read back the YAML file
-        let yaml: YamlValue = read_temp_file(&file_path).expect("Unable to read file");
+        let yaml: YamlValue = read_temp_file(&file_path)?;
         let info: &Mapping = yaml.get("info").unwrap().as_mapping().unwrap();
 
         // Assert that configuration values are correctly injected
