@@ -8,6 +8,11 @@ tasks:
     cmds:
       - mdbook serve --open docs --hostname 0.0.0.0
 
+  lint:
+    desc: Lint the code
+    cmds:
+      - cargo fmt --all -- --check
+
   analyse:
     desc: Analyse the code
     cmds:
