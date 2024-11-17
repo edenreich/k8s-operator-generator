@@ -119,12 +119,12 @@ pub fn execute(conf: Config, path: &String) -> Result<(), AppError> {
         "main.rs",
     )?;
 
-    let project_name: String = "Example Operator Project".to_string();
+    let project_name: String = conf.operator_name.clone();
 
     // Generate operator files
     generate_template_file(
         Cli {
-            project_name: conf.operator_name,
+            project_name: project_name.clone(),
             version: "0.1.0".to_string(),
             author: conf.operator_author,
         },
