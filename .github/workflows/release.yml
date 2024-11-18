@@ -58,7 +58,7 @@ jobs:
           mv target/${{ matrix.target }}/release/kopgen target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
 
       - name: Upload CLI binary
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
         env:
