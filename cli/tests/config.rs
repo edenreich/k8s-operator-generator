@@ -39,13 +39,13 @@ mod tests {
 
         let config = Config::load_from_env()?;
 
+        assert_eq!(config.operator_name, "Custom Operator Name");
+        assert_eq!(config.operator_author, "Custom Author");
         assert_eq!(config.api_group, "test-group");
         assert_eq!(config.api_version, "v1");
         assert_eq!(config.resource_ref, "test-resource-ref");
         assert_eq!(config.example_metadata_spec_field_ref, "test-field-ref");
         assert_eq!(config.include_tags, vec!["tag1", "tag2"]);
-        assert_eq!(config.operator_name, "Custom Operator Name");
-        assert_eq!(config.operator_author, "Custom Author");
 
         clear_env();
         Ok(())
@@ -59,27 +59,6 @@ mod tests {
 
         let config = Config::load_from_env()?;
 
-        assert_eq!(config.include_tags, vec!["tag1", "tag2"]);
-
-        clear_env();
-        Ok(())
-    }
-
-    /// Tests that all required environment variables are present and configuration loads successfully.
-    #[test]
-    #[serial]
-    fn test_all_required_env_vars_present() -> Result<(), AppError> {
-        setup_env();
-
-        let config = Config::load_from_env()?;
-
-        // Verify that environment variables override default values
-        assert_eq!(config.operator_name, "Custom Operator Name");
-        assert_eq!(config.operator_author, "Custom Author");
-        assert_eq!(config.api_group, "test-group");
-        assert_eq!(config.api_version, "v1");
-        assert_eq!(config.resource_ref, "test-resource-ref");
-        assert_eq!(config.example_metadata_spec_field_ref, "test-field-ref");
         assert_eq!(config.include_tags, vec!["tag1", "tag2"]);
 
         clear_env();
