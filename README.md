@@ -18,6 +18,7 @@ It's a well-established fact that using YAML to define API resources not only si
 
 - [Documentation](#documentation)
 - [Quick Start Guide](#quick-start-guide)
+- [Contributing](#contributing)
 - [Need Help?](#need-help)
 - [Motivation](#motivation)
 - [Why OpenAPI Specification?](#why-openapi-specification)
@@ -66,6 +67,12 @@ To get started, follow these steps:
 5. Configure: `cp .env.example .env`.
 6. Generate the operator including all of its dependencies, run: `task generate`.
 7. Run the operator: `task run`.
+
+## Contributing
+
+If you'd like to contribute to this project, we highly recommend using **Visual Studio Code**. VS Code comes with a pre-configured development environment through our dev container, ensuring you have all the necessary project tooling set up seamlessly.
+
+Additionally, please install the Git pre-commit hooks. These hooks help maintain our project's coding standards by automatically checking your commits for compliance before they're finalized.
 
 ## Need Help?
 
