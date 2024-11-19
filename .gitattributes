@@ -3,3 +3,5 @@
 .devcontainer/** linguist-vendored=true
 Dockerfile linguist-vendored=true
 docs/** linguist-vendored=true
+hooks/** linguist-vendored=true
+scripts/** linguist-vendored=true

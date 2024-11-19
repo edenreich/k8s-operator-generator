@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# Format code
+echo "Running lint..."
+task lint
+if [ $? -ne 0 ]; then
+    echo "Code is not formatted. Please run 'cargo fmt' and try again."
+    exit 1
+fi
+
+# Analyse code
+echo "Running static analysis..."
+task analyse
+if [ $? -ne 0 ]; then
+    echo "analyse failed. Please fix the issues and try again."
+    exit 1
+fi
+
+# Run tests
+echo "Running tests..."
+task test
+if [ $? -ne 0 ]; then
+    echo "Tests failed. Please fix the issues and try again."
+    exit 1
+fi
+
+echo "All checks passed. Proceeding with commit."
+exit 0
