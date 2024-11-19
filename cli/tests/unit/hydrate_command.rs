@@ -1,10 +1,7 @@
-#[path = "../utils/mod.rs"]
-mod utils;
-
 #[cfg(test)]
 /// Tests for the `hydrate` command of the `kopgen` CLI.
 mod tests {
-    use super::*;
+    use crate::utils::{create_temp_file, read_temp_file};
     use kopgen::{
         commands,
         config::{Config, ConfigProvider},
@@ -13,7 +10,6 @@ mod tests {
     use serde_yaml::{Mapping, Value as YamlValue};
     use serial_test::serial;
     use std::env;
-    use utils::{create_temp_file, read_temp_file};
 
     /// Sets up the necessary environment variables for testing.
     fn setup_env() {

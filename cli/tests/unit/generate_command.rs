@@ -1,10 +1,7 @@
-#[path = "../utils/mod.rs"]
-mod utils;
-
 #[cfg(test)]
 /// Tests for the [`kopgen::commands::generate`](cli/src/commands/generate_command.rs) of the `kopgen` CLI.
 mod tests {
-    use super::*;
+    use crate::utils::create_temp_file;
     use kopgen::{
         commands::generate::{execute, generate_types},
         errors::AppError,
@@ -14,7 +11,6 @@ mod tests {
     use serial_test::serial;
     use std::{collections::HashMap, fs};
     use tempfile::tempdir;
-    use utils::create_temp_file;
 
     /// Helper function to set common parameters for `execute`.
     fn default_params() -> (bool, bool, bool, bool, bool) {
