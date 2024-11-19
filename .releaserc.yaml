@@ -29,7 +29,7 @@ plugins:
   - [
       '@semantic-release/exec',
       {
-        'prepareCmd': './bump-version.sh ${nextRelease.version} && task build',
+        'prepareCmd': './scripts/bump-version.sh ${nextRelease.version} && task build',
       },
     ]
   - '@semantic-release/github'
