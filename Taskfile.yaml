@@ -61,7 +61,7 @@ tasks:
   test-review-snapshots:
     desc: Test the project with snapshot review
     cmds:
-      - cargo insta review --test snapshot
+      - cargo insta review
 
   test-cli-output:
     desc: Test the CLI output
