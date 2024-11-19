@@ -1,9 +1,12 @@
 use askama::Template;
 use insta::assert_snapshot;
-use kopgen::templates::{operator::Type, Field};
+use kopgen::{
+    errors::AppError,
+    templates::{operator::Type, Field},
+};
 
 #[test]
-fn render_basic_type() {
+fn render_basic_type() -> Result<(), AppError> {
     let template = Type {
         tag_name: "basic".to_string(),
         api_version: "v1".to_string(),
@@ -22,12 +25,13 @@ fn render_basic_type() {
         ],
     };
 
-    let rendered = template.render().expect("Failed to render template");
+    let rendered = template.render()?;
     assert_snapshot!(rendered);
+    Ok(())
 }
 
 #[test]
-fn render_complex_type() {
+fn render_complex_type() -> Result<(), AppError> {
     let template = Type {
         tag_name: "complex".to_string(),
         api_version: "v1".to_string(),
@@ -50,6 +54,7 @@ fn render_complex_type() {
         ],
     };
 
-    let rendered = template.render().expect("Failed to render template");
+    let rendered = template.render()?;
     assert_snapshot!(rendered);
+    Ok(())
 }

@@ -1,11 +1,12 @@
 use askama::Template;
 use insta::assert_snapshot;
-use kopgen::templates::operator::Lib;
+use kopgen::{errors::AppError, templates::operator::Lib};
 
 #[test]
-fn render() {
+fn render() -> Result<(), AppError> {
     let template = Lib {};
 
-    let rendered = template.render().expect("Failed to render template");
+    let rendered = template.render()?;
     assert_snapshot!(rendered);
+    Ok(())
 }
