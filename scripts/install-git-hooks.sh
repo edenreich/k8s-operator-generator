@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/bin/sh
+
+set -e
 
 HOOK_DIR=".git/hooks"
 HOOK_FILE="pre-commit"
