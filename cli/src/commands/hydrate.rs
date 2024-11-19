@@ -2,7 +2,6 @@ use crate::{config::Config, errors::AppError};
 use log::info;
 use serde_yaml::Value as YamlValue;
 use std::fs;
-use std::process::Command as ProcessCommand;
 
 /// Executes the hydration process for the OpenAPI specification.
 ///
@@ -84,13 +83,6 @@ pub fn execute(conf: Config, openapi_file: &String) -> Result<(), AppError> {
     }
 
     fs::write(openapi_file, serde_yaml::to_string(&openapi)?)?;
-
-    let _ = ProcessCommand::new("npx")
-        .arg("prettier")
-        .arg("--write")
-        .arg(openapi_file)
-        .output()
-        .map_err(|e| AppError::CommandError(format!("npx prettier --write: {}", e)))?;
 
     info!("OpenAPI spec hydrated successfully");
 
