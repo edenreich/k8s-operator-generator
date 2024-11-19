@@ -3,7 +3,7 @@ use insta::assert_snapshot;
 use kopgen::templates::operator::Main;
 
 #[test]
-fn test_operator_main_template() {
+fn render() {
     let template = Main {
         api_group: "example.com".to_string(),
         api_version: "v1".to_string(),

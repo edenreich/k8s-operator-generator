@@ -1,1 +1,2 @@
+mod templates_operator_controller;
 mod templates_operator_main;
