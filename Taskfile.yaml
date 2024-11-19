@@ -47,8 +47,10 @@ tasks:
 
   run:
     desc: Run the CLI
+    deps:
+      - setup-target
     cmds:
-      - cargo run --package kopgen -- {{.CLI_ARGS}}
+      - cargo run {{if .TARGET_ARCH}}--target {{.TARGET_ARCH}} {{end}}--package kopgen -- {{.CLI_ARGS}}
 
   test:
     desc: Test the project
