@@ -36,7 +36,7 @@ impl Config {
                 "KUBERNETES_OPERATOR_NAME",
                 "Example Operator",
             ),
-            operator_author: Self::get_env_var_or_default("KUBERNETES_OPERATOR_AUTHOR", "Example"),
+            operator_author: Self::get_env_var_or_default("KUBERNETES_OPERATOR_AUTHOR", "Unknown"),
             api_group: Self::get_env_var_or_default("KUBERNETES_OPERATOR_API_GROUP", "example.com"),
             api_version: Self::get_env_var_or_default("KUBERNETES_OPERATOR_API_VERSION", "v1"),
             resource_ref: Self::get_env_var_or_default("KUBERNETES_OPERATOR_RESOURCE_REF", "uuid"),
@@ -46,6 +46,7 @@ impl Config {
             ),
             include_tags: Self::get_env_var_or_default("KUBERNETES_OPERATOR_INCLUDE_TAGS", "")
                 .split(',')
+                .filter(|tag| !tag.is_empty())
                 .map(|tag| tag.trim().to_string())
                 .collect(),
         })

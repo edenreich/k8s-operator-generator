@@ -84,13 +84,13 @@ pub struct Cli {
 
     /// The tags to include in the operator.
     /// Example: cats, dogs, birds
-    /// Default: ""
+    /// Default: None
     /// This is a comma-separated list of tags to include in the operator code generation.
     #[arg(
         long,
         env = "KUBERNETES_OPERATOR_INCLUDE_TAGS",
-        default_value = "",
-        help = "The tags to include in the operator"
+        help = "The tags to include in the operator",
+        value_delimiter = ','
     )]
     pub kubernetes_operator_include_tags: Vec<String>,
 }
