@@ -89,3 +89,8 @@ curl -sSL https://github.com/badboy/mdbook-mermaid/releases/download/$MDBOOK_MER
 tar -xzf mdbook-mermaid.tar.gz
 chmod +x mdbook-mermaid
 sudo mv mdbook-mermaid /usr/local/bin/mdbook-mermaid
+
+# Install cargo-insta
+echo "==> Installing cargo-insta"
+CARGO_INSTA_VERSION="1.15.0"
+cargo install cargo-insta --version $CARGO_INSTA_VERSION --locked
