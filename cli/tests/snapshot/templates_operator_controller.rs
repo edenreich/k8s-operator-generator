@@ -1,9 +1,12 @@
 use askama::Template;
 use insta::assert_snapshot;
-use kopgen::templates::{operator::Controller, Field};
+use kopgen::{
+    errors::AppError,
+    templates::{operator::Controller, Field},
+};
 
 #[test]
-fn render() {
+fn render() -> Result<(), AppError> {
     let template = Controller {
         tag: "example_tag".to_string(),
         arg_name: "argName".to_string(),
@@ -24,6 +27,7 @@ fn render() {
         has_delete_action: false,
         api_url: "https://api.example.com".to_string(),
     };
-    let rendered = template.render().expect("Failed to render template");
+    let rendered = template.render()?;
     assert_snapshot!(rendered);
+    Ok(())
 }
