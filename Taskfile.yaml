@@ -55,7 +55,8 @@ tasks:
   test:
     desc: Test the project
     cmds:
-      - cargo test --all-features
+      - cargo test --test unit
+      - cargo test --test snapshot
 
   test-cli-output:
     desc: Test the CLI output

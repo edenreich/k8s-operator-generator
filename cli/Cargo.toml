@@ -27,3 +27,12 @@ tempfile = "3.3"
 predicates = "3.1.2"
 serial_test = "3.1.1"
 mockall = "0.13"
+insta = { version = "1.41.1", features = ["yaml"] }
+
+[[test]]
+name = "unit"
+path = "tests/unit/mod.rs"
+
+[[test]]
+name = "snapshot"
+path = "tests/snapshot/mod.rs"

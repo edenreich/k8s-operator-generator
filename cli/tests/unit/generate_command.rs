@@ -1,3 +1,4 @@
+#[path = "../utils/mod.rs"]
 mod utils;
 
 #[cfg(test)]
