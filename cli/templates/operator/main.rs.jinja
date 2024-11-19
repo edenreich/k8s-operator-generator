@@ -11,23 +11,20 @@ use tokio::time::timeout;
 use warp::Filter;
 use clap::Parser;
 use operator::cli::{Cli, Commands};
-
 {% if controllers.len() > 0 %}
 use operator::controllers::{{"{"}}
-    {% for controller in controllers -%}
+    {%- for controller in controllers %}
         {{ controller }},
      {%- endfor %}
-    {{"}"}};
+{{"}"}};
 {% endif %}
-
-{% if types.len() > 0 %}
+{%- if types.len() > 0 %}
 use operator::types::{{"{"}}
-    {% for type in types -%}
+    {%- for type in types %}
         {{ type }}::{{ type|capitalize }},
     {%- endfor %}
-    {{"}"}};
+{{"}"}};
 {% endif %}
-
 async fn deploy_crd(
     kube_client: Api<CustomResourceDefinition>,
     crd: CustomResourceDefinition,

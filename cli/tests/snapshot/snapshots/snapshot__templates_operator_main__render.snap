@@ -16,17 +16,15 @@ use warp::Filter;
 use clap::Parser;
 use operator::cli::{Cli, Commands};
 
-
 use operator::controllers::{
-    controller1,controller2,
-    };
-
-
+        controller1,
+        controller2,
+};
 
 use operator::types::{
-    Type1::Type1,Type2::Type2,
-    };
-
+        Type1::Type1,
+        Type2::Type2,
+};
 
 async fn deploy_crd(
     kube_client: Api<CustomResourceDefinition>,
