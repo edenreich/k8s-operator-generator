@@ -94,7 +94,8 @@ async fn main() -> anyhow::Result<()> {
                 info!("Deploying CRDs...");
 
                 let crds = vec![
-                    Type1::crd(),Type2::crd(),
+                    Type1::crd(),
+                    Type2::crd(),
                 ];
 
                 for crd in crds {
@@ -103,14 +104,14 @@ async fn main() -> anyhow::Result<()> {
             }
 
             let controllers_crds = vec![
-                format!("controller1.example.com"),format!("controller2.example.com"),
+                format!("controller1.example.com"),
+                format!("controller2.example.com"),
             ];
             for controller_crd in controllers_crds {
                 if let Err(e) = wait_for_crd(kube_client_api.clone(), &controller_crd).await {
                     error!("Error waiting for CRD {}: {}", &controller_crd, e);
                 }
             }
-
             
             // Start the controller1 controller for the controller1.example.com/v1 API group
             let controller1_client = Api::namespaced(kube_client.clone(), "default");
@@ -124,8 +125,6 @@ async fn main() -> anyhow::Result<()> {
                 let _controller2_controller = controller2::handle(controller2_client).await;
             });
             
-
-
             tokio::spawn(async {
                 let liveness_route = warp::path!("healthz")
                     .map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));
