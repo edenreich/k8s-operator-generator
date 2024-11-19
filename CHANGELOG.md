@@ -1,3 +1,45 @@
+## [1.10.0](https://github.com/edenreich/kopgen/compare/v1.9.0...v1.10.0) (2024-11-19)
+
+### Features
+
+* **hooks:** Add pre-commit hook for linting, static analysis, and testing ([512a164](https://github.com/edenreich/kopgen/commit/512a1640f65c7fbb52bc699a3c458f62b896eb37))
+* **tests:** Add snapshot testing for main template and reorganize test structure ([797adf8](https://github.com/edenreich/kopgen/commit/797adf82716882f285f6aa654f615c4ac6a51da8))
+
+### Improvements
+
+* Change shebang in bump-version.sh to /bin/sh for consistency ([59fda4a](https://github.com/edenreich/kopgen/commit/59fda4a33dacbe16a5ee8a1b0ed863506d582075))
+* Change shebang in install-git-hooks.sh to /bin/sh and enable exit on error ([7d2d5c3](https://github.com/edenreich/kopgen/commit/7d2d5c32e0482461fb5fed4d33339eb635391f29))
+* **cli:** Enhance run command to conditionally use TARGET_ARCH ([e283d1f](https://github.com/edenreich/kopgen/commit/e283d1f708e30c090cd4f39c9e478a85ed3bcd7b))
+* **cli:** Update default value for include_tags and enhance CLI argument parsing ([212af07](https://github.com/edenreich/kopgen/commit/212af077b344f4af867b49c3b7c8c15d22619002))
+* **devcontainer:** Add markdown-all-in-one extension to development container ([ef1db9f](https://github.com/edenreich/kopgen/commit/ef1db9feb47fdbad6262776465654eb241b1d765))
+* Improve formatting in templates_operator_main.rs.jinja and corresponding snapshot ([c8e9af4](https://github.com/edenreich/kopgen/commit/c8e9af4e01cec2da99e5013600f620d8143001fd))
+* Move bump-version script to scripts directory and update reference in .releaserc.yaml ([b5c8cd4](https://github.com/edenreich/kopgen/commit/b5c8cd4970719a0e578529c2dd165c5835549ee3))
+* Move install.sh script into scripts directory ([85ac5c3](https://github.com/edenreich/kopgen/commit/85ac5c3fd06d0c2832137d4d942a4d67bcada36f))
+* Rename test function for clarity in templates_operator_main.rs ([453b2fc](https://github.com/edenreich/kopgen/commit/453b2fc12bd1a26090d534359eb03030a4c1a9db))
+* **tests:** Add cargo-insta for snapshot review and update Taskfile for testing ([c2df119](https://github.com/edenreich/kopgen/commit/c2df119ff42db42160e64abc2810456f40043018))
+* **tests:** Remove duplicate test case in config loading tests ([4f82f7d](https://github.com/edenreich/kopgen/commit/4f82f7da2cbf4715431c8be425c56d41589da005))
+
+### Bug Fixes
+
+* **tests:** Load utils mod once for all unit tests ([7dc0b98](https://github.com/edenreich/kopgen/commit/7dc0b988c911f9129156a39c6525d1e972c947d6))
+
+### CI
+
+* Update action-gh-release to v2 in release workflow ([a5689ed](https://github.com/edenreich/kopgen/commit/a5689eddbac91cb5c4b4de1f1f046ed7c3b21e61))
+
+### Documentation
+
+* Add contributing section to README for improved guidance ([4e9f8b7](https://github.com/edenreich/kopgen/commit/4e9f8b747f4aeac1dde71e1bc7bb14404ca6cd47))
+* Remove unnecessary Kopgen heading from README for clarity ([11b17fc](https://github.com/edenreich/kopgen/commit/11b17fca4ac773bcf41b4a951962461be9c4c0d4))
+
+### Miscellaneous
+
+* Add snapshot tests for templates_operator_type and corresponding modules ([160c6ab](https://github.com/edenreich/kopgen/commit/160c6ab921340f029fc909aaaf5af28ac4df8ce5))
+* Add templates_operator_controller and corresponding snapshot tests ([6df9f29](https://github.com/edenreich/kopgen/commit/6df9f29e9deb913125875a1ece099d643c405df1))
+* Add uninstall script for pre-commit git hooks ([4860e1f](https://github.com/edenreich/kopgen/commit/4860e1f50d16ba14bb29ebf5ff45f1d2057988e8))
+* Comment out snapshot test in Taskfile.yaml ([93e8bd8](https://github.com/edenreich/kopgen/commit/93e8bd84ccc43eb9704498df5864c2cea59f5282))
+* Make TARGET_ARCH environment variable optional ([cc34c6c](https://github.com/edenreich/kopgen/commit/cc34c6c42fb1154d21cfc645f7ccd4acfcaa902d))
+
 ## [1.9.0](https://github.com/edenreich/kopgen/compare/v1.8.0...v1.9.0) (2024-11-17)
 
 ### Features
