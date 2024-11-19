@@ -16,12 +16,11 @@ If you have a running API with a valid OpenAPI Specification but lack an operato
 
 It's a well-established fact that using YAML to define API resources not only simplifies complexity but also enhances collaboration between developers and operations teams. This approach allows teams to concentrate on what truly matters - delivering value.
 
-- [🦀 Kopgen 🦀](#-kopgen-)
-  - [Documentation](#documentation)
-  - [Quick Start Guide](#quick-start-guide)
-  - [Need Help?](#need-help)
-  - [Motivation](#motivation)
-  - [Why OpenAPI Specification?](#why-openapi-specification)
+- [Documentation](#documentation)
+- [Quick Start Guide](#quick-start-guide)
+- [Need Help?](#need-help)
+- [Motivation](#motivation)
+- [Why OpenAPI Specification?](#why-openapi-specification)
 
 ## Documentation
 
