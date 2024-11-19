@@ -1,2 +1,3 @@
 mod templates_operator_controller;
 mod templates_operator_main;
+mod templates_operator_type;
