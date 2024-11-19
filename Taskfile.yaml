@@ -18,14 +18,25 @@ tasks:
     cmds:
       - cargo clippy --all-targets --all-features -- -D warnings
 
+  setup-target:
+    desc: 'Conditionally add a Rust target based on TARGET_ARCH'
+    cmds:
+      - |
+        if [ -n "${TARGET_ARCH}" ]; then
+          echo "Adding target architecture: ${TARGET_ARCH}";
+          rustup target add ${TARGET_ARCH};
+        else
+          echo "TARGET_ARCH is not set. Skipping target addition.";
+          echo "Using default target $(rustup show active-toolchain).";
+        fi
+    silent: true
+
   build:
     desc: Build kopgen CLI
+    deps:
+      - setup-target
     cmds:
-      - rustup target add {{.TARGET_ARCH}}
       - cargo build {{if eq .RELEASE "true"}}--release {{end}}{{if .TARGET_ARCH}}--target {{.TARGET_ARCH}}{{end}}
-    requires:
-      vars:
-        - TARGET_ARCH
 
   install:
     desc: Install the CLI
