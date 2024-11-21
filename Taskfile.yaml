@@ -13,6 +13,11 @@ tasks:
     cmds:
       - cargo fmt --all -- --check
 
+  audit:
+    desc: Check dependencies
+    cmds:
+      - cargo audit
+
   analyse:
     desc: Analyse the code
     cmds:
