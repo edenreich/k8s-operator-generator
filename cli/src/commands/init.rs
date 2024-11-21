@@ -1,14 +1,14 @@
 use crate::config::Config;
 use crate::errors::AppError;
-use crate::templates::general::{
-    CargoConfig, ClusterYaml, Dockerfile, Dockerignore, Editorconfig, EnvExample, GitAttributes,
-    GitIgnore, Prettierrc, ReadmeMd, RustfmtToml, Taskfile,
-};
 use crate::templates::{
     cargo::{CargoToml, CrdgenCargoToml, OperatorCargoToml, TestsCargoToml},
     crdgen::Main as CrdgenMain,
     devcontainer::{Deps, Json, LaunchJsonExample, SetupGit, Zshrc},
-    general::OpenAPIGeneratorIgnore,
+    general::{
+        CargoConfig, ClusterYaml, Dockerfile, Dockerignore, Editorconfig, EnvExample,
+        GitAttributes, GitIgnore, OpenAPIGeneratorIgnore, Prettierrc, ReadmeMd, RustfmtToml,
+        Taskfile,
+    },
     operator::Main as OperatorMain,
     operator::{Cli, Lib},
     tests::{Main as TestsMain, UtilsClient, UtilsCluster, UtilsOperator},
@@ -18,9 +18,7 @@ use crate::utils::{
     generate_template_file, set_executable_permission,
 };
 use log::{info, warn};
-use std::collections::BTreeMap;
-use std::fs;
-use std::path::Path;
+use std::{collections::BTreeMap, fs, path::Path};
 
 const CARGO_DIR: &str = ".cargo";
 const DEVCONTAINER_DIR: &str = ".devcontainer";
