@@ -122,8 +122,8 @@ pub enum Commands {
     /// Generate Kubernetes operator code from an OpenAPI specification.
     ///
     /// This command generates various components of a Kubernetes operator project
-    /// including library files, manifests, controllers, and types based on the
-    /// OpenAPI specification provided.
+    /// including manifests, controllers, and types based on the OpenAPI
+    /// specification provided.
     #[command(about = "Generate Kubernetes operator code from an OpenAPI specification")]
     Generate {
         /// Path to the OpenAPI specification file.
@@ -135,9 +135,6 @@ pub enum Commands {
         /// Generate all code.
         #[arg(short, long, help = "Generate all code")]
         all: bool,
-        /// Generate the lib.rs file.
-        #[arg(short, long, help = "Generate the lib.rs file")]
-        lib: bool,
         /// Generate the manifests.
         #[arg(short, long, help = "Generate the manifests")]
         manifests: bool,
