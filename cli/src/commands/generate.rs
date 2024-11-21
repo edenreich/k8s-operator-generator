@@ -23,9 +23,9 @@ use inflector::Inflector;
 use log::{error, info, warn};
 use openapiv3::{ReferenceOr, Schema, SchemaKind, Type};
 use serde_json::{json, Map, Value};
-use std::fs::File;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
+    fs::File,
     path::Path,
 };
 
