@@ -8,6 +8,14 @@ tasks:
     cmds:
       - mdbook serve --open docs --hostname 0.0.0.0
 
+  generate-project:
+    desc: Generate a new project
+    deps:
+      - clean
+      - install
+    cmds:
+      - mkdir temp && cd temp && kopgen init . && cp .env.example .env && task generate
+
   lint:
     desc: Lint the code
     cmds:
@@ -16,11 +24,8 @@ tasks:
   lint-generated-project:
     desc: Lint the generated project code
     deps:
-      - install
+      - generate-project
     cmds:
-      - rm -rf temp
-      - RUST_LOG=info kopgen init temp
-      - cd temp && cp .env.example .env && task generate
       - cd temp && task lint
 
   audit:
@@ -36,11 +41,8 @@ tasks:
   analyse-generated-project:
     desc: Analyse the generated project code
     deps:
-      - install
+      - generate-project
     cmds:
-      - rm -rf temp
-      - RUST_LOG=info kopgen init temp
-      - cd temp && cp .env.example .env && task generate
       - cd temp && task analyse
 
   setup-target:
