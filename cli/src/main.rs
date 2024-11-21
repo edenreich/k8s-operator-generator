@@ -33,20 +33,11 @@ fn main() -> Result<(), AppError> {
             openapi_file,
             path,
             all,
-            lib,
             manifests,
             controllers,
             types,
         }) => {
-            commands::generate::execute(
-                path,
-                openapi_file,
-                all,
-                lib,
-                manifests,
-                controllers,
-                types,
-            )?;
+            commands::generate::execute(path, openapi_file, all, manifests, controllers, types)?;
         }
         None => {
             info!("No command provided");

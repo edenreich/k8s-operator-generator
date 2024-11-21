@@ -13,8 +13,8 @@ mod tests {
     use tempfile::tempdir;
 
     /// Helper function to set common parameters for `execute`.
-    fn default_params() -> (bool, bool, bool, bool, bool) {
-        (true, false, false, false, false)
+    fn default_params() -> (bool, bool, bool, bool) {
+        (true, false, false, false)
     }
 
     /// Tests that `execute` fails when the Kubernetes extension is missing from the OpenAPI spec.
@@ -32,13 +32,12 @@ components:
 "#;
 
         let (dir, openapi_file) = create_temp_file("openapi.yaml", openapi_yaml);
-        let (all, lib, manifests, controllers, types) = default_params();
+        let (all, manifests, controllers, types) = default_params();
 
         let result = execute(
             &dir.path().to_string_lossy().to_string(),
             &openapi_file,
             &all,
-            &lib,
             &manifests,
             &controllers,
             &types,
@@ -68,13 +67,12 @@ components:
         let dir = tempdir()?;
         let openapi_file = dir.path().join("missing_openapi.yaml");
 
-        let (all, lib, manifests, controllers, types) = default_params();
+        let (all, manifests, controllers, types) = default_params();
 
         let result = execute(
             &dir.path().to_string_lossy().to_string(),
             &openapi_file.to_string_lossy().to_string(),
             &all,
-            &lib,
             &manifests,
             &controllers,
             &types,
@@ -96,13 +94,12 @@ components:
 invalid_yaml: [unclosed_list
 "#;
         let (dir, openapi_file) = create_temp_file("invalid_openapi.yaml", openapi_yaml);
-        let (all, lib, manifests, controllers, types) = default_params();
+        let (all, manifests, controllers, types) = default_params();
 
         let result = execute(
             &dir.path().to_string_lossy().to_string(),
             &openapi_file,
             &all,
-            &lib,
             &manifests,
             &controllers,
             &types,

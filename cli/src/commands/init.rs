@@ -4,13 +4,13 @@ use crate::templates::general::{
     CargoConfig, ClusterYaml, Dockerfile, Dockerignore, Editorconfig, EnvExample, GitAttributes,
     GitIgnore, Prettierrc, ReadmeMd, RustfmtToml, Taskfile,
 };
-use crate::templates::operator::Cli;
 use crate::templates::{
     cargo::{CargoToml, CrdgenCargoToml, OperatorCargoToml, TestsCargoToml},
     crdgen::Main as CrdgenMain,
     devcontainer::{Deps, Json, LaunchJsonExample, SetupGit, Zshrc},
     general::OpenAPIGeneratorIgnore,
     operator::Main as OperatorMain,
+    operator::{Cli, Lib},
     tests::{Main as TestsMain, UtilsClient, UtilsCluster, UtilsOperator},
 };
 use crate::utils::{
@@ -122,6 +122,11 @@ pub fn execute(conf: Config, path: &String) -> Result<(), AppError> {
     let project_name: String = conf.operator_name.clone();
 
     // Generate operator files
+    generate_template_file(
+        Lib {},
+        base_path.join(K8S_OPERATOR_DIR).join("src").as_path(),
+        "lib.rs",
+    )?;
     generate_template_file(
         Cli {
             project_name: project_name.clone(),

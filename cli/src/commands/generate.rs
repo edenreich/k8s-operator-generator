@@ -7,7 +7,7 @@ use crate::templates::{
         rbac::{ClusterRole, ClusterRoleBinding, Role, RoleBinding, ServiceAccount},
     },
     operator::{
-        Controller, ControllerActionDelete, ControllerActionPost, ControllerActionPut, Lib, Main,
+        Controller, ControllerActionDelete, ControllerActionPost, ControllerActionPut, Main,
         Type as TypeTemplate,
     },
     ClusterRoleTemplateIdentifiers, ControllerAttributes, Field, Metadata, Resource,
@@ -58,7 +58,6 @@ pub fn execute(
     base_path: &String,
     openapi_file: &String,
     all: &bool,
-    lib: &bool,
     manifests: &bool,
     controllers: &bool,
     types: &bool,
@@ -107,9 +106,8 @@ pub fn execute(
     let k8s_manifests_operator_dir = format!("{}/manifests/operator", base_path);
     let k8s_manifests_examples_dir = format!("{}/manifests/examples", base_path);
 
-    if *all || (!*lib && !*manifests && !*controllers && !*types) {
-        info!("Generating all...");
-        generate_lib(&k8s_operator_dir)?;
+    if *all || (!*manifests && !*controllers && !*types) {
+        info!("Generating all manifests, controllers and types...");
         generate_types(
             &k8s_operator_types_dir,
             &schemas,
@@ -146,10 +144,6 @@ pub fn execute(
             &kubernetes_operator_resource_ref.clone(),
         )?;
         return Ok(());
-    }
-    if *lib {
-        info!("Generating lib...");
-        generate_lib(&k8s_operator_dir)?;
     }
     if *manifests {
         info!("Generating manifests...");
@@ -598,20 +592,6 @@ fn generate_type(
 
     let base_path: &Path = Path::new(directory);
     let file_name: String = format!("{}.rs", arg_name_clone);
-    write_to_file(base_path, &file_name, content)?;
-    format_file(base_path.join(file_name).to_str().unwrap())
-}
-
-fn generate_lib(directory: &str) -> Result<(), AppError> {
-    let file_path = format!("{}/src/lib.rs", directory);
-    if get_ignored_files()?.contains(&file_path) {
-        return Ok(());
-    }
-
-    let content: String = Lib {}.render()?;
-
-    let base_path: &Path = &Path::new(directory).join("src");
-    let file_name: String = "lib.rs".to_string();
     write_to_file(base_path, &file_name, content)?;
     format_file(base_path.join(file_name).to_str().unwrap())
 }
