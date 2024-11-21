@@ -1,3 +1,27 @@
+## [1.11.0](https://github.com/edenreich/kopgen/compare/v1.10.0...v1.11.0) (2024-11-21)
+
+### Features
+
+* Make TARGET_ARCH optional, if not set the default tool-chain will be used ([0fb00c4](https://github.com/edenreich/kopgen/commit/0fb00c4f6d83091aefd2f30482446c43f491e179))
+
+### Improvements
+
+* Add GitHub Pull Request extension to devcontainer configuration ([d443279](https://github.com/edenreich/kopgen/commit/d4432796aab49b27b2cbe6b68d7bcdeee5055c31))
+* Move generic functions to lib ([#19](https://github.com/edenreich/kopgen/issues/19)) ([50eee01](https://github.com/edenreich/kopgen/commit/50eee011db96394fb450a0b25999ffbcbec22cd8))
+* Organize imports in generate and init commands for better readability ([3b49b63](https://github.com/edenreich/kopgen/commit/3b49b63e0aee355331460b790a2e6e3ebfd3e4b6))
+* Remove Kubernetes operator-specific fields from OpenAPI example specification ([1f7db99](https://github.com/edenreich/kopgen/commit/1f7db99bae0b6a69fbd4b54077a6d4922a807dcb))
+* Remove operator lib continues code generation, move it to init command ([#20](https://github.com/edenreich/kopgen/issues/20)) ([c9f72e9](https://github.com/edenreich/kopgen/commit/c9f72e96baae7e7ded3f20e4b2afe6a871afb5c3))
+* Rename Kubernetes operator group and version to API group and version in configuration and documentation ([bdc447a](https://github.com/edenreich/kopgen/commit/bdc447aa99136697fb2a7af211ea6e6549c743cd))
+
+### CI
+
+* Enhance CI workflow and add task support for Zsh ([#21](https://github.com/edenreich/kopgen/issues/21)) ([444d82b](https://github.com/edenreich/kopgen/commit/444d82b4ceb1553b4958f2e4c578b7e003a2168e))
+
+### Miscellaneous
+
+* Add additional snapshot tests for templates_operator_main with controllers and types ([2642426](https://github.com/edenreich/kopgen/commit/2642426fc4fe77152ef33f0ff9b557447630939a))
+* Add snapshot tests for the operator templates ([#18](https://github.com/edenreich/kopgen/issues/18)) ([bd86b0f](https://github.com/edenreich/kopgen/commit/bd86b0ff1a1dde0cddc30c3fdefb89b0a7b621dc))
+
 ## [1.10.0](https://github.com/edenreich/kopgen/compare/v1.9.0...v1.10.0) (2024-11-19)
 
 ### Features
