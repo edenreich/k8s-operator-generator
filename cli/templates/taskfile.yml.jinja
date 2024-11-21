@@ -47,6 +47,13 @@ tasks:
           openapitools/openapi-generator-cli:v7.9.0 \
           generate -i /local/openapi.yaml -g markdown -o /local/docs/openapi
 
+  lint:
+    desc: Lint the code
+    cmds:
+      - cargo fmt --package operator -- --check
+      - cargo fmt --package crdgen -- --check
+
+
   analyse:
     desc: Analyse the code
     cmds:
