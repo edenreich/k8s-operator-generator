@@ -13,7 +13,7 @@ tasks:
     cmds:
       - cargo fmt --all -- --check
 
-  lint-init-project:
+  lint-generated-project:
     desc: Lint the generated project code
     deps:
       - install
@@ -33,7 +33,7 @@ tasks:
     cmds:
       - cargo clippy --all-targets --all-features -- -D warnings
 
-  analyse-init-project:
+  analyse-generated-project:
     desc: Analyse the generated project code
     deps:
       - install

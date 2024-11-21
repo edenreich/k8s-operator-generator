@@ -54,7 +54,7 @@ jobs:
           override: true
 
       - name: Lint the generated project code
-        run: task lint-init-project
+        run: task lint-generated-project
 
   analyse:
     name: Analyse code
@@ -94,7 +94,7 @@ jobs:
           override: true
 
       - name: Analyse the generated project code
-        run: task analyse-init-project
+        run: task analyse-generated-project
 
   dependency-check:
     name: Check dependencies
