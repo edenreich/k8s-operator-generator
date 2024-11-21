@@ -65,8 +65,10 @@ tasks:
 
   test-cli-output:
     desc: Test the CLI output
+    deps:
+      - install
     cmds:
-      - cargo run --package kopgen init temp
+      - RUST_LOG=info kopgen init temp
 
   pre-release:
     desc: Pre-release the project
