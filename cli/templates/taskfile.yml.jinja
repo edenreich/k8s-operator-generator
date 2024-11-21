@@ -37,7 +37,7 @@ tasks:
           -v ${PWD}/openapi.yaml:/tmp/openapi.yaml \
           openapitools/openapi-generator-cli:v7.9.0 \
           generate -i /tmp/openapi.yaml -g rust -o client-sdk
-      - rm client-sdk/{.travis.yml,git_push.sh}
+      - sudo rm client-sdk/{.travis.yml,git_push.sh}
 
   oas-generate-docs:
     desc: Generate the OpenAPI documentation
@@ -52,7 +52,6 @@ tasks:
     cmds:
       - cargo fmt --package operator -- --check
       - cargo fmt --package crdgen -- --check
-
 
   analyse:
     desc: Analyse the code
