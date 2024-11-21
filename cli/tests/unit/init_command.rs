@@ -13,8 +13,8 @@ mod tests {
         env::set_var("RUST_LOG", "info");
         env::set_var("KUBERNETES_OPERATOR_NAME", "Custom Operator Name");
         env::set_var("KUBERNETES_OPERATOR_AUTHOR", "Custom Author");
-        env::set_var("KUBERNETES_OPERATOR_GROUP", "test-group");
-        env::set_var("KUBERNETES_OPERATOR_VERSION", "v1");
+        env::set_var("KUBERNETES_OPERATOR_API_GROUP", "test-group");
+        env::set_var("KUBERNETES_OPERATOR_API_VERSION", "v1");
         env::set_var("KUBERNETES_OPERATOR_RESOURCE_REF", "test-resource-ref");
         env::set_var("KUBERNETES_OPERATOR_INCLUDE_TAGS", "tag1,tag2");
         env::set_var(
@@ -28,8 +28,8 @@ mod tests {
         env::remove_var("RUST_LOG");
         env::remove_var("KUBERNETES_OPERATOR_NAME");
         env::remove_var("KUBERNETES_OPERATOR_AUTHOR");
-        env::remove_var("KUBERNETES_OPERATOR_GROUP");
-        env::remove_var("KUBERNETES_OPERATOR_VERSION");
+        env::remove_var("KUBERNETES_OPERATOR_API_GROUP");
+        env::remove_var("KUBERNETES_OPERATOR_API_VERSION");
         env::remove_var("KUBERNETES_OPERATOR_RESOURCE_REF");
         env::remove_var("KUBERNETES_OPERATOR_INCLUDE_TAGS");
         env::remove_var("KUBERNETES_OPERATOR_EXAMPLE_METADATA_SPEC_FIELD_REF");

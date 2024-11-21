@@ -111,8 +111,8 @@ pub fn create_file_if_not_exists(base_path: &Path, file: &str) {
 
 /// Validates the OpenAPI specification for kubernetes extensions.
 /// The OpenAPI specification must contain the following extensions:
-/// - x-kubernetes-operator-group
-/// - x-kubernetes-operator-version
+/// - x-kubernetes-operator-api-group
+/// - x-kubernetes-operator-api-version
 /// - x-kubernetes-operator-resource-ref
 /// - x-kubernetes-operator-include-tags
 /// - x-kubernetes-operator-example-metadata-spec-field-ref
@@ -132,8 +132,8 @@ pub fn create_file_if_not_exists(base_path: &Path, file: &str) {
 /// The `AppError` contains an error message indicating the missing extension.
 pub fn validate_openapi_kubernetes_extensions_exists(openapi: &OpenAPI) -> Result<(), AppError> {
     let required_extensions = vec![
-        "x-kubernetes-operator-group",
-        "x-kubernetes-operator-version",
+        "x-kubernetes-operator-api-group",
+        "x-kubernetes-operator-api-version",
         "x-kubernetes-operator-resource-ref",
         "x-kubernetes-operator-include-tags",
         "x-kubernetes-operator-example-metadata-spec-field-ref",
@@ -160,22 +160,20 @@ pub fn validate_openapi_kubernetes_extensions_exists(openapi: &OpenAPI) -> Resul
 pub fn extract_openapi_info(
     openapi: &OpenAPI,
 ) -> Result<(String, String, String, Vec<String>, String), AppError> {
-    let kubernetes_operator_group = extract_extension(openapi, "x-kubernetes-operator-group")?;
-    let kubernetes_operator_version = extract_extension(openapi, "x-kubernetes-operator-version")?;
-    let kubernetes_operator_resource_ref =
-        extract_extension(openapi, "x-kubernetes-operator-resource-ref")?;
-    let kubernetes_operator_include_tags =
-        extract_extension_array(openapi, "x-kubernetes-operator-include-tags")?;
-    let kubernetes_operator_metadata_spec_field_name = extract_extension(
+    let api_group = extract_extension(openapi, "x-kubernetes-operator-api-group")?;
+    let api_version = extract_extension(openapi, "x-kubernetes-operator-api-version")?;
+    let resource_ref = extract_extension(openapi, "x-kubernetes-operator-resource-ref")?;
+    let include_tags = extract_extension_array(openapi, "x-kubernetes-operator-include-tags")?;
+    let metadata_spec_field_name = extract_extension(
         openapi,
         "x-kubernetes-operator-example-metadata-spec-field-ref",
     )?;
     Ok((
-        kubernetes_operator_group,
-        kubernetes_operator_version,
-        kubernetes_operator_resource_ref,
-        kubernetes_operator_include_tags,
-        kubernetes_operator_metadata_spec_field_name,
+        api_group,
+        api_version,
+        resource_ref,
+        include_tags,
+        metadata_spec_field_name,
     ))
 }
 

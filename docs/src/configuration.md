@@ -34,10 +34,10 @@ As for the operator configurations, you can configure the following using custom
 
 ```yaml
 info:
-  x-kubernetes-operator-group: "example.com"
-  x-kubernetes-operator-version: "v1"
-  x-kubernetes-operator-resource-ref: "uuid"
-  x-kubernetes-operator-example-metadata-spec-field-ref: "name"
+  x-kubernetes-operator-api-group: 'example.com'
+  x-kubernetes-operator-api-version: 'v1'
+  x-kubernetes-operator-resource-ref: 'uuid'
+  x-kubernetes-operator-example-metadata-spec-field-ref: 'name'
   x-kubernetes-operator-include-tags:
     - cats
     # - dogs
@@ -46,8 +46,8 @@ info:
 
 | Attribute Name                                          | Description                                                                                                   |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `x-kubernetes-operator-group`                           | The API group of the kubernetes custom resources definitions (CRD's).                                         |
-| `x-kubernetes-operator-version`                         | The API version of the kubernetes CRD's.                                                                      |
+| `x-kubernetes-operator-api-group`                       | The API group of the kubernetes custom resources definitions (CRD's).                                         |
+| `x-kubernetes-operator-api-version`                     | The API version of the kubernetes CRD's.                                                                      |
 | `x-kubernetes-operator-resource-ref`                    | The reference ID of the data model that should be tracked on the API.                                         |
 | `x-kubernetes-operator-example-metadata-spec-field-ref` | The attribute name of the example in OpenAPI spec that should serve as the name of the generated example CRD. |
 | `x-kubernetes-operator-include-tags`                    | A list of tags that should be generated from OpenAPI Spec.                                                    |

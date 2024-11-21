@@ -68,13 +68,8 @@ pub fn execute(
 
     validate_openapi_kubernetes_extensions_exists(&openapi)?;
 
-    let (
-        kubernetes_operator_group,
-        kubernetes_operator_version,
-        kubernetes_operator_resource_ref,
-        kubernetes_operator_include_tags,
-        kubernetes_operator_metadata_spec_field_name,
-    ) = extract_openapi_info(&openapi)?;
+    let (api_group, api_version, resource_ref, include_tags, metadata_spec_field_name) =
+        extract_openapi_info(&openapi)?;
 
     let components = openapi
         .components
@@ -108,58 +103,46 @@ pub fn execute(
 
     if *all || (!*manifests && !*controllers && !*types) {
         info!("Generating all manifests, controllers and types...");
-        generate_types(
-            &k8s_operator_types_dir,
-            &schemas,
-            &kubernetes_operator_resource_ref,
-        )?;
+        generate_types(&k8s_operator_types_dir, &schemas, &resource_ref)?;
         let controllers = generate_controllers(
             base_path,
             &k8s_operator_controllers_dir,
             &schemas,
             paths.clone(),
-            kubernetes_operator_include_tags.clone(),
-            kubernetes_operator_resource_ref.clone(),
+            include_tags.clone(),
+            resource_ref.clone(),
         )?;
         generate_main_file(
             &k8s_operator_dir,
-            &kubernetes_operator_group,
-            &kubernetes_operator_version,
+            &api_group,
+            &api_version,
             controllers,
             schema_names.clone(),
         )?;
-        generate_rbac_files(
-            &k8s_manifests_rbac_dir,
-            schema_names.clone(),
-            &kubernetes_operator_group,
-        )?;
+        generate_rbac_files(&k8s_manifests_rbac_dir, schema_names.clone(), &api_group)?;
         generate_operator_deployment_files(&k8s_manifests_operator_dir)?;
         generate_crdgen_file(&k8s_crdgen_dir, schema_names.clone())?;
         generate_examples(
             &k8s_manifests_examples_dir,
-            &kubernetes_operator_metadata_spec_field_name,
+            &metadata_spec_field_name,
             components.examples.into_iter().collect(),
-            &kubernetes_operator_group,
-            &kubernetes_operator_version,
-            &kubernetes_operator_resource_ref.clone(),
+            &api_group,
+            &api_version,
+            &resource_ref.clone(),
         )?;
         return Ok(());
     }
     if *manifests {
         info!("Generating manifests...");
-        generate_rbac_files(
-            &k8s_manifests_rbac_dir,
-            schema_names.clone(),
-            &kubernetes_operator_group,
-        )?;
+        generate_rbac_files(&k8s_manifests_rbac_dir, schema_names.clone(), &api_group)?;
         generate_crdgen_file(&k8s_crdgen_dir, schema_names.clone())?;
         generate_examples(
             &k8s_manifests_examples_dir,
-            &kubernetes_operator_metadata_spec_field_name,
+            &metadata_spec_field_name,
             components.examples.into_iter().collect(),
-            &kubernetes_operator_group,
-            &kubernetes_operator_version,
-            &kubernetes_operator_resource_ref.clone(),
+            &api_group,
+            &api_version,
+            &resource_ref.clone(),
         )?;
     }
     if *controllers {
@@ -169,24 +152,20 @@ pub fn execute(
             &k8s_operator_controllers_dir,
             &schemas,
             paths.clone(),
-            kubernetes_operator_include_tags.clone(),
-            kubernetes_operator_resource_ref.clone(),
+            include_tags.clone(),
+            resource_ref.clone(),
         )?;
         generate_main_file(
             &k8s_operator_dir,
-            &kubernetes_operator_group,
-            &kubernetes_operator_version,
+            &api_group,
+            &api_version,
             controllers,
             schema_names.clone(),
         )?;
     }
     if *types {
         info!("Generating the types...");
-        generate_types(
-            &k8s_operator_types_dir,
-            &schemas,
-            &kubernetes_operator_resource_ref,
-        )?;
+        generate_types(&k8s_operator_types_dir, &schemas, &resource_ref)?;
     }
     Ok(())
 }
@@ -195,14 +174,14 @@ pub fn execute(
 fn generate_rbac_files(
     directory: &str,
     resources: Vec<String>,
-    kubernetes_operator_group: &str,
+    api_group: &str,
 ) -> Result<(), AppError> {
     let base_path_rbac = Path::new(directory);
 
     generate_template_file(
         Role {
             identifiers: RoleTemplateIdentifiers {
-                api_group: kubernetes_operator_group.to_string(),
+                api_group: api_group.to_string(),
                 resources: resources.clone(),
             },
         },
@@ -212,7 +191,7 @@ fn generate_rbac_files(
     generate_template_file(
         ClusterRole {
             identifiers: ClusterRoleTemplateIdentifiers {
-                api_group: kubernetes_operator_group.to_string(),
+                api_group: api_group.to_string(),
                 resources: resources.clone(),
             },
         },

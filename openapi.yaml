@@ -3,8 +3,8 @@ info:
   title: Pets API
   version: 1.0.1
   description: An API for managing pets
-  x-kubernetes-operator-group: example.com
-  x-kubernetes-operator-version: v1
+  x-kubernetes-operator-api-group: example.com
+  x-kubernetes-operator-api-version: v1
   x-kubernetes-operator-resource-ref: uuid
   x-kubernetes-operator-example-metadata-spec-field-ref: name
   x-kubernetes-operator-include-tags:

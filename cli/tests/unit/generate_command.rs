@@ -50,8 +50,8 @@ components:
 
         if let Err(AppError::MissingRequiredExtension(ref key)) = result {
             assert_eq!(
-                key, "x-kubernetes-operator-group",
-                "Expected missing extension key to be 'x-kubernetes-operator-group'."
+                key, "x-kubernetes-operator-api-group",
+                "Expected missing extension key to be 'x-kubernetes-operator-api-group'."
             );
         } else {
             panic!("Expected MissingRequiredExtension error.");
@@ -122,8 +122,8 @@ openapi: 3.0.0
 info:
   title: Test API
   version: 1.0.0
-  x-kubernetes-operator-group: testgroup
-  x-kubernetes-operator-version: v1
+  x-kubernetes-operator-api-group: testgroup
+  x-kubernetes-operator-api-version: v1
   x-kubernetes-operator-resource-ref: uuid
   x-kubernetes-operator-status-ref: status
   x-kubernetes-operator-include-tags:
