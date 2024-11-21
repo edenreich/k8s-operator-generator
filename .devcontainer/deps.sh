@@ -94,3 +94,8 @@ sudo mv mdbook-mermaid /usr/local/bin/mdbook-mermaid
 echo "==> Installing cargo-insta"
 CARGO_INSTA_VERSION="1.15.0"
 cargo install cargo-insta --version $CARGO_INSTA_VERSION --locked
+
+# Install cargo-audit
+echo "==> Installing cargo-audit"
+CARGO_AUDIT_VERSION="0.21.0"
+cargo install cargo-audit --version $CARGO_AUDIT_VERSION --locked

@@ -13,13 +13,38 @@ tasks:
     cmds:
       - cargo fmt --all -- --check
 
+  lint-init-project:
+    desc: Lint the generated project code
+    deps:
+      - install
+    cmds:
+      - rm -rf temp
+      - RUST_LOG=info kopgen init temp
+      - cd temp && cp .env.example .env && task generate
+      - cd temp && task lint
+
+  audit:
+    desc: Check dependencies
+    cmds:
+      - cargo audit
+
   analyse:
     desc: Analyse the code
     cmds:
       - cargo clippy --all-targets --all-features -- -D warnings
 
+  analyse-init-project:
+    desc: Analyse the generated project code
+    deps:
+      - install
+    cmds:
+      - rm -rf temp
+      - RUST_LOG=info kopgen init temp
+      - cd temp && cp .env.example .env && task generate
+      - cd temp && task analyse
+
   setup-target:
-    desc: 'Conditionally add a Rust target based on TARGET_ARCH'
+    desc: Conditionally add a Rust target based on TARGET_ARCH
     cmds:
       - |
         if [ -n "${TARGET_ARCH}" ]; then
@@ -62,13 +87,6 @@ tasks:
     desc: Test the project with snapshot review
     cmds:
       - cargo insta review
-
-  test-cli-output:
-    desc: Test the CLI output
-    deps:
-      - install
-    cmds:
-      - RUST_LOG=info kopgen init temp
 
   pre-release:
     desc: Pre-release the project

@@ -36,6 +36,26 @@ jobs:
       - name: Lint the code
         run: task lint
 
+  lint-generated-project:
+    name: Lint generated project code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Lint the generated project code
+        run: task lint-init-project
+
   analyse:
     name: Analyse code
     runs-on: ubuntu-latest
@@ -56,9 +76,53 @@ jobs:
       - name: Analyse the code
         run: task analyse
 
+  analyse-generated-project:
+    name: Analyse generated project code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Analyse the generated project code
+        run: task analyse-init-project
+
+  dependency-check:
+    name: Check dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+
+      - name: Run cargo audit
+        run: task audit
+
   build:
     name: Build code
     needs:
+      - dependency-check
       - lint
       - analyse
     runs-on: ubuntu-latest
@@ -98,7 +162,7 @@ jobs:
           cd && \
               wget https://musl.cc/x86_64-linux-musl-cross.tgz && \
               tar -xzf x86_64-linux-musl-cross.tgz && \
-              sudo mv x86_64-linux-musl-cross /opt/ &&
+              sudo mv x86_64-linux-musl-cross /opt/ && \
               rm -rf x86_64-linux-musl-cross.tgz
           echo "PATH=/opt/aarch64-linux-musl-cross/bin:/opt/x86_64-linux-musl-cross/bin:$PATH" >> $GITHUB_ENV
 

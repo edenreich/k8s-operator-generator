@@ -121,3 +121,6 @@ export CXX_aarch64_unknown_linux_musl=aarch64-linux-musl-g++
 export CC_x86_64_unknown_linux_musl=x86_64-linux-musl-gcc
 export CXX_x86_64_unknown_linux_musl=x86_64-linux-musl-g++
 export PKG_CONFIG_ALLOW_CROSS=1
+
+# For task auto-completion
+eval "$(task --completion zsh)" 

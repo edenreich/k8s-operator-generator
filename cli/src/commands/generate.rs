@@ -551,6 +551,7 @@ pub fn generate_types(
         add_type_to_modfile(name, directory)?;
     }
 
+    format_file(Path::new(directory).join("mod.rs").to_str().unwrap())?;
     Ok(())
 }
 
