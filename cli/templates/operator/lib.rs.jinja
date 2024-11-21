@@ -3,18 +3,20 @@ use anyhow::{Context, Result};
 use core::fmt::Debug;
 use futures_util::stream::StreamExt;
 use k8s_openapi::api::core::v1::{Event, EventSource, ObjectReference};
+use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::{Condition, Time};
 use k8s_openapi::chrono;
 use kube::api::{Api, ObjectMeta, Patch, PatchParams, PostParams, WatchEvent, WatchParams};
 use kube::core::CustomResourceExt;
 use kube::{Resource, ResourceExt};
-use log::{debug, error};
+use kube_runtime::{conditions, wait::await_condition};
+use log::{debug, error, info, warn};
 use openapi::apis::configuration::Configuration;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::json;
 use std::sync::Arc;
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, timeout, Duration};
 
 pub mod cli;
 
@@ -227,4 +229,55 @@ where
             e
         )),
     }
+}
+
+pub async fn deploy_crd(
+    kube_client: Api<CustomResourceDefinition>,
+    crd: CustomResourceDefinition,
+) -> Result<()> {
+    let crd_name = crd
+        .metadata
+        .name
+        .clone()
+        .unwrap_or_else(|| String::from("Unnamed CRD"));
+    info!("Deploying CRD: {}", crd_name);
+
+    let result = kube_client.create(&PostParams::default(), &crd).await;
+
+    match result {
+        core::result::Result::Ok(_) => info!("Successfully created CRD: {}", crd_name),
+        Err(kube::Error::Api(ae)) if ae.code == 409 => {
+            if kube_client
+                .replace(&crd_name, &PostParams::default(), &crd)
+                .await
+                .is_ok()
+            {
+                info!("Successfully updated CRD: {}", crd_name);
+            } else {
+                warn!("Failed to update CRD, already exists: {}", crd_name);
+            }
+        }
+        Err(_) => error!("Failed to create CRD: {}", crd_name),
+    }
+
+    Ok(())
+}
+
+pub async fn wait_for_crd(
+    kube_client: Api<CustomResourceDefinition>,
+    crd_name: &str,
+) -> Result<()> {
+    info!(
+        "Waiting for the api-server to accept the CRD of {}...",
+        crd_name
+    );
+
+    let establish = await_condition(
+        kube_client.clone(),
+        crd_name,
+        conditions::is_crd_established(),
+    );
+    let _ = timeout(std::time::Duration::from_secs(10), establish).await?;
+    info!("CRD of {} is established.", crd_name);
+    Ok(())
 }
