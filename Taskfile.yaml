@@ -24,7 +24,7 @@ tasks:
       - cargo clippy --all-targets --all-features -- -D warnings
 
   setup-target:
-    desc: 'Conditionally add a Rust target based on TARGET_ARCH'
+    desc: Conditionally add a Rust target based on TARGET_ARCH
     cmds:
       - |
         if [ -n "${TARGET_ARCH}" ]; then
