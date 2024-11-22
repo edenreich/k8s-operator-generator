@@ -1,7 +1,7 @@
 #[cfg(test)]
 /// Tests for the `hydrate` command of the `kopgen` CLI.
 mod tests {
-    use crate::utils::{create_temp_file, read_temp_file};
+    use crate::utils::{create_temp_file, read_temp_file, SpecValue};
     use kopgen::{
         commands,
         config::{Config, ConfigProvider},
@@ -58,7 +58,15 @@ info:
         commands::hydrate::execute(config, &file_path)?;
 
         // Read back the YAML file
-        let yaml: YamlValue = read_temp_file(&file_path)?;
+        let oas: SpecValue = read_temp_file(&file_path)?;
+
+        let yaml = match oas {
+            SpecValue::Yaml(yaml) => yaml,
+            SpecValue::Json(json) => {
+                panic!("Expected YAML, got JSON: {:?}", json);
+            }
+        };
+
         let info: &Mapping = yaml.get("info").unwrap().as_mapping().unwrap();
 
         // Assert that configuration values are correctly injected
@@ -138,58 +146,66 @@ info:
         commands::hydrate::execute(config, &file_path)?;
 
         // Read back the YAML file
-        let yaml: YamlValue = read_temp_file(&file_path).expect("Unable to read file");
-        let info: &Mapping = yaml.get("info").unwrap().as_mapping().unwrap();
+        let oas = read_temp_file(&file_path)?;
 
-        // Assert that configuration values with defaults are correctly injected
-        assert_eq!(
-            info.get(YamlValue::String(
-                "x-kubernetes-operator-api-group".to_string()
-            ))
-            .unwrap()
-            .as_str()
-            .unwrap(),
-            "test-group"
-        );
-        assert_eq!(
-            info.get(YamlValue::String(
-                "x-kubernetes-operator-api-version".to_string()
-            ))
-            .unwrap()
-            .as_str()
-            .unwrap(),
-            "v1"
-        );
-        assert_eq!(
-            info.get(YamlValue::String(
-                "x-kubernetes-operator-resource-ref".to_string()
-            ))
-            .unwrap()
-            .as_str()
-            .unwrap(),
-            "test-resource-ref"
-        );
-        assert_eq!(
-            info.get(YamlValue::String(
-                "x-kubernetes-operator-include-tags".to_string()
-            ))
-            .unwrap()
-            .as_sequence()
-            .unwrap(),
-            &vec![
-                YamlValue::String("tag1".to_string()),
-                YamlValue::String("tag2".to_string())
-            ]
-        );
-        assert_eq!(
-            info.get(YamlValue::String(
-                "x-kubernetes-operator-example-metadata-spec-field-ref".to_string()
-            ))
-            .unwrap()
-            .as_str()
-            .unwrap(),
-            "test-field-ref"
-        );
+        match oas {
+            SpecValue::Yaml(yaml) => {
+                let info: &Mapping = yaml.get("info").unwrap().as_mapping().unwrap();
+
+                // Assert that configuration values with defaults are correctly injected
+                assert_eq!(
+                    info.get(YamlValue::String(
+                        "x-kubernetes-operator-api-group".to_string()
+                    ))
+                    .unwrap()
+                    .as_str()
+                    .unwrap(),
+                    "test-group"
+                );
+                assert_eq!(
+                    info.get(YamlValue::String(
+                        "x-kubernetes-operator-api-version".to_string()
+                    ))
+                    .unwrap()
+                    .as_str()
+                    .unwrap(),
+                    "v1"
+                );
+                assert_eq!(
+                    info.get(YamlValue::String(
+                        "x-kubernetes-operator-resource-ref".to_string()
+                    ))
+                    .unwrap()
+                    .as_str()
+                    .unwrap(),
+                    "test-resource-ref"
+                );
+                assert_eq!(
+                    info.get(YamlValue::String(
+                        "x-kubernetes-operator-include-tags".to_string()
+                    ))
+                    .unwrap()
+                    .as_sequence()
+                    .unwrap(),
+                    &vec![
+                        YamlValue::String("tag1".to_string()),
+                        YamlValue::String("tag2".to_string())
+                    ]
+                );
+                assert_eq!(
+                    info.get(YamlValue::String(
+                        "x-kubernetes-operator-example-metadata-spec-field-ref".to_string()
+                    ))
+                    .unwrap()
+                    .as_str()
+                    .unwrap(),
+                    "test-field-ref"
+                );
+            }
+            SpecValue::Json(json) => {
+                panic!("Expected YAML, got JSON: {:?}", json);
+            }
+        }
 
         drop(dir);
         clear_env();
@@ -249,7 +265,14 @@ info:
         commands::hydrate::execute(config, &file_path)?;
 
         // Read back the YAML file
-        let yaml: YamlValue = read_temp_file(&file_path).expect("Unable to read file");
+        let oas: SpecValue = read_temp_file(&file_path).expect("Unable to read file");
+
+        let yaml = match oas {
+            SpecValue::Yaml(yaml) => yaml,
+            SpecValue::Json(json) => {
+                panic!("Expected YAML, got JSON: {:?}", json);
+            }
+        };
 
         // Since there were no fields to modify, the YAML should remain unchanged except for the injections
         let info: &Mapping = yaml.get("info").unwrap().as_mapping().unwrap();
@@ -354,8 +377,15 @@ servers:
         // Execute the hydrate command
         commands::hydrate::execute(config, &file_path)?;
 
-        // Read back the YAML file
-        let yaml: YamlValue = read_temp_file(&file_path).expect("Unable to read file");
+        // Read back the OAS file
+        let oas: SpecValue = read_temp_file(&file_path)?;
+
+        let yaml = match oas {
+            SpecValue::Yaml(yaml) => yaml,
+            SpecValue::Json(json) => {
+                panic!("Expected YAML, got JSON: {:?}", json);
+            }
+        };
 
         // Verify that unrelated fields are preserved
         let expected_servers = vec![YamlValue::Mapping({
@@ -386,6 +416,86 @@ servers:
         drop(dir);
         clear_env();
 
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_execute_hydrates_openapi_spec_yaml() -> Result<(), AppError> {
+        setup_env();
+
+        let (dir, file_path) = create_temp_file(
+            "openapi.yaml",
+            r#"---
+openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+"#,
+        );
+
+        let config = Config::load_from_env()?;
+
+        commands::hydrate::execute(config, &file_path)?;
+
+        let oas: SpecValue = read_temp_file(&file_path)?;
+
+        match oas {
+            SpecValue::Yaml(yaml) => {
+                let info: &Mapping = yaml.get("info").unwrap().as_mapping().unwrap();
+
+                assert_eq!(
+                    info.get(YamlValue::String("title".to_string()))
+                        .unwrap()
+                        .as_str()
+                        .unwrap(),
+                    "Test API"
+                );
+            }
+            SpecValue::Json(json) => {
+                panic!("Expected YAML, got JSON: {:?}", json);
+            }
+        }
+        drop(dir);
+        clear_env();
+        Ok(())
+    }
+
+    #[test]
+    #[serial]
+    fn test_execute_hydrates_openapi_spec_json() -> Result<(), AppError> {
+        setup_env();
+
+        let (dir, file_path) = create_temp_file(
+            "openapi.json",
+            r#"{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Test API",
+    "version": "1.0.0"
+  }
+}"#,
+        );
+
+        let config = Config::load_from_env()?;
+
+        commands::hydrate::execute(config, &file_path)?;
+
+        let oas: SpecValue = read_temp_file(&file_path)?;
+
+        match oas {
+            SpecValue::Json(json) => {
+                let info = json.get("info").unwrap().as_object().unwrap();
+
+                assert_eq!(info.get("title").unwrap().as_str().unwrap(), "Test API");
+            }
+            SpecValue::Yaml(yaml) => {
+                panic!("Expected JSON, got YAML: {:?}", yaml);
+            }
+        }
+
+        drop(dir);
+        clear_env();
         Ok(())
     }
 }

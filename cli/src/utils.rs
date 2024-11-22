@@ -92,7 +92,20 @@ pub fn set_executable_permission(file_path: &Path) {
 pub fn read_openapi_spec(file_path: &str) -> Result<OpenAPI, AppError> {
     let file = File::open(file_path)?;
     let reader = BufReader::new(file);
-    Ok(serde_yaml::from_reader(reader)?)
+    let extension = Path::new(file_path)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_lowercase())
+        .ok_or_else(|| AppError::UnsupportedFormat("No file extension found".to_string()))?;
+
+    match extension.as_str() {
+        "json" => serde_json::from_reader(reader).map_err(AppError::from),
+        "yaml" | "yml" => serde_yaml::from_reader(reader).map_err(AppError::from),
+        _ => Err(AppError::UnsupportedFormat(format!(
+            "Unsupported file extension: {}",
+            extension
+        ))),
+    }
 }
 
 /// Creates a file if it does not already exist.

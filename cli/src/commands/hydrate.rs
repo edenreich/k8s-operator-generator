@@ -82,7 +82,14 @@ pub fn execute(conf: Config, openapi_file: &String) -> Result<(), AppError> {
         }
     }
 
-    fs::write(openapi_file, serde_yaml::to_string(&openapi)?)?;
+    let output_content = if openapi_file.ends_with(".json") {
+        serde_json::to_string_pretty(&openapi)?
+    } else {
+        serde_yaml::to_string(&openapi)?
+        // TODO - add formatting, because serde_yaml::to_string_pretty(&openapi)? is not implemented
+    };
+
+    fs::write(openapi_file, output_content)?;
 
     info!("OpenAPI spec hydrated successfully");
 
