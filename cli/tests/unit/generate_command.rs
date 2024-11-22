@@ -268,4 +268,59 @@ components:
 
         Ok(())
     }
+
+    #[test]
+    #[serial]
+    fn test_invalid_json_spec() -> Result<(), AppError> {
+        let openapi_json = r#"{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Test API",
+        "version": "1.0.0",
+        "x-kubernetes-operator-api-group": "testgroup",
+        "x-kubernetes-operator-api-version": "v1",
+        "x-kubernetes-operator-resource-ref": "uuid",
+        "x-kubernetes-operator-status-ref": "status",
+        "x-kubernetes-operator-include-tags": ["user"],
+        "x-kubernetes-operator-example-metadata-spec-field-ref": "metadata"
+    },
+    "paths": {},
+    "components": {
+        "schemas": {
+            "User": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email"
+                    }
+                },
+                "required": ["id"]
+            }
+        }
+    }
+"#; // Missing closing brace error
+
+        let (dir, openapi_file) = create_temp_file("invalid_openapi.json", openapi_json);
+        let output_path = dir.path().join("src").join("types");
+        fs::create_dir_all(&output_path)?;
+
+        let openapi = read_openapi_spec(openapi_file.as_str());
+        assert!(openapi.is_err(), "Expected error due to invalid JSON spec.");
+        if let Err(e) = openapi {
+            match e {
+                AppError::JsonError(_) => (),
+                _ => panic!("Expected AppError::JsonError, got {:?}", e),
+            }
+        }
+
+        Ok(())
+    }
 }

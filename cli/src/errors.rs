@@ -17,6 +17,9 @@ pub enum AppError {
     #[error("JSON deserialization error: {0}")]
     JsonError(#[from] JsonError),
 
+    #[error("Unsupported format: {0}")]
+    UnsupportedFormat(String),
+
     #[error("Askama template error: {0}")]
     AskamaError(#[from] AskamaError),
 
