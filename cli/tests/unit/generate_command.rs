@@ -202,15 +202,15 @@ components:
                 "properties": {
                     "id": {
                         "type": "integer",
-                        "format": "int64",
+                        "format": "int64"
                     },
                     "name": {
-                        "type": "string",
+                        "type": "string"
                     },
                     "email": {
                         "type": "string",
-                        "format": "email",
-                    },
+                        "format": "email"
+                    }
                 },
                 "required": ["id"]
             }
