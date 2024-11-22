@@ -47,7 +47,9 @@
         "dev.containers.copyGitConfig": true,
         "files.associations": {
           "*.jinja": "jinja"
-        }
+        },
+        "githubPullRequests.experimental.chat": true,
+        "githubPullRequests.experimental.notificationsView": true
       }
     }
   },
