@@ -1,3 +1,27 @@
+## [1.12.0](https://github.com/edenreich/kopgen/compare/v1.11.0...v1.12.0) (2024-11-22)
+
+### Features
+
+* Add JSON support for OpenAPI spec hydration and error handling ([#24](https://github.com/edenreich/kopgen/issues/24)) ([ed5b840](https://github.com/edenreich/kopgen/commit/ed5b840c5530831cd3c74fee2e8d74e212c11ac7))
+* Make kubernetes operator secret name for access token configurable ([#27](https://github.com/edenreich/kopgen/issues/27)) ([f601545](https://github.com/edenreich/kopgen/commit/f6015455fa0e5d14cf94a5dc8607a757796cb83a))
+* Try out experimental GitHub Pull Requests features in devcontainer configuration ([b1c723d](https://github.com/edenreich/kopgen/commit/b1c723d8c47abed4347ebd6c2dc3e97abb410848))
+
+### Improvements
+
+* Add generate-project task to streamline project initialization ([29fb38d](https://github.com/edenreich/kopgen/commit/29fb38d88b62be2aee4f60b4b70c9ec3b3f61047))
+* Migrate Prettier configuration from JSON to YAML format ([530e85d](https://github.com/edenreich/kopgen/commit/530e85d367c2a8d4d13b82bd32badca125ca4b67))
+* Rename lint-init-project and analyse-init-project lint and analyse tasks for linit-generated-project and analyse-generated-project for consistency ([033bc14](https://github.com/edenreich/kopgen/commit/033bc146b6f08f115dcf34f5d819f9dc08881c61))
+* Update kube dependencies to version 0.97.0 in operator and crdgen cargo.toml templates ([180bb5d](https://github.com/edenreich/kopgen/commit/180bb5d7775d9983a0bdaf3c7646a7f54a628d65))
+* Update trailingComma value in Prettier YAML configuration to remove quotes ([6f071d8](https://github.com/edenreich/kopgen/commit/6f071d838cb1bde10120c474649166130a227fb6))
+
+### Bug Fixes
+
+* Replace `dotenv` with `dotenvy` to address security advisory ([#23](https://github.com/edenreich/kopgen/issues/23)) ([958e0f7](https://github.com/edenreich/kopgen/commit/958e0f7ab1c73cfcc240b544e0aa7e2e0490aac5)), closes [#22](https://github.com/edenreich/kopgen/issues/22)
+
+### Documentation
+
+* Add docblocks for the Config ([86c8f87](https://github.com/edenreich/kopgen/commit/86c8f877c925faca457601bcb41ecadffd797c88))
+
 ## [1.11.0](https://github.com/edenreich/kopgen/compare/v1.10.0...v1.11.0) (2024-11-21)
 
 ### Features
