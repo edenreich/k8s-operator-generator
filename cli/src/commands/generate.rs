@@ -1,22 +1,25 @@
-use crate::errors::AppError;
-use crate::templates::{
-    crdgen::Main as CrdGenTemplate,
-    manifests::{
-        examples::Example,
-        operator::{Deployment, Secret},
-        rbac::{ClusterRole, ClusterRoleBinding, Role, RoleBinding, ServiceAccount},
+use crate::{
+    config::Config,
+    errors::AppError,
+    templates::{
+        crdgen::Main as CrdGenTemplate,
+        manifests::{
+            examples::Example,
+            operator::{Deployment, Secret},
+            rbac::{ClusterRole, ClusterRoleBinding, Role, RoleBinding, ServiceAccount},
+        },
+        operator::{
+            Controller, ControllerActionDelete, ControllerActionPost, ControllerActionPut, Main,
+            Type as TypeTemplate,
+        },
+        ClusterRoleTemplateIdentifiers, ControllerAttributes, Field, Metadata, Resource,
+        RoleTemplateIdentifiers,
     },
-    operator::{
-        Controller, ControllerActionDelete, ControllerActionPost, ControllerActionPut, Main,
-        Type as TypeTemplate,
+    utils::{
+        extract_config_from_openapi, format_file, generate_template_file, get_ignored_files,
+        read_openapi_spec, uppercase_first_letter, upsert_line_to_file,
+        validate_openapi_kubernetes_extensions_exists, write_to_file,
     },
-    ClusterRoleTemplateIdentifiers, ControllerAttributes, Field, Metadata, Resource,
-    RoleTemplateIdentifiers,
-};
-use crate::utils::{
-    extract_openapi_info, format_file, generate_template_file, get_ignored_files,
-    read_openapi_spec, uppercase_first_letter, upsert_line_to_file,
-    validate_openapi_kubernetes_extensions_exists, write_to_file,
 };
 use askama::Template;
 use inflector::Inflector;
@@ -68,8 +71,7 @@ pub fn execute(
 
     validate_openapi_kubernetes_extensions_exists(&openapi)?;
 
-    let (api_group, api_version, resource_ref, include_tags, metadata_spec_field_name) =
-        extract_openapi_info(&openapi)?;
+    let config: Config = extract_config_from_openapi(&openapi)?;
 
     let components = openapi
         .components
@@ -103,46 +105,54 @@ pub fn execute(
 
     if *all || (!*manifests && !*controllers && !*types) {
         info!("Generating all manifests, controllers and types...");
-        generate_types(&k8s_operator_types_dir, &schemas, &resource_ref)?;
+        generate_types(&k8s_operator_types_dir, &schemas, &config.resource_ref)?;
         let controllers = generate_controllers(
             base_path,
             &k8s_operator_controllers_dir,
             &schemas,
             paths.clone(),
-            include_tags.clone(),
-            resource_ref.clone(),
+            config.include_tags.clone(),
+            config.resource_ref.clone(),
         )?;
         generate_main_file(
             &k8s_operator_dir,
-            &api_group,
-            &api_version,
+            &config.api_group,
+            &config.api_version,
             controllers,
             schema_names.clone(),
         )?;
-        generate_rbac_files(&k8s_manifests_rbac_dir, schema_names.clone(), &api_group)?;
-        generate_operator_deployment_files(&k8s_manifests_operator_dir)?;
+        generate_rbac_files(
+            &k8s_manifests_rbac_dir,
+            schema_names.clone(),
+            &config.api_group,
+        )?;
+        generate_operator_deployment_files(&k8s_manifests_operator_dir, config.secret_name)?;
         generate_crdgen_file(&k8s_crdgen_dir, schema_names.clone())?;
         generate_examples(
             &k8s_manifests_examples_dir,
-            &metadata_spec_field_name,
+            &config.example_metadata_spec_field_ref,
             components.examples.into_iter().collect(),
-            &api_group,
-            &api_version,
-            &resource_ref.clone(),
+            &config.api_group,
+            &config.api_version,
+            &config.resource_ref.clone(),
         )?;
         return Ok(());
     }
     if *manifests {
         info!("Generating manifests...");
-        generate_rbac_files(&k8s_manifests_rbac_dir, schema_names.clone(), &api_group)?;
+        generate_rbac_files(
+            &k8s_manifests_rbac_dir,
+            schema_names.clone(),
+            &config.api_group,
+        )?;
         generate_crdgen_file(&k8s_crdgen_dir, schema_names.clone())?;
         generate_examples(
             &k8s_manifests_examples_dir,
-            &metadata_spec_field_name,
+            &config.example_metadata_spec_field_ref,
             components.examples.into_iter().collect(),
-            &api_group,
-            &api_version,
-            &resource_ref.clone(),
+            &config.api_group,
+            &config.api_version,
+            &config.resource_ref.clone(),
         )?;
     }
     if *controllers {
@@ -152,20 +162,20 @@ pub fn execute(
             &k8s_operator_controllers_dir,
             &schemas,
             paths.clone(),
-            include_tags.clone(),
-            resource_ref.clone(),
+            config.include_tags.clone(),
+            config.resource_ref.clone(),
         )?;
         generate_main_file(
             &k8s_operator_dir,
-            &api_group,
-            &api_version,
+            &config.api_group,
+            &config.api_version,
             controllers,
             schema_names.clone(),
         )?;
     }
     if *types {
         info!("Generating the types...");
-        generate_types(&k8s_operator_types_dir, &schemas, &resource_ref)?;
+        generate_types(&k8s_operator_types_dir, &schemas, &config.resource_ref)?;
     }
     Ok(())
 }
@@ -210,11 +220,20 @@ fn generate_rbac_files(
 }
 
 /// Generates the operator deployment files.
-fn generate_operator_deployment_files(directory: &str) -> Result<(), AppError> {
+fn generate_operator_deployment_files(
+    directory: &str,
+    secret_name: String,
+) -> Result<(), AppError> {
     let base_path_operator = Path::new(directory);
 
-    generate_template_file(Deployment {}, base_path_operator, "deployment.yaml")?;
-    generate_template_file(Secret {}, base_path_operator, "secret.yaml")?;
+    generate_template_file(
+        Deployment {
+            secret_name: secret_name.clone(),
+        },
+        base_path_operator,
+        "deployment.yaml",
+    )?;
+    generate_template_file(Secret { secret_name }, base_path_operator, "secret.yaml")?;
 
     Ok(())
 }
