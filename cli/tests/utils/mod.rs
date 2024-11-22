@@ -20,7 +20,6 @@ pub enum SpecValue {
 }
 
 /// This function is used to read the content of a temporary file
-#[allow(dead_code)]
 pub fn read_temp_file(file_path: &str) -> Result<SpecValue, AppError> {
     let hydrated_spec_content = std::fs::read_to_string(file_path)?;
 
