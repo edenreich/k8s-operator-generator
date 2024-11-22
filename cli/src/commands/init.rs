@@ -197,9 +197,9 @@ pub fn execute(conf: Config, path: &String) -> Result<(), AppError> {
     create_file_if_not_exists(
         base_path.join(K8S_OPERATOR_CONTROLLERS_DIR).as_path(),
         "mod.rs",
-    );
-    create_file_if_not_exists(base_path.join(K8S_OPERATOR_TYPES_DIR).as_path(), "mod.rs");
-    create_file_if_not_exists(base_path.join(K8S_TESTS_UTILS_DIR).as_path(), "mod.rs");
+    )?;
+    create_file_if_not_exists(base_path.join(K8S_OPERATOR_TYPES_DIR).as_path(), "mod.rs")?;
+    create_file_if_not_exists(base_path.join(K8S_TESTS_UTILS_DIR).as_path(), "mod.rs")?;
 
     let tests_utils_path_buf = base_path.join(K8S_TESTS_UTILS_DIR);
     let tests_utils_path: &Path = tests_utils_path_buf.as_path();

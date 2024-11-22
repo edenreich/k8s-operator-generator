@@ -114,12 +114,17 @@ pub fn read_openapi_spec(file_path: &str) -> Result<OpenAPI, AppError> {
 ///
 /// * `base_path` - The base path where the file is located.
 /// * `file` - The name of the file to create.
-pub fn create_file_if_not_exists(base_path: &Path, file: &str) {
+///
+/// # Returns
+///
+/// This function returns a `Result` indicating the success or failure of the operation.
+pub fn create_file_if_not_exists(base_path: &Path, file: &str) -> Result<(), AppError> {
     let file_path = base_path.join(file);
     if !file_path.exists() {
-        File::create(&file_path)
-            .unwrap_or_else(|_| panic!("Unable to create file {}", file_path.to_string_lossy()));
+        let mut new_file = File::create(&file_path)?;
+        new_file.write_all(b"\n")?;
     }
+    Ok(())
 }
 
 /// Validates the OpenAPI specification for kubernetes extensions.
