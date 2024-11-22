@@ -9,13 +9,55 @@ use crate::{cli::Cli, errors::AppError};
 /// typically loaded from environment variables or CLI arguments.
 #[derive(Debug, Clone)]
 pub struct Config {
+    /// The name of the Kubernetes operator.
+    ///
+    /// This value is used to identify the operator and is typically used
+    /// in generated code, resources, and documentation.
     pub operator_name: String,
+
+    /// The author of the Kubernetes operator.
+    ///
+    /// This information is used in documentation and metadata to acknowledge
+    /// the creator or maintainer of the operator.
     pub operator_author: String,
+
+    /// The API group for the Kubernetes resources.
+    ///
+    /// Defines the API group under which the custom resources are registered.
+    /// It is used in the API versioning and namespacing of the resources.
     pub api_group: String,
+
+    /// The API version for the Kubernetes resources.
+    ///
+    /// Specifies the version of the API under the defined API group. This is
+    /// important for versioning and compatibility of the custom resources.
     pub api_version: String,
+
+    /// Reference to the resource identifier in Kubernetes.
+    ///
+    /// This field defines the key used to reference the primary identifier of
+    /// the custom resource within the operator's logic and Kubernetes manifests.
     pub resource_ref: String,
+
+    /// Reference to the metadata specification field in the operator.
+    ///
+    /// Points to the specific field in the metadata that holds additional
+    /// specification details for the custom resource. This is used for
+    /// advanced configurations and extensions.
     pub example_metadata_spec_field_ref: String,
+
+    /// Tags to include in the operator generation.
+    ///
+    /// A list of tags that categorize or label the generated operator components.
+    /// These tags can be used for filtering, organizing, and managing different
+    /// aspects of the operator's functionality.
     pub include_tags: Vec<String>,
+
+    /// The name of the secret to be used by the operator.
+    ///
+    /// Specifies the Kubernetes Secret resource that the operator will use to
+    /// store sensitive information, such as credentials or tokens required
+    /// for its operations.
     pub secret_name: String,
 }
 
