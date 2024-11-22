@@ -10,10 +10,9 @@ tasks:
 
   generate-project:
     desc: Generate a new project
-    deps:
-      - clean
-      - install
     cmds:
+      - task: clean
+      - task: install
       - mkdir temp && cd temp && kopgen init . && cp .env.example .env && task generate
 
   lint:
