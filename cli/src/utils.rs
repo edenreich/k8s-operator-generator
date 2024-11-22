@@ -1,4 +1,4 @@
-use crate::errors::AppError;
+use crate::{config::Config, errors::AppError};
 use askama::Template;
 use log::{debug, error, info};
 use openapiv3::OpenAPI;
@@ -114,21 +114,29 @@ pub fn read_openapi_spec(file_path: &str) -> Result<OpenAPI, AppError> {
 ///
 /// * `base_path` - The base path where the file is located.
 /// * `file` - The name of the file to create.
-pub fn create_file_if_not_exists(base_path: &Path, file: &str) {
+///
+/// # Returns
+///
+/// This function returns a `Result` indicating the success or failure of the operation.
+pub fn create_file_if_not_exists(base_path: &Path, file: &str) -> Result<(), AppError> {
     let file_path = base_path.join(file);
     if !file_path.exists() {
-        File::create(&file_path)
-            .unwrap_or_else(|_| panic!("Unable to create file {}", file_path.to_string_lossy()));
+        let mut new_file = File::create(&file_path)?;
+        new_file.write_all(b"\n")?;
     }
+    Ok(())
 }
 
 /// Validates the OpenAPI specification for kubernetes extensions.
 /// The OpenAPI specification must contain the following extensions:
+/// - x-kubernetes-operator-name
+/// - x-kubernetes-operator-author
 /// - x-kubernetes-operator-api-group
 /// - x-kubernetes-operator-api-version
 /// - x-kubernetes-operator-resource-ref
 /// - x-kubernetes-operator-include-tags
 /// - x-kubernetes-operator-example-metadata-spec-field-ref
+/// - x-kubernetes-operator-secret-name
 ///
 /// If any of the extensions are missing, an error is returned.
 /// If all extensions are present, return ok.
@@ -145,11 +153,14 @@ pub fn create_file_if_not_exists(base_path: &Path, file: &str) {
 /// The `AppError` contains an error message indicating the missing extension.
 pub fn validate_openapi_kubernetes_extensions_exists(openapi: &OpenAPI) -> Result<(), AppError> {
     let required_extensions = vec![
+        "x-kubernetes-operator-name",
+        "x-kubernetes-operator-author",
         "x-kubernetes-operator-api-group",
         "x-kubernetes-operator-api-version",
         "x-kubernetes-operator-resource-ref",
         "x-kubernetes-operator-include-tags",
         "x-kubernetes-operator-example-metadata-spec-field-ref",
+        "x-kubernetes-operator-secret-name",
     ];
 
     for extension in required_extensions {
@@ -161,7 +172,7 @@ pub fn validate_openapi_kubernetes_extensions_exists(openapi: &OpenAPI) -> Resul
     Ok(())
 }
 
-/// Extracts information from the OpenAPI specification.
+/// Extracts a config from the OpenAPI specification.
 ///
 /// # Arguments
 ///
@@ -170,24 +181,28 @@ pub fn validate_openapi_kubernetes_extensions_exists(openapi: &OpenAPI) -> Resul
 /// # Returns
 ///
 /// This function returns a tuple containing the extracted information.
-pub fn extract_openapi_info(
-    openapi: &OpenAPI,
-) -> Result<(String, String, String, Vec<String>, String), AppError> {
+pub fn extract_config_from_openapi(openapi: &OpenAPI) -> Result<Config, AppError> {
+    let operator_name = extract_extension(openapi, "x-kubernetes-operator-name")?;
+    let operator_author = extract_extension(openapi, "x-kubernetes-operator-author")?;
     let api_group = extract_extension(openapi, "x-kubernetes-operator-api-group")?;
     let api_version = extract_extension(openapi, "x-kubernetes-operator-api-version")?;
     let resource_ref = extract_extension(openapi, "x-kubernetes-operator-resource-ref")?;
     let include_tags = extract_extension_array(openapi, "x-kubernetes-operator-include-tags")?;
-    let metadata_spec_field_name = extract_extension(
+    let example_metadata_spec_field_ref = extract_extension(
         openapi,
         "x-kubernetes-operator-example-metadata-spec-field-ref",
     )?;
-    Ok((
+    let secret_name = extract_extension(openapi, "x-kubernetes-operator-secret-name")?;
+    Ok(Config {
+        operator_name,
+        operator_author,
         api_group,
         api_version,
         resource_ref,
         include_tags,
-        metadata_spec_field_name,
-    ))
+        example_metadata_spec_field_ref,
+        secret_name,
+    })
 }
 
 /// Extracts a string extension from the OpenAPI specification.

@@ -96,8 +96,8 @@ pub fn execute(conf: Config, path: &String) -> Result<(), AppError> {
     // Generate main files
     generate_template_file(
         OperatorMain {
-            api_group: conf.api_group,
-            api_version: conf.api_version,
+            api_group: conf.api_group.clone(),
+            api_version: conf.api_version.clone(),
             controllers: vec![],
             types: vec![],
         },
@@ -129,7 +129,7 @@ pub fn execute(conf: Config, path: &String) -> Result<(), AppError> {
         Cli {
             project_name: project_name.clone(),
             version: "0.1.0".to_string(),
-            author: conf.operator_author,
+            author: conf.operator_author.clone(),
         },
         base_path.join(K8S_OPERATOR_DIR).join("src").as_path(),
         "cli.rs",
@@ -138,7 +138,6 @@ pub fn execute(conf: Config, path: &String) -> Result<(), AppError> {
     // Generate root files
     generate_template_file(Dockerignore {}, base_path, ".dockerignore")?;
     generate_template_file(Editorconfig {}, base_path, ".editorconfig")?;
-    generate_template_file(EnvExample {}, base_path, ".env.example")?;
     generate_template_file(GitAttributes {}, base_path, ".gitattributes")?;
     generate_template_file(GitIgnore {}, base_path, ".gitignore")?;
     generate_template_file(Taskfile {}, base_path, "Taskfile.yml")?;
@@ -147,6 +146,20 @@ pub fn execute(conf: Config, path: &String) -> Result<(), AppError> {
     generate_template_file(ClusterYaml {}, base_path, "Cluster.yaml")?;
     generate_template_file(Dockerfile {}, base_path, "Dockerfile")?;
     generate_template_file(ReadmeMd { project_name }, base_path, "README.md")?;
+    generate_template_file(
+        EnvExample {
+            operator_name: conf.operator_name,
+            operator_author: conf.operator_author,
+            operator_api_group: conf.api_group,
+            operator_api_version: conf.api_version,
+            operator_resource_ref: conf.resource_ref,
+            operator_example_metadata_spec_field_ref: conf.example_metadata_spec_field_ref,
+            operator_include_tags: conf.include_tags.join(","),
+            operator_secret_name: conf.secret_name,
+        },
+        base_path,
+        ".env.example",
+    )?;
 
     // Generate devcontainer files
     generate_template_file(
@@ -184,9 +197,9 @@ pub fn execute(conf: Config, path: &String) -> Result<(), AppError> {
     create_file_if_not_exists(
         base_path.join(K8S_OPERATOR_CONTROLLERS_DIR).as_path(),
         "mod.rs",
-    );
-    create_file_if_not_exists(base_path.join(K8S_OPERATOR_TYPES_DIR).as_path(), "mod.rs");
-    create_file_if_not_exists(base_path.join(K8S_TESTS_UTILS_DIR).as_path(), "mod.rs");
+    )?;
+    create_file_if_not_exists(base_path.join(K8S_OPERATOR_TYPES_DIR).as_path(), "mod.rs")?;
+    create_file_if_not_exists(base_path.join(K8S_TESTS_UTILS_DIR).as_path(), "mod.rs")?;
 
     let tests_utils_path_buf = base_path.join(K8S_TESTS_UTILS_DIR);
     let tests_utils_path: &Path = tests_utils_path_buf.as_path();

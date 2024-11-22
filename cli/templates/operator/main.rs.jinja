@@ -6,7 +6,7 @@ use kube::{api::Api, Client as KubeClient, CustomResourceExt};
 use log::{debug, error, info};
 use operator::{
     cli::{Cli, Commands},
-    deploy_crd, wait_for_crd,
+    deploy_crd{% if controllers.len() > 0 %}, wait_for_crd{% endif %}
 };
 use warp::Filter;
 {% if controllers.len() > 0 %}
@@ -52,24 +52,27 @@ async fn main() -> anyhow::Result<()> {
                     deploy_crd(kube_client_api.clone(), crd).await?;
                 }
             }
-
-            let controllers_crds = vec![{% if controllers.len() > 0 %}
+{% if controllers.len() > 0 %}
+            let controllers_crds = vec![
                 {%- for controller in controllers %}
                 format!("{{ controller }}.{{ api_group}}"),
                 {%- endfor %}
-            {% endif %}];
+            ];
             for controller_crd in controllers_crds {
                 if let Err(e) = wait_for_crd(kube_client_api.clone(), &controller_crd).await {
                     error!("Error waiting for CRD {}: {}", &controller_crd, e);
                 }
             }
-            {% for controller in controllers %}
-            // Start the {{ controller }} controller for the {{ controller }}.{{ api_group }}/{{ api_version }} API group
+{% else %}
+            debug!("No controllers to start. Please check your configuration. KUBERNETES_OPERATOR_INCLUDE_TAGS is possibly empty.");
+{% endif -%}
+{%- for controller in controllers %}
+            /// Start the {{ controller }} controller for the {{ controller }}.{{ api_group }}/{{ api_version }} API group
             let {{ controller }}_client = Api::namespaced(kube_client.clone(), "default");
             tokio::spawn(async {
                 let _{{ controller }}_controller = {{ controller }}::handle({{ controller }}_client).await;
             });
-            {% endfor %}
+{% endfor %}
             tokio::spawn(async {
                 let liveness_route = warp::path!("healthz")
                     .map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));

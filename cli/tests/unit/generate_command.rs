@@ -50,8 +50,8 @@ components:
 
         if let Err(AppError::MissingRequiredExtension(ref key)) = result {
             assert_eq!(
-                key, "x-kubernetes-operator-api-group",
-                "Expected missing extension key to be 'x-kubernetes-operator-api-group'."
+                key, "x-kubernetes-operator-name",
+                "Expected missing extension key to be 'x-kubernetes-operator-name'."
             );
         } else {
             panic!("Expected MissingRequiredExtension error.");

@@ -1,3 +1,6 @@
+mod templates_env_example;
+
+/// Operator
 mod templates_operator_cargo_toml;
 mod templates_operator_cli;
 mod templates_operator_controller;

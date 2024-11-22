@@ -10,7 +10,7 @@ use kube::{api::Api, Client as KubeClient, CustomResourceExt};
 use log::{debug, error, info};
 use operator::{
     cli::{Cli, Commands},
-    deploy_crd, wait_for_crd,
+    deploy_crd, wait_for_crd
 };
 use warp::Filter;
 
@@ -54,19 +54,19 @@ async fn main() -> anyhow::Result<()> {
                     error!("Error waiting for CRD {}: {}", &controller_crd, e);
                 }
             }
-            
-            // Start the controller1 controller for the controller1.example.com/v1 API group
+
+            /// Start the controller1 controller for the controller1.example.com/v1 API group
             let controller1_client = Api::namespaced(kube_client.clone(), "default");
             tokio::spawn(async {
                 let _controller1_controller = controller1::handle(controller1_client).await;
             });
-            
-            // Start the controller2 controller for the controller2.example.com/v1 API group
+
+            /// Start the controller2 controller for the controller2.example.com/v1 API group
             let controller2_client = Api::namespaced(kube_client.clone(), "default");
             tokio::spawn(async {
                 let _controller2_controller = controller2::handle(controller2_client).await;
             });
-            
+
             tokio::spawn(async {
                 let liveness_route = warp::path!("healthz")
                     .map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));

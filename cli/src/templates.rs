@@ -130,11 +130,15 @@ pub mod manifests {
         use super::*;
         #[derive(Template)]
         #[template(path = "manifests/operator_deployment.yaml.jinja")]
-        pub struct Deployment {}
+        pub struct Deployment {
+            pub secret_name: String,
+        }
 
         #[derive(Template)]
         #[template(path = "manifests/operator_secret.yaml.jinja")]
-        pub struct Secret {}
+        pub struct Secret {
+            pub secret_name: String,
+        }
     }
 
     pub mod examples {
@@ -271,7 +275,16 @@ pub mod general {
 
     #[derive(Template)]
     #[template(path = ".env.example.jinja")]
-    pub struct EnvExample {}
+    pub struct EnvExample {
+        pub operator_name: String,
+        pub operator_author: String,
+        pub operator_api_group: String,
+        pub operator_api_version: String,
+        pub operator_resource_ref: String,
+        pub operator_example_metadata_spec_field_ref: String,
+        pub operator_include_tags: String,
+        pub operator_secret_name: String,
+    }
 
     #[derive(Template)]
     #[template(path = ".gitattributes.jinja")]

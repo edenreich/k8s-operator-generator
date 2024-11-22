@@ -93,6 +93,20 @@ pub struct Cli {
         value_delimiter = ','
     )]
     pub kubernetes_operator_include_tags: Vec<String>,
+
+    /// The name of the secret to use for the operator.
+    /// Example: operator-secret
+    /// Default: operator-secret
+    /// This is the name of the secret that the operator will use to store the access token.
+    /// The secret must be created in the same namespace as the operator.
+    /// The secret must contain a key named access_token: <Value>
+    #[arg(
+        long,
+        env = "KUBERNETES_OPERATOR_SECRET_NAME",
+        default_value = "operator-secret",
+        help = "The name of the secret to use for the operator"
+    )]
+    pub secret_name: String,
 }
 
 /// Available commands for the Kubernetes Operator Generator tool.

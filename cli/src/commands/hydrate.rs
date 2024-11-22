@@ -58,6 +58,14 @@ pub fn execute(conf: Config, openapi_file: &String) -> Result<(), AppError> {
     if let Some(info) = openapi.get_mut("info") {
         if let Some(info_map) = info.as_mapping_mut() {
             info_map.insert(
+                YamlValue::String("x-kubernetes-operator-name".to_string()),
+                YamlValue::String(conf.operator_name),
+            );
+            info_map.insert(
+                YamlValue::String("x-kubernetes-operator-author".to_string()),
+                YamlValue::String(conf.operator_author),
+            );
+            info_map.insert(
                 YamlValue::String("x-kubernetes-operator-api-group".to_string()),
                 YamlValue::String(conf.api_group),
             );
@@ -78,6 +86,10 @@ pub fn execute(conf: Config, openapi_file: &String) -> Result<(), AppError> {
                     "x-kubernetes-operator-example-metadata-spec-field-ref".to_string(),
                 ),
                 YamlValue::String(conf.example_metadata_spec_field_ref),
+            );
+            info_map.insert(
+                YamlValue::String("x-kubernetes-operator-secret-name".to_string()),
+                YamlValue::String(conf.secret_name),
             );
         }
     }

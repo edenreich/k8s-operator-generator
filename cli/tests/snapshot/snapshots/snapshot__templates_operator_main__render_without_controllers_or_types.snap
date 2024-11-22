@@ -10,7 +10,7 @@ use kube::{api::Api, Client as KubeClient, CustomResourceExt};
 use log::{debug, error, info};
 use operator::{
     cli::{Cli, Commands},
-    deploy_crd, wait_for_crd,
+    deploy_crd
 };
 use warp::Filter;
 
@@ -40,13 +40,8 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
 
-            let controllers_crds = vec![];
-            for controller_crd in controllers_crds {
-                if let Err(e) = wait_for_crd(kube_client_api.clone(), &controller_crd).await {
-                    error!("Error waiting for CRD {}: {}", &controller_crd, e);
-                }
-            }
-            
+            debug!("No controllers to start. Please check your configuration. KUBERNETES_OPERATOR_INCLUDE_TAGS is possibly empty.");
+
             tokio::spawn(async {
                 let liveness_route = warp::path!("healthz")
                     .map(|| warp::reply::with_status("OK", warp::http::StatusCode::OK));

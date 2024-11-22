@@ -16,6 +16,7 @@ pub struct Config {
     pub resource_ref: String,
     pub example_metadata_spec_field_ref: String,
     pub include_tags: Vec<String>,
+    pub secret_name: String,
 }
 
 impl Config {
@@ -49,6 +50,10 @@ impl Config {
                 .filter(|tag| !tag.is_empty())
                 .map(|tag| tag.trim().to_string())
                 .collect(),
+            secret_name: Self::get_env_var_or_default(
+                "KUBERNETES_OPERATOR_SECRET_NAME",
+                "operator-secret",
+            ),
         })
     }
 
@@ -74,6 +79,7 @@ impl Config {
                 .kubernetes_operator_example_metadata_spec_field_ref
                 .clone(),
             include_tags: cli.kubernetes_operator_include_tags.clone(),
+            secret_name: cli.secret_name.clone(),
         })
     }
 
