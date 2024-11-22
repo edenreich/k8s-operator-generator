@@ -11,10 +11,11 @@ use crate::{
     errors::AppError,
 };
 use clap::Parser;
+use dotenvy::dotenv;
 use log::{debug, info};
 
 fn main() -> Result<(), AppError> {
-    dotenv::dotenv().ok();
+    dotenv().ok();
     env_logger::init();
 
     let cli = Cli::parse();
