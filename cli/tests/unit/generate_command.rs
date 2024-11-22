@@ -178,4 +178,94 @@ components:
 
         Ok(())
     }
+
+    #[test]
+    #[serial]
+    fn test_parsing_json_spec() -> Result<(), AppError> {
+        let openapi_json = r#"{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Test API",
+        "version": "1.0.0",
+        "x-kubernetes-operator-api-group": "testgroup",
+        "x-kubernetes-operator-api-version": "v1",
+        "x-kubernetes-operator-resource-ref": "uuid",
+        "x-kubernetes-operator-status-ref": "status",
+        "x-kubernetes-operator-include-tags": ["user"],
+        "x-kubernetes-operator-example-metadata-spec-field-ref": "metadata"
+    },
+    "paths": {},
+    "components": {
+        "schemas": {
+            "User": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "format": "int64",
+                    },
+                    "name": {
+                        "type": "string",
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                    },
+                },
+                "required": ["id"]
+            }
+        }
+    }
+}"#;
+
+        let (dir, openapi_file) = create_temp_file("openapi.json", openapi_json);
+        let output_path = dir.path().join("src").join("types");
+        fs::create_dir_all(&output_path)?;
+
+        let openapi = read_openapi_spec(openapi_file.as_str())?;
+        let schemas: HashMap<String, Schema> = openapi
+            .components
+            .ok_or_else(|| AppError::Other("No components found in OpenAPI spec".to_string()))?
+            .schemas
+            .iter()
+            .filter_map(|(name, schema)| match schema {
+                openapiv3::ReferenceOr::Item(schema) => Some((name.clone(), schema.clone())),
+                openapiv3::ReferenceOr::Reference { .. } => None,
+            })
+            .collect();
+
+        let operator_resource_ref = "id".to_string();
+        let types_directory = output_path
+            .to_str()
+            .expect("Failed to convert output path to string");
+
+        generate_types(types_directory, &schemas, &operator_resource_ref)?;
+
+        let type_file = output_path.join("user.rs");
+        assert!(type_file.exists(), "Type file was not created.");
+
+        let generated_content = fs::read_to_string(&type_file)?;
+        assert!(
+            generated_content.contains("struct User"),
+            "Generated content does not contain expected User struct."
+        );
+        assert!(
+            generated_content.contains("struct UserSpec"),
+            "Generated content does not contain expected UserSpec struct."
+        );
+        assert!(
+            generated_content.contains("struct UserStatus"),
+            "Generated content does not contain expected UserStatus struct."
+        );
+        assert!(
+            generated_content.contains("pub name: Option<String>"),
+            "Generated content does not contain expected name field."
+        );
+        assert!(
+            generated_content.contains("pub email: Option<String>"),
+            "Generated content does not contain expected email field."
+        );
+
+        Ok(())
+    }
 }

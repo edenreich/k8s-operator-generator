@@ -1,4 +1,5 @@
 use askama::Error as AskamaError;
+use serde_json::Error as JsonError;
 use serde_yaml::Error as YamlError;
 use thiserror::Error;
 
@@ -12,6 +13,9 @@ pub enum AppError {
 
     #[error("YAML deserialization error: {0}")]
     YamlError(#[from] YamlError),
+
+    #[error("JSON deserialization error: {0}")]
+    JsonError(#[from] JsonError),
 
     #[error("Askama template error: {0}")]
     AskamaError(#[from] AskamaError),
