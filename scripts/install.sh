@@ -21,7 +21,7 @@ fi
 VERSION=$(curl -sSL "https://api.github.com/repos/edenreich/kopgen/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 ARCH=$(uname -m)
 case "$ARCH" in
-    aarch64)
+    aarch64|arm64)
         install_kopgen "ARM64" "https://github.com/edenreich/kopgen/releases/download/$VERSION/kopgen_aarch64-unknown-linux-musl"
         ;;
     x86_64)
