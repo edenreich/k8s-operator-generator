@@ -18,7 +18,7 @@ if ! command -v $DEP >/dev/null 2>&1; then
     exit 1
 fi
 
-VERSION=$(curl -sSL "https://api.github.com/repos/edenreich/kopgen/releases/latest" | grep -oP '"tag_name": "\K(.*)(?=")')
+VERSION=$(curl -sSL "https://api.github.com/repos/edenreich/kopgen/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 ARCH=$(uname -m)
 case "$ARCH" in
     aarch64)
