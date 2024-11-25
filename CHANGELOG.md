@@ -1,3 +1,9 @@
+## [1.12.1](https://github.com/edenreich/kopgen/compare/v1.12.0...v1.12.1) (2024-11-25)
+
+### Bug Fixes
+
+* Update version extraction in install script for improved reliability ([205212c](https://github.com/edenreich/kopgen/commit/205212cb9e15a3460a337b78cd8cbd24c4446b08))
+
 ## [1.12.0](https://github.com/edenreich/kopgen/compare/v1.11.0...v1.12.0) (2024-11-22)
 
 ### Features
