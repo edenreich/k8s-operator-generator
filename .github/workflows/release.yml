@@ -73,9 +73,9 @@ jobs:
           ls -la target/${{ matrix.target }}/release
           file target/${{ matrix.target }}/release/kopgen
 
-      - name: Upload CLI binary
-        uses: softprops/action-gh-release@v2
-        with:
-          files: target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Upload CLI binary
+      #   uses: softprops/action-gh-release@v2
+      #   with:
+      #     files: target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
