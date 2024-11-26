@@ -17,7 +17,7 @@ jobs:
           - os: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
           - os: ubuntu-24.04
-            target: aarch64-unknown-linux-gnu
+            target: aarch64-unknown-linux-musl
           - os: macos-latest
             target: x86_64-apple-darwin
           - os: macos-latest
@@ -38,46 +38,43 @@ jobs:
         run: |
           rustup target add ${{ matrix.target }}
 
+      # Unfortunatly, github still don't support managed runners for arm64 :(
+      # It's a sad fact that they only offer it for enterprise customers
+      # I can run it on my raspberry pi, but it's not ideal
+      # Instead will cross-compile this part for now with musl libc
+      - name: Add tools for cross-compiling with musl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+          pkg-config \
+          musl-tools
+          rustup target add \
+              aarch64-unknown-linux-musl
+          cd && \
+              wget https://musl.cc/aarch64-linux-musl-cross.tgz && \
+              tar -xzf aarch64-linux-musl-cross.tgz && \
+              sudo mv aarch64-linux-musl-cross /opt/ && \
+              rm -rf aarch64-linux-musl-cross.tgz
+          echo "PATH=/opt/aarch64-linux-musl-cross/bin:$PATH" >> $GITHUB_ENV
+
       - name: Build static binary
         env:
           RUSTFLAGS: '-C target-feature=+crt-static'
         run: |
           cargo build --verbose --release --target ${{ matrix.target }}
 
-      # - name: Add tools for cross-compiling
-      #   run: |
-      #     sudo apt-get update
-      #     sudo apt-get install -y --no-install-recommends \
-      #     pkg-config \
-      #     musl-tools
-      #     rustup target add \
-      #         aarch64-unknown-linux-musl \
-      #         x86_64-unknown-linux-musl
-      #     cd && \
-      #         wget https://musl.cc/aarch64-linux-musl-cross.tgz && \
-      #         tar -xzf aarch64-linux-musl-cross.tgz && \
-      #         sudo mv aarch64-linux-musl-cross /opt/ && \
-      #         rm -rf aarch64-linux-musl-cross.tgz
-      #     cd && \
-      #         wget https://musl.cc/x86_64-linux-musl-cross.tgz && \
-      #         tar -xzf x86_64-linux-musl-cross.tgz && \
-      #         sudo mv x86_64-linux-musl-cross /opt/ &&
-      #         rm -rf x86_64-linux-musl-cross.tgz
-      #     echo "PATH=/opt/aarch64-linux-musl-cross/bin:/opt/x86_64-linux-musl-cross/bin:$PATH" >> $GITHUB_ENV
-
-      # - name: Build the CLI
-      #   run: |
-      #     RELEASE=true TARGET_ARCH=${{ matrix.target }} task build
-      #     mv target/${{ matrix.target }}/release/kopgen target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
+      - name: Rename binary to the published name
+        run: |
+          mv target/${{ matrix.target }}/release/kopgen target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
 
       - name: Debug
         run: |
           ls -la target/${{ matrix.target }}/release
           file target/${{ matrix.target }}/release/kopgen
 
-      # - name: Upload CLI binary
-      #   uses: softprops/action-gh-release@v2
-      #   with:
-      #     files: target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload CLI binary
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
