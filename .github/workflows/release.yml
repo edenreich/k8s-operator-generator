@@ -39,10 +39,11 @@ jobs:
           rustup target add ${{ matrix.target }}
 
       # Unfortunatly, github still don't support managed runners for arm64 :(
-      # It's a sad fact that they only offer it for enterprise customers
+      # It's a sad fact that they only offer it for enterprise customers.
       # I can run it on my raspberry pi, but it's not ideal
       # Instead will cross-compile this part for now with musl libc
-      - name: Add tools for cross-compiling with musl
+      - name: Add tools for cross-compiling with musl libc for linux arm64
+        if: matrix.target == 'aarch64-unknown-linux-musl'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
