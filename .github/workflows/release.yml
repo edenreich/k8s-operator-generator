@@ -70,8 +70,7 @@ jobs:
 
       - name: Debug
         run: |
-          ls -la target/${{ matrix.target }}/release
-          file target/${{ matrix.target }}/release/kopgen
+          file target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
 
       # - name: Upload CLI binary
       #   uses: softprops/action-gh-release@v2
