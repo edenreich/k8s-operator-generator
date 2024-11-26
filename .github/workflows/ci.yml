@@ -151,7 +151,7 @@ jobs:
         run: |
           rustup target add ${{ matrix.target }}
 
-      # Unfortunatly, github still don't support managed runners for arm64 :(
+      # Unfortunately, github still don't support managed runners for arm64 :(
       # It's a sad fact that they only offer it for enterprise customers.
       # I can run it on my raspberry pi, but it's not ideal
       # Instead will cross-compile this part for now with musl libc
