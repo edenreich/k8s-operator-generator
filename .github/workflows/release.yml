@@ -38,14 +38,11 @@ jobs:
         run: |
           rustup target add ${{ matrix.target }}
 
-      - name: Build
+      - name: Build static binary
         env:
           RUSTFLAGS: '-C target-feature=+crt-static'
-        uses: actions-rs/cargo@v1
-        with:
-          # use-cross: true
-          command: build
-          args: --verbose --release --target ${{ matrix.target }}
+        run: |
+          cargo build --verbose --release --target ${{ matrix.target }}
 
       # - name: Add tools for cross-compiling
       #   run: |
