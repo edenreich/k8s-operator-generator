@@ -3,12 +3,13 @@
 set -e
 
 install_kopgen() {
-    local ARCH="$1"
-    local URL="$2"
-    echo "Downloading kopgen for $ARCH..."
-    curl -sSL "$URL" -o kopgen
-    chmod +x kopgen
-    sudo mv kopgen /usr/local/bin/
+    local $VERSION=$1
+    local $OS_LABEL=$2
+    local ARCH_LABEL=$3
+    local DOWNLOAD_URL=$4
+    echo "Installing kopgen version $VERSION for $OS_LABEL $ARCH_LABEL from $DOWNLOAD_URL"
+    curl -sSL "$DOWNLOAD_URL" -o /usr/local/bin/kopgen
+    chmod +x /usr/local/bin/kopgen
     echo "kopgen installed successfully!\n"
 }
 
@@ -19,19 +20,50 @@ if ! command -v $DEP >/dev/null 2>&1; then
 fi
 
 VERSION=$(curl -sSL "https://api.github.com/repos/edenreich/kopgen/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+OS=$(uname -s)
 ARCH=$(uname -m)
-case "$ARCH" in
-    aarch64|arm64)
-        install_kopgen "ARM64" "https://github.com/edenreich/kopgen/releases/download/$VERSION/kopgen_aarch64-unknown-linux-musl"
+case "$OS" in
+    Linux)
+        case "$ARCH" in
+            x86_64)
+                TARGET="x86_64-unknown-linux-gnu"
+                ARCH_LABEL="x86_64"
+                ;;
+            aarch64|arm64)
+                TARGET="aarch64-unknown-linux-musl"
+                ARCH_LABEL="ARM64"
+                ;;
+            *)
+                echo "Unsupported architecture for Linux: $ARCH"
+                exit 1
+                ;;
+        esac
         ;;
-    x86_64)
-        install_kopgen "x86_64" "https://github.com/edenreich/kopgen/releases/download/$VERSION/kopgen_x86_64-unknown-linux-musl"
+    Darwin)
+        case "$ARCH" in
+            x86_64)
+                TARGET="x86_64-apple-darwin"
+                ARCH_LABEL="x86_64"
+                ;;
+            aarch64|arm64)
+                TARGET="aarch64-apple-darwin"
+                ARCH_LABEL="ARM64"
+                ;;
+            *)
+                echo "Unsupported architecture for macOS: $ARCH"
+                exit 1
+                ;;
+        esac
         ;;
     *)
-        echo "Unsupported architecture: $ARCH"
+        echo "Unsupported operating system: $OS"
         exit 1
         ;;
 esac
+
+DOWNLOAD_URL="https://github.com/edenreich/kopgen/releases/download/$VERSION/kopgen_$TARGET"
+
+install_kopgen "$VERSION" "$OS" "$ARCH_LABEL" "$DOWNLOAD_URL"
 
 cat <<- EOF
 To get started, follow these steps:
