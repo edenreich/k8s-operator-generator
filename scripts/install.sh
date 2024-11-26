@@ -25,7 +25,7 @@ case "$ARCH" in
         install_kopgen "ARM64" "https://github.com/edenreich/kopgen/releases/download/$VERSION/kopgen_aarch64-unknown-linux-musl"
         ;;
     x86_64)
-        install_kopgen "x86_64" "https://github.com/edenreich/kopgen/releases/download/$VERSION/kopgen_x86_64-unknown-linux-musl"
+        install_kopgen "x86_64" "https://github.com/edenreich/kopgen/releases/download/$VERSION/kopgen_x86_64-unknown-linux-gnu"
         ;;
     *)
         echo "Unsupported architecture: $ARCH"
