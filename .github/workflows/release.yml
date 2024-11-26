@@ -41,10 +41,16 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Install Task
-        uses: arduino/setup-task@v2
+      - name: Build
+        uses: actions-rs/cargo@v1
         with:
-          version: 3.x
+          command: build
+          args: --verbose --release --target ${{ matrix.target }}
+
+      # - name: Install Task
+      #   uses: arduino/setup-task@v2
+      #   with:
+      #     version: 3.x
 
       # - name: Add tools for cross-compiling
       #   run: |
@@ -67,15 +73,15 @@ jobs:
       #         rm -rf x86_64-linux-musl-cross.tgz
       #     echo "PATH=/opt/aarch64-linux-musl-cross/bin:/opt/x86_64-linux-musl-cross/bin:$PATH" >> $GITHUB_ENV
 
-      - name: Build the CLI
-        run: |
-          RELEASE=true TARGET_ARCH=${{ matrix.target }} task build
-          mv target/${{ matrix.target }}/release/kopgen target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
+      # - name: Build the CLI
+      #   run: |
+      #     RELEASE=true TARGET_ARCH=${{ matrix.target }} task build
+      #     mv target/${{ matrix.target }}/release/kopgen target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
 
       - name: Debug
         run: |
           ls -la target/${{ matrix.target }}/release
-          file target/${{ matrix.target }}/release/kopgen_${{ matrix.target }}
+          file target/${{ matrix.target }}/release/kopgen
 
       # - name: Upload CLI binary
       #   uses: softprops/action-gh-release@v2
