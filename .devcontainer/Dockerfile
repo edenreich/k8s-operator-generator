@@ -76,4 +76,3 @@ RUN rustc --version && \
     cargo install cargo-insta --version ${CARGO_INSTA_VERSION} --locked && \
     # Install cargo-audit
     cargo install cargo-audit --version ${CARGO_AUDIT_VERSION} --locked
-
