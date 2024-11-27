@@ -4,8 +4,8 @@ plugins:
   - [
       '@semantic-release/commit-analyzer',
       {
-        'preset': 'conventionalcommits',
-        'releaseRules':
+        preset: 'conventionalcommits',
+        releaseRules:
           [
             { type: 'feat', release: 'minor' },
             { type: 'impr', release: 'patch' },
