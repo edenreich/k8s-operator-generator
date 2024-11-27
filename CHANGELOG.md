@@ -1,3 +1,9 @@
+## [1.13.2](https://github.com/edenreich/kopgen/compare/v1.13.1...v1.13.2) (2024-11-27)
+
+### Bug Fixes
+
+* Update installation path for kopgen to user local bin ([#31](https://github.com/edenreich/kopgen/issues/31)) ([02c531f](https://github.com/edenreich/kopgen/commit/02c531f132551570ae9769651af0e1afdb11ad99))
+
 ## [1.13.1](https://github.com/edenreich/kopgen/compare/v1.13.0...v1.13.1) (2024-11-27)
 
 ### Bug Fixes
