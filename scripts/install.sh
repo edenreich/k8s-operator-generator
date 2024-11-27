@@ -8,9 +8,10 @@ install_kopgen() {
     local ARCH_LABEL=$3
     local DOWNLOAD_URL=$4
     echo "Installing kopgen version $VERSION for $OS_LABEL $ARCH_LABEL from $DOWNLOAD_URL"
-    curl -sSL "$DOWNLOAD_URL" -o /usr/local/bin/kopgen
-    chmod +x /usr/local/bin/kopgen
-    echo "kopgen installed successfully!\n"
+    mkdir -p "$HOME/.local/bin"
+    curl -sSL "$DOWNLOAD_URL" -o "$HOME/.local/bin/kopgen"
+    chmod +x "$HOME/.local/bin/kopgen"
+    echo "kopgen installed successfully to $HOME/.local/bin/kopgen!\n"
 }
 
 DEP=curl
