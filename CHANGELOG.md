@@ -1,3 +1,9 @@
+## [1.13.1](https://github.com/edenreich/kopgen/compare/v1.13.0...v1.13.1) (2024-11-27)
+
+### Bug Fixes
+
+* Correct variable declaration syntax in install script ([93d0867](https://github.com/edenreich/kopgen/commit/93d08675590f0060a9001e5e023e54f1b742c537))
+
 ## [1.13.0](https://github.com/edenreich/kopgen/compare/v1.12.1...v1.13.0) (2024-11-26)
 
 ### Features
