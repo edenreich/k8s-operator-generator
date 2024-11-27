@@ -11,10 +11,10 @@ async fn handle_delete(
         return Ok(());
     }
 
-    if let Err(e) = {{ controller.operation_id }}(&config, {{ resource_remote_ref }}).await {
+    {{ controller.operation_id }}(&config, {{ resource_remote_ref }}).await.map_err(|e| {
         error!("Failed to delete {{ arg_name }}: {:?}", e);
-        return Err(OperatorError::FailedToDelete{{ kind_struct }}(e.into()));
-    }
+        OperatorError::FailedToDeleteResource(e.into())
+    })?;
 
     remove_finalizer({{ arg_name }}, kube_client.clone()).await?;
     info!("Successfully deleted {{ arg_name }}");

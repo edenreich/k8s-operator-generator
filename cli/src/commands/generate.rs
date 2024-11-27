@@ -327,7 +327,6 @@ fn get_controller_attributes_for_operation(
     let attributes = ControllerAttributes {
         operation_id: operation_id.to_string().to_snake_case(),
         http_method: http_method.to_string(),
-        action_summary: operation.summary.clone().unwrap_or_default().to_lowercase(),
     };
 
     Some((tag.clone(), attributes))
@@ -415,18 +414,6 @@ fn generate_controller(
         return Ok(());
     }
 
-    let has_create_action = controller_attributes
-        .iter()
-        .any(|controller| controller.http_method == "post");
-
-    let has_update_action = controller_attributes
-        .iter()
-        .any(|controller| controller.http_method == "put");
-
-    let has_delete_action = controller_attributes
-        .iter()
-        .any(|controller| controller.http_method == "delete");
-
     let type_name = uppercase_first_letter(&tag.to_singular());
 
     let fields = get_fields_for_type(schemas, &type_name, &resource_remote_ref)?;
@@ -437,9 +424,6 @@ fn generate_controller(
         kind_struct: type_name.clone(),
         dto_fields: fields,
         resource_remote_ref: resource_remote_ref.clone(),
-        has_create_action,
-        has_update_action,
-        has_delete_action,
         api_url: "http://localhost:8080".to_string(),
     }
     .render()?;

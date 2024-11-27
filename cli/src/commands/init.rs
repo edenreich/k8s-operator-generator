@@ -10,7 +10,7 @@ use crate::templates::{
         Taskfile,
     },
     operator::Main as OperatorMain,
-    operator::{Cli, Lib},
+    operator::{Cli, Errors, Lib},
     tests::{Main as TestsMain, UtilsClient, UtilsCluster, UtilsOperator},
 };
 use crate::utils::{
@@ -133,6 +133,11 @@ pub fn execute(conf: Config, path: &String) -> Result<(), AppError> {
         },
         base_path.join(K8S_OPERATOR_DIR).join("src").as_path(),
         "cli.rs",
+    )?;
+    generate_template_file(
+        Errors {},
+        base_path.join(K8S_OPERATOR_DIR).join("src").as_path(),
+        "errors.rs",
     )?;
 
     // Generate root files
