@@ -112,7 +112,7 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
 
-# For cross-compiling and statically linking Rust binaries
+# For cross-compiling and statically linking Rust binaries on linux
 export OPENSSL_DIR=/usr
 export OPENSSL_LIB_DIR=/usr/lib
 export OPENSSL_INCLUDE_DIR=/usr/include

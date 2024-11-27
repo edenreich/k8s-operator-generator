@@ -37,15 +37,7 @@ plugins:
       '@semantic-release/git',
       {
         'assets':
-          [
-            'CHANGELOG.md',
-            'README.md',
-            'Cargo.lock',
-            'cli/Cargo.toml',
-            'cli/src/cli.rs',
-            'cli/templates/.devcontainer/deps.sh.jinja',
-            'cli/templates/readme.md.jinja',
-          ],
+          ['CHANGELOG.md', 'Cargo.lock', 'cli/Cargo.toml', 'cli/src/cli.rs'],
       },
     ]
 repositoryUrl: 'https://github.com/edenreich/kopgen'

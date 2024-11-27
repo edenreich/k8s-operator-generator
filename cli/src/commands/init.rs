@@ -3,7 +3,7 @@ use crate::errors::AppError;
 use crate::templates::{
     cargo::{CargoToml, CrdgenCargoToml, OperatorCargoToml, TestsCargoToml},
     crdgen::Main as CrdgenMain,
-    devcontainer::{Deps, Json, LaunchJsonExample, SetupGit, Zshrc},
+    devcontainer::{Dockerfile as DockerfileDev, Json, LaunchJsonExample, SetupGit, Zshrc},
     general::{
         CargoConfig, ClusterYaml, Dockerfile, Dockerignore, Editorconfig, EnvExample,
         GitAttributes, GitIgnore, OpenAPIGeneratorIgnore, Prettierrc, ReadmeMd, RustfmtToml,
@@ -168,9 +168,9 @@ pub fn execute(conf: Config, path: &String) -> Result<(), AppError> {
         "devcontainer.json",
     )?;
     generate_template_file(
-        Deps {},
+        DockerfileDev {},
         base_path.join(DEVCONTAINER_DIR).as_path(),
-        "deps.sh",
+        "Dockerfile",
     )?;
     generate_template_file(
         SetupGit {},
@@ -211,7 +211,6 @@ pub fn execute(conf: Config, path: &String) -> Result<(), AppError> {
     add_tests_util_to_modfile(base_path, "operator");
     add_tests_util_to_modfile(base_path, "cluster");
 
-    set_executable_permission(base_path.join(DEVCONTAINER_DIR).join("deps.sh").as_path());
     set_executable_permission(
         base_path
             .join(DEVCONTAINER_DIR)

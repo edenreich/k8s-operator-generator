@@ -78,8 +78,8 @@ pub mod devcontainer {
     pub struct Json {}
 
     #[derive(Template)]
-    #[template(path = ".devcontainer/deps.sh.jinja")]
-    pub struct Deps {}
+    #[template(path = ".devcontainer/dockerfile.jinja")]
+    pub struct Dockerfile {}
 
     #[derive(Template)]
     #[template(path = ".devcontainer/setup-git.sh.jinja")]
