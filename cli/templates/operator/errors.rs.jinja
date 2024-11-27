@@ -9,7 +9,7 @@ pub enum OperatorError {
     FailedToAddEvent(#[source] anyhow::Error),
     #[error("Failed to create client: {0}")]
     FailedToCreateClient(#[source] anyhow::Error),
-    #[error("Failed to delete: {0}")]
+    #[error("Failed to delete resource: {0}")]
     FailedToDeleteResource(#[source] anyhow::Error),
     #[error("Failed to update status: {0}")]
     FailedToUpdateStatus(#[source] anyhow::Error),
