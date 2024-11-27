@@ -1,6 +1,6 @@
 {
   "name": "Debian with Rust",
-  "image": "mcr.microsoft.com/devcontainers/rust:1-1-bullseye",
+  "dockerfile": "Dockerfile",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:latest": {}
   },
@@ -49,11 +49,10 @@
   },
   "mounts": [
     "source=${localWorkspaceFolder}/.devcontainer/setup-git.sh,target=/home/vscode/setup-git.sh,type=bind,consistency=cached",
-    "source=${localWorkspaceFolder}/.devcontainer/deps.sh,target=/home/vscode/deps.sh,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/.devcontainer/.zshrc,target=/home/vscode/.zshrc,type=bind,consistency=cached",
     "source=${localWorkspaceFolder}/.devcontainer/launch.json,target=/workspaces/kopgen/.vscode/launch.json,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "/home/vscode/setup-git.sh && /home/vscode/deps.sh",
+  "postCreateCommand": "/home/vscode/setup-git.sh",
   "remoteEnv": {
     "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
   }

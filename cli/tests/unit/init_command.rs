@@ -125,7 +125,7 @@ mod tests {
             "crdgen/Cargo.toml",
             "tests/Cargo.toml",
             ".devcontainer/devcontainer.json",
-            ".devcontainer/deps.sh",
+            ".devcontainer/Dockerfile",
             ".devcontainer/setup-git.sh",
             ".devcontainer/launch.json",
             ".devcontainer/.zshrc",
