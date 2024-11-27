@@ -1,3 +1,10 @@
+## [1.13.3](https://github.com/edenreich/kopgen/compare/v1.13.2...v1.13.3) (2024-11-27)
+
+### Improvements
+
+* Devcontainers startup time ([#33](https://github.com/edenreich/kopgen/issues/33)) ([dc62b5d](https://github.com/edenreich/kopgen/commit/dc62b5df175f7511ab19396837984b8bd7d7b47b))
+* Update release rules for semantic-release configuration ([1120b4c](https://github.com/edenreich/kopgen/commit/1120b4caaa6f5afff04799de0f0aecd0b797141f))
+
 ## [1.13.2](https://github.com/edenreich/kopgen/compare/v1.13.1...v1.13.2) (2024-11-27)
 
 ### Bug Fixes
