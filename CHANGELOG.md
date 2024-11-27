@@ -1,3 +1,23 @@
+## [1.13.0](https://github.com/edenreich/kopgen/compare/v1.12.1...v1.13.0) (2024-11-26)
+
+### Features
+
+* Introduce Multi-Arch and OS support ([#29](https://github.com/edenreich/kopgen/issues/29)) ([f2c5c55](https://github.com/edenreich/kopgen/commit/f2c5c55ab9a4b765970832d74486567e4d96a105))
+
+### Bug Fixes
+
+* On IOS M2 `uname -m` is resolved to `arm64` architecture in install script ([922d20c](https://github.com/edenreich/kopgen/commit/922d20c55bf54c69601e1542be5ec98e55440b68))
+
+## [1.13.0](https://github.com/edenreich/kopgen/compare/v1.12.1...v1.13.0) (2024-11-26)
+
+### Features
+
+* Introduce Multi-Arch and OS support ([#29](https://github.com/edenreich/kopgen/issues/29)) ([f2c5c55](https://github.com/edenreich/kopgen/commit/f2c5c55ab9a4b765970832d74486567e4d96a105))
+
+### Bug Fixes
+
+* On IOS M2 `uname -m` is resolved to `arm64` architecture in install script ([922d20c](https://github.com/edenreich/kopgen/commit/922d20c55bf54c69601e1542be5ec98e55440b68))
+
 ## [1.12.1](https://github.com/edenreich/kopgen/compare/v1.12.0...v1.12.1) (2024-11-25)
 
 ### Bug Fixes
