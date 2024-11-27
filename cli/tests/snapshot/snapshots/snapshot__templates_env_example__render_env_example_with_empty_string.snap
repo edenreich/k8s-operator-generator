@@ -18,5 +18,6 @@ RUST_BACKTRACE=1
 CONTAINER_REGISTRY=localhost:5005
 CLUSTER_NAME=k3d-k3s-default
 
-#TARGET_ARCH=x86_64-unknown-linux-musl
 RELEASE=false
+# TARGET_ARCH=x86_64-unknown-linux-musl
+# TARGET_ARCH=aarch64-unknown-linux-musl

@@ -55,13 +55,13 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
 
-            /// Start the controller1 controller for the controller1.example.com/v1 API group
+            // Start the controller1 controller for the controller1.example.com/v1 API group
             let controller1_client = Api::namespaced(kube_client.clone(), "default");
             tokio::spawn(async {
                 let _controller1_controller = controller1::handle(controller1_client).await;
             });
 
-            /// Start the controller2 controller for the controller2.example.com/v1 API group
+            // Start the controller2 controller for the controller2.example.com/v1 API group
             let controller2_client = Api::namespaced(kube_client.clone(), "default");
             tokio::spawn(async {
                 let _controller2_controller = controller2::handle(controller2_client).await;
