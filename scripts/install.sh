@@ -8,9 +8,10 @@ install_kopgen() {
     local ARCH_LABEL=$3
     local DOWNLOAD_URL=$4
     echo "Installing kopgen version $VERSION for $OS_LABEL $ARCH_LABEL from $DOWNLOAD_URL"
-    curl -sSL "$DOWNLOAD_URL" -o /usr/local/bin/kopgen
-    chmod +x /usr/local/bin/kopgen
-    echo "kopgen installed successfully!\n"
+    mkdir -p "$HOME/.local/bin"
+    curl -sSL "$DOWNLOAD_URL" -o "$HOME/.local/bin/kopgen"
+    chmod +x "$HOME/.local/bin/kopgen"
+    echo "kopgen installed successfully to $HOME/.local/bin/kopgen!\n"
 }
 
 DEP=curl
@@ -65,13 +66,26 @@ DOWNLOAD_URL="https://github.com/edenreich/kopgen/releases/download/$VERSION/kop
 
 install_kopgen "$VERSION" "$OS" "$ARCH_LABEL" "$DOWNLOAD_URL"
 
+echo " _   __                             "
+echo "| | / /                             "
+echo "| |/ /  ___  _ __   __ _  ___ _ __  "
+echo "|    \ / _ \| '_ \ / _\` |/ _ \ '_ \ "
+echo "| |\  \ (_) | |_) | (_| |  __/ | | |"
+echo "\_| \_/\___/| .__/ \__, |\___|_| |_|"
+echo "            | |     __/ |           "
+echo "            |_|    |___/            \n"
+
 cat <<- EOF
+Installation complete!
+
+Make sure \$HOME/.local/bin is in your PATH.
+
 To get started, follow these steps:
 
 1. Make sure you have Docker and VSCode installed
 2. Run: kopgen init <directory>
 3. Open the directory in vscode: code <directory>
-4. You supposed to be prompted to open DevContainer, click on "Reopen in Container"
+4. You should be prompted to open DevContainer, click on "Reopen in Container"
 5. Configure: cp .env.example .env
 6. Generate the operator including all of its dependencies, run: task generate
 7. Run the operator: task run
