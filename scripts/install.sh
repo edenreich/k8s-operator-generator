@@ -3,8 +3,8 @@
 set -e
 
 install_kopgen() {
-    local $VERSION=$1
-    local $OS_LABEL=$2
+    local VERSION=$1
+    local OS_LABEL=$2
     local ARCH_LABEL=$3
     local DOWNLOAD_URL=$4
     echo "Installing kopgen version $VERSION for $OS_LABEL $ARCH_LABEL from $DOWNLOAD_URL"
