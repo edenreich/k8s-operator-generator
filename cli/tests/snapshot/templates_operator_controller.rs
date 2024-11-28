@@ -22,9 +22,6 @@ fn render() -> Result<(), AppError> {
             },
         ],
         resource_remote_ref: "resourceRef".to_string(),
-        has_create_action: true,
-        has_update_action: true,
-        has_delete_action: false,
         api_url: "https://api.example.com".to_string(),
     };
     let rendered = template.render()?;

@@ -132,6 +132,7 @@ mod tests {
             ".cargo/config.toml",
             "operator/src/main.rs",
             "operator/src/cli.rs",
+            "operator/src/errors.rs",
             "operator/src/controllers/mod.rs",
             "operator/src/types/mod.rs",
             "tests/src/utils/mod.rs",

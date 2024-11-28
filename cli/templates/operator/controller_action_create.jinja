@@ -1,40 +1,44 @@
 {% for controller in controllers %}
     {% if controller.http_method == "post" %}
-pub async fn handle_create(
-    kube_client: &Api<{{ kind_struct }}>,
-    {{ arg_name }}: &mut {{ kind_struct }},
-) -> Result<(), anyhow::Error> {
+pub async fn handle_create(kube_client: &Api<{{ kind_struct }}>, {{ arg_name }}: &mut {{ kind_struct }}) -> Result<(), OperatorError> {
     let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
     let config = get_client_config().await?;
 
-    match {{ controller.operation_id }}(&config, dto.clone()).await {
-        Ok(remote_{{ arg_name }}) => match remote_{{ arg_name }}.{{ resource_remote_ref }} {
-            Some({{ resource_remote_ref }}) => {
-                let uuid = convert_uuid_to_string(Some({{ resource_remote_ref }})).unwrap();
+    match create_{{ arg_name }}(&config, dto.clone()).await {
+        Ok(remote_{{ arg_name }}) => {
+            if let Some({{ resource_remote_ref }}) = remote_{{ arg_name }}.{{ resource_remote_ref }} {
+                let {{ resource_remote_ref }} = convert_{{ resource_remote_ref }}_to_string(Some({{ resource_remote_ref }})).unwrap();
                 add_finalizer({{ arg_name }}, kube_client.clone()).await?;
+                let generation = {{ arg_name }}.meta().generation;
                 let condition = create_condition(
                     "Created",
                     "AvailableCreated",
                     "Created the resource",
                     "Resource has been created",
-                    {{ arg_name }}.meta().generation,
+                    generation,
                 );
-                let mut {{ arg_name }}_clone = {{ arg_name }}.clone();
-                if let Some(status) = {{ arg_name }}_clone.status.as_mut() {
-                    status.conditions.push(condition);
-                    status.uuid = Some(uuid);
-                    status.observed_generation = {{ arg_name }}.meta().generation;
+                if let Some(status) = {{ arg_name }}.status.as_mut() {
+                    if !status
+                        .conditions
+                        .iter()
+                        .any(|c| c.type_ == "AvailableCreated")
+                    {
+                        status.conditions.push(condition);
+                    }
+                    status.{{ resource_remote_ref }} = Some({{ resource_remote_ref }});
+                    status.observed_generation = generation;
                 }
-                update_status(kube_client, {{ arg_name }}_clone).await
-            }
-            None => {
+                update_status(kube_client, {{ arg_name }}.clone())
+                    .await
+                    .map_err(|e| OperatorError::FailedToUpdateStatus(e.into()))
+            } else {
                 warn!("Remote {{ arg_name }} has no {{ resource_remote_ref }}, cannot update status");
                 Ok(())
             }
-        },
+        }
         Err(e) => {
             error!("Failed to create a new {{ arg_name }}: {:?}", e);
-            Err(anyhow::anyhow!("Failed to create a new {{ arg_name }}: {:?}", e))
+            Err(OperatorError::FailedToCreateResource(e.into()))
         }
     }
 }

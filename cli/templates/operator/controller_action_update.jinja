@@ -1,26 +1,26 @@
 {% for controller in controllers %}
     {% if controller.http_method == "put" %}
 pub async fn handle_update(
-    kubernetes_api: &Api<{{ kind_struct }}>,
+    kube_client: &Api<{{ kind_struct }}>,
     {{ arg_name }}: &mut {{ kind_struct }},
     {{ resource_remote_ref }}: &str,
-) -> Result<()> {
+) -> Result<(), OperatorError> {
     let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
     let config = get_client_config().await?;
 
     if {{ resource_remote_ref }}.is_empty() {
-        return Err(anyhow::anyhow!("{{ resource_remote_ref }} is empty"));
+        return Err(OperatorError::InvalidResource("{{ resource_remote_ref }} is empty".to_string()));
     }
 
     {{ controller.operation_id }}(&config, {{ resource_remote_ref }}, dto)
         .await
-        .context("Failed to {{ controller.action_summary }}")?;
+        .map_err(|e| OperatorError::FailedToUpdateResource(e.into()))?;
 
     let {{ arg_name }}_name = {{ arg_name }}.metadata.name.as_deref().unwrap_or_default();
-    kubernetes_api
+    kube_client
         .replace({{ arg_name }}_name, &PostParams::default(), {{ arg_name }})
         .await
-        .context("Failed to {{ controller.action_summary }}")?;
+        .map_err(|e| OperatorError::FailedToUpdateResource(e.into()))?;
 
     info!("Updated a {{ arg_name }} by id went successfully");
     Ok(())

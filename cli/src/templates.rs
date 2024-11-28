@@ -45,7 +45,6 @@ pub struct Field {
 pub struct ControllerAttributes {
     pub operation_id: String,
     pub http_method: String,
-    pub action_summary: String,
 }
 
 // Tests Templates
@@ -173,6 +172,10 @@ pub mod operator {
     }
 
     #[derive(Template)]
+    #[template(path = "operator/errors.rs.jinja")]
+    pub struct Errors {}
+
+    #[derive(Template)]
     #[template(path = "operator/controller.rs.jinja")]
     pub struct Controller {
         pub tag: String,
@@ -180,9 +183,6 @@ pub mod operator {
         pub kind_struct: String,
         pub dto_fields: Vec<Field>,
         pub resource_remote_ref: String,
-        pub has_create_action: bool,
-        pub has_update_action: bool,
-        pub has_delete_action: bool,
         pub api_url: String,
     }
 
