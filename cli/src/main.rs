@@ -16,12 +16,25 @@ use log::{debug, info};
 
 fn main() -> Result<(), AppError> {
     dotenv().ok();
-    env_logger::init();
 
     let cli = Cli::parse();
     let conf = Config::load_from_cli(&cli)?;
 
-    debug!("{:?}", conf);
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "info");
+    }
+
+    if cli.verbosity != "info" {
+        std::env::remove_var("RUST_LOG");
+        std::env::set_var("RUST_LOG", &cli.verbosity);
+    }
+
+    env_logger::init();
+
+    debug!(
+        "Running in debug mode. These are the configurations:\n {:#?}",
+        conf
+    );
 
     match &cli.command {
         Some(Commands::Init { path }) => {
