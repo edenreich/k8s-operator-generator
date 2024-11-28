@@ -6,7 +6,7 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(
     name = "Kubernetes Operator Generator (kopgen)",
-    version = "v1.13.3",
+    version = "v1.13.4",
     author = "Eden Reich <eden.reich@gmail.com>",
     arg_required_else_help = true
 )]

@@ -1,3 +1,13 @@
+## [1.13.4](https://github.com/edenreich/kopgen/compare/v1.13.3...v1.13.4) (2024-11-28)
+
+### Improvements
+
+* Implement errors.rs ([#37](https://github.com/edenreich/kopgen/issues/37)) ([cf909d9](https://github.com/edenreich/kopgen/commit/cf909d9452e8cd718dc18f092865ede3d4e2c60f))
+
+### Miscellaneous
+
+* Keep keys not quoted for consistency ([46e512f](https://github.com/edenreich/kopgen/commit/46e512fd091793c6ce4991118eb742ce074c011e))
+
 ## [1.13.3](https://github.com/edenreich/kopgen/compare/v1.13.2...v1.13.3) (2024-11-27)
 
 ### Improvements
