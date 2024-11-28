@@ -21,6 +21,10 @@ fn main() -> Result<(), AppError> {
     let cli = Cli::parse();
     let conf = Config::load_from_cli(&cli)?;
 
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "info");
+    }
+
     debug!("{:?}", conf);
 
     match &cli.command {
