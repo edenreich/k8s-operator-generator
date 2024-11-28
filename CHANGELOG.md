@@ -1,3 +1,9 @@
+## [1.13.5](https://github.com/edenreich/kopgen/compare/v1.13.4...v1.13.5) (2024-11-28)
+
+### Bug Fixes
+
+* RUST_LOG defaulting to error ([#42](https://github.com/edenreich/kopgen/issues/42)) ([dc21f05](https://github.com/edenreich/kopgen/commit/dc21f05c93bd812746e7089fb21a1c5173e4c082))
+
 ## [1.13.4](https://github.com/edenreich/kopgen/compare/v1.13.3...v1.13.4) (2024-11-28)
 
 ### Improvements
