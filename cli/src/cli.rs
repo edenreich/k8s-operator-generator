@@ -15,6 +15,26 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Option<Commands>,
 
+    /// The log level for the application.
+    /// Example: debug, info, warn, error
+    /// Default: info
+    /// This is the log level that the application will use to output log messages.
+    /// The log level can be set using the RUST_LOG environment variable.
+    /// Example: RUST_LOG=debug kopgen
+    /// Example: RUST_LOG=info kopgen
+    /// Example: RUST_LOG=warn kopgen
+    /// Example: RUST_LOG=error kopgen
+    /// Example: kopgen --verbosity debug
+    /// Example: kopgen -v info
+    #[arg(
+        long,
+        short,
+        env = "RUST_LOG",
+        default_value = "info",
+        help = "Set the log level for the application"
+    )]
+    pub verbosity: String,
+
     /// The name of the kubernetes operator.
     /// Example: Cats Operator
     /// Default: Example Operator
