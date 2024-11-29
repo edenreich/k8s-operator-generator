@@ -5,7 +5,7 @@ pub async fn handle_update(
     {{ arg_name }}: &mut {{ kind_struct }},
     {{ resource_remote_ref }}: &str,
 ) -> Result<(), OperatorError> {
-    let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
+    let dto = converters::kube_type_to_dto({{ arg_name }}.clone());
     let config = get_client_config().await?;
 
     if {{ resource_remote_ref }}.is_empty() {

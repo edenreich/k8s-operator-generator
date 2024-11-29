@@ -37,39 +37,6 @@ const REQUEUE_AFTER_IN_SEC: u64 = 30;
 const API_URL: &str = "https://api.example.com";
 const API_USER_AGENT: &str = "k8s-operator";
 
-fn convert_resourceRef_to_string(resourceRef: Option<resourceRef::Uuid>) -> Option<String> {
-    resourceRef.map(|resourceRef| resourceRef.to_string())
-}
-
-fn convert_string_to_resourceRef(resourceRef: Option<String>) -> Option<resourceRef::Uuid> {
-    match resourceRef {
-        Some(resourceRef) => match resourceRef::Uuid::parse_str(&resourceRef) {
-            Ok(resourceRef) => Some(resourceRef),
-            Err(_) => None,
-        },
-        None => None,
-    }
-}
-
-fn convert_kube_type_to_dto(argName: ExampleKind) -> ExampleKindDto {
-    let resourceRef = match argName.status {
-        Some(status) => convert_string_to_resourceRef(status.resourceRef),
-        None => None,
-    };
-    ExampleKindDto {
-        resourceRef,
-            field1: argName.spec.field1,
-            field2: argName.spec.field2,
-    }
-}
-
-fn convert_dto_to_kube_type(argName: ExampleKindDto) -> ExampleKindSpec {
-    ExampleKindSpec {
-        field1: argName.field1,
-        field2: argName.field2,
-    }
-}
-
 struct ExtraArgs {
     kube_client: Api<ExampleKind>,
 }
@@ -148,8 +115,8 @@ pub async fn check_for_drift(
     kube_client: &Api<ExampleKind>,
     argName: &mut ExampleKind,
 ) -> Result<(), OperatorError> {
-    let dto = convert_kube_type_to_dto(argName.clone());
-    let resourceRef = convert_resourceRef_to_string(dto.resourceRef).unwrap_or_default();
+    let dto = converters::kube_type_to_dto(argName.clone());
+    let resourceRef = converters::resourceRef_to_string(dto.resourceRef).unwrap_or_default();
     let config = get_client_config().await?;
 
     if resourceRef.is_empty() {
@@ -159,9 +126,9 @@ pub async fn check_for_drift(
 
     match get_argName_by_id(&config, &resourceRef).await {
         Ok(dto) => {
-            let remote_argName = convert_dto_to_kube_type(dto);
+            let remote_argName = converters::dto_to_kube_type(dto);
             if remote_argName != argName.spec {
-                let current_argName_dto = convert_kube_type_to_dto(argName.clone());
+                let current_argName_dto = converters::kube_type_to_dto(argName.clone());
                 warn!("ExampleKind has drifted remotely, sending an update to remote...");
                 match update_argName_by_id(&config, &resourceRef, current_argName_dto).await {
                     Ok(_) => {
@@ -199,4 +166,43 @@ pub async fn check_for_drift(
 fn error_policy(_resource: Arc<ExampleKind>, error: &OperatorError, _ctx: Arc<ExtraArgs>) -> Action {
     error!("Error processing event: {:?}", error);
     Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC))
+}
+
+mod converters {
+    use super::{
+        ExampleKind, ExampleKindDto, ExampleKindSpec
+    };
+
+    pub fn resourceRef_to_string(resourceRef: Option<resourceRef::Uuid>) -> Option<String> {
+        resourceRef.map(|resourceRef| resourceRef.to_string())
+    }
+
+    fn string_to_resourceRef(resourceRef: Option<String>) -> Option<resourceRef::Uuid> {
+        match resourceRef {
+            Some(resourceRef) => match resourceRef::Uuid::parse_str(&resourceRef) {
+                Ok(resourceRef) => Some(resourceRef),
+                Err(_) => None,
+            },
+            None => None,
+        }
+    }
+
+    pub fn kube_type_to_dto(argName: ExampleKind) -> ExampleKindDto {
+        let resourceRef = match argName.status {
+            Some(status) => string_to_resourceRef(status.resourceRef),
+            None => None,
+        };
+        ExampleKindDto {
+            resourceRef,
+                field1: argName.spec.field1,
+                field2: argName.spec.field2,
+        }
+    }
+
+    pub fn dto_to_kube_type(argName: ExampleKindDto) -> ExampleKindSpec {
+        ExampleKindSpec {
+            field1: argName.field1,
+            field2: argName.field2,
+        }
+    }
 }

@@ -33,41 +33,6 @@ const REQUEUE_AFTER_IN_SEC: u64 = 30;
 const API_URL: &str = "{{ api_url }}";
 const API_USER_AGENT: &str = "k8s-operator";
 
-fn convert_{{ resource_remote_ref }}_to_string({{ resource_remote_ref }}: Option<{{ resource_remote_ref }}::Uuid>) -> Option<String> {
-    {{ resource_remote_ref }}.map(|{{ resource_remote_ref }}| {{ resource_remote_ref }}.to_string())
-}
-
-fn convert_string_to_{{ resource_remote_ref }}({{ resource_remote_ref }}: Option<String>) -> Option<{{ resource_remote_ref }}::Uuid> {
-    match {{ resource_remote_ref }} {
-        Some({{ resource_remote_ref }}) => match {{ resource_remote_ref }}::Uuid::parse_str(&{{ resource_remote_ref }}) {
-            Ok({{ resource_remote_ref }}) => Some({{ resource_remote_ref }}),
-            Err(_) => None,
-        },
-        None => None,
-    }
-}
-
-fn convert_kube_type_to_dto({{ arg_name }}: {{ kind_struct }}) -> {{ kind_struct }}Dto {
-    let {{ resource_remote_ref }} = match {{ arg_name }}.status {
-        Some(status) => convert_string_to_{{ resource_remote_ref }}(status.{{ resource_remote_ref }}),
-        None => None,
-    };
-    {{ kind_struct }}Dto {
-        {{ resource_remote_ref}},
-        {%- for field in dto_fields %}
-            {{ field.pub_name }}: {{ arg_name }}.spec.{{ field.pub_name }},
-        {%- endfor %}
-    }
-}
-
-fn convert_dto_to_kube_type({{ arg_name }}: {{ kind_struct }}Dto) -> {{ kind_struct }}Spec {
-    {{ kind_struct }}Spec {
-    {%- for field in dto_fields %}
-        {{ field.pub_name }}: {{ arg_name }}.{{ field.pub_name }},
-    {%- endfor %}
-    }
-}
-
 struct ExtraArgs {
     kube_client: Api<{{ kind_struct }}>,
 }
@@ -146,8 +111,8 @@ pub async fn check_for_drift(
     kube_client: &Api<{{ kind_struct }}>,
     {{ arg_name }}: &mut {{ kind_struct }},
 ) -> Result<(), OperatorError> {
-    let dto = convert_kube_type_to_dto({{ arg_name }}.clone());
-    let {{ resource_remote_ref }} = convert_{{ resource_remote_ref }}_to_string(dto.{{ resource_remote_ref }}).unwrap_or_default();
+    let dto = converters::kube_type_to_dto({{ arg_name }}.clone());
+    let {{ resource_remote_ref }} = converters::{{ resource_remote_ref }}_to_string(dto.{{ resource_remote_ref }}).unwrap_or_default();
     let config = get_client_config().await?;
 
     if {{ resource_remote_ref }}.is_empty() {
@@ -157,9 +122,9 @@ pub async fn check_for_drift(
 
     match get_{{ arg_name }}_by_id(&config, &{{ resource_remote_ref }}).await {
         Ok(dto) => {
-            let remote_{{ arg_name }} = convert_dto_to_kube_type(dto);
+            let remote_{{ arg_name }} = converters::dto_to_kube_type(dto);
             if remote_{{ arg_name }} != {{ arg_name }}.spec {
-                let current_{{ arg_name }}_dto = convert_kube_type_to_dto({{ arg_name }}.clone());
+                let current_{{ arg_name }}_dto = converters::kube_type_to_dto({{ arg_name }}.clone());
                 warn!("{{ kind_struct }} has drifted remotely, sending an update to remote...");
                 match update_{{ arg_name }}_by_id(&config, &{{ resource_remote_ref }}, current_{{ arg_name }}_dto).await {
                     Ok(_) => {
@@ -197,4 +162,45 @@ pub async fn check_for_drift(
 fn error_policy(_resource: Arc<{{ kind_struct }}>, error: &OperatorError, _ctx: Arc<ExtraArgs>) -> Action {
     error!("Error processing event: {:?}", error);
     Action::requeue(Duration::from_secs(REQUEUE_AFTER_IN_SEC))
+}
+
+mod converters {
+    use super::{
+        {{ kind_struct }}, {{ kind_struct }}Dto, {{ kind_struct }}Spec
+    };
+
+    pub fn {{ resource_remote_ref }}_to_string({{ resource_remote_ref }}: Option<{{ resource_remote_ref }}::Uuid>) -> Option<String> {
+        {{ resource_remote_ref }}.map(|{{ resource_remote_ref }}| {{ resource_remote_ref }}.to_string())
+    }
+
+    fn string_to_{{ resource_remote_ref }}({{ resource_remote_ref }}: Option<String>) -> Option<{{ resource_remote_ref }}::Uuid> {
+        match {{ resource_remote_ref }} {
+            Some({{ resource_remote_ref }}) => match {{ resource_remote_ref }}::Uuid::parse_str(&{{ resource_remote_ref }}) {
+                Ok({{ resource_remote_ref }}) => Some({{ resource_remote_ref }}),
+                Err(_) => None,
+            },
+            None => None,
+        }
+    }
+
+    pub fn kube_type_to_dto({{ arg_name }}: {{ kind_struct }}) -> {{ kind_struct }}Dto {
+        let {{ resource_remote_ref }} = match {{ arg_name }}.status {
+            Some(status) => string_to_{{ resource_remote_ref }}(status.{{ resource_remote_ref }}),
+            None => None,
+        };
+        {{ kind_struct }}Dto {
+            {{ resource_remote_ref}},
+            {%- for field in dto_fields %}
+                {{ field.pub_name }}: {{ arg_name }}.spec.{{ field.pub_name }},
+            {%- endfor %}
+        }
+    }
+
+    pub fn dto_to_kube_type({{ arg_name }}: {{ kind_struct }}Dto) -> {{ kind_struct }}Spec {
+        {{ kind_struct }}Spec {
+        {%- for field in dto_fields %}
+            {{ field.pub_name }}: {{ arg_name }}.{{ field.pub_name }},
+        {%- endfor %}
+        }
+    }
 }
